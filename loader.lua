@@ -78,7 +78,7 @@ local NoClipConnection = nil
 --==================================================
 local function Notify(msg)
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Violence District",
+        Title = "Violence District - BimZy",
         Text = msg,
         Duration = 2
     })
@@ -226,7 +226,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(0, 200, 0, 25)
 TitleText.Position = UDim2.new(0, 55, 0.5, -12.5)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "Violence District"
+TitleText.Text = "Violence District - BimZy"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.TextSize = 16
 TitleText.Font = Enum.Font.GothamBold
@@ -888,7 +888,7 @@ function UpdateTab(tab)
         CreateButton("Rejoin", function() game:GetService("TeleportService"):Teleport(game.PlaceId, Player) end)
         
         CreateSection("CREDITS")
-        CreateLabel("Violence District v7.2")
+        CreateLabel("Violence District v1.0 [Beta]")
         CreateLabel("Professional Edition")
         
     elseif tab == "Visuals" then
@@ -1393,7 +1393,7 @@ end)
 UpdateTab("Main")
 Notify("Press F4 or click floating button")
 
-print("=== Violence District Professional v7.2 ===")
+print("=== Violence District Professional v1.0 ===")
 print("Press F4 to toggle menu")
 print("ESP with distance enabled!")
 print("NoClip fixed and working!")
