@@ -1,7 +1,7 @@
 -- ==================== GAMES/VIOLENCE.LUA ====================
 -- Script Ultimate Violence District dengan UI Super Modern
 -- Author: LuckyBimZy
--- Version: 6.0 (Ultimate Deluxe)
+-- Version: 6.1 (Ultimate Deluxe - Fixed)
 
 if _G.ViolenceLoaded then 
     print("⚠️ Script sudah diload, melewati...")
@@ -293,7 +293,7 @@ local Version = Instance.new("TextLabel")
 Version.Size = UDim2.new(0, 150, 0, 20)
 Version.Position = UDim2.new(0, 75, 0.5, 10)
 Version.BackgroundTransparency = 1
-Version.Text = "ULTIMATE DELUXE v6.0"
+Version.Text = "ULTIMATE DELUXE v6.1"
 Version.TextColor3 = Color3.fromRGB(65, 105, 225)
 Version.TextSize = 12
 Version.Font = Enum.Font.Gotham
@@ -322,95 +322,6 @@ local MinCorner = Instance.new("UICorner")
 MinCorner.CornerRadius = UDim.new(0, 15)
 MinCorner.Parent = MinBtn
 
--- Hover effect
-MinBtn.MouseEnter:Connect(function()
-    TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}):Play()
-end)
-MinBtn.MouseLeave:Connect(function()
-    if not Minimized then
-        TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 50)}):Play()
-    end
-end)
-
-MinBtn.MouseButton1Click:Connect(function()
-    Minimized = true
-    
-    -- Animasi minimize
-    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, MinimizedSize.Width, 0, MinimizedSize.Height),
-        Position = UDim2.new(0.5, -MinimizedSize.Width/2, 0, 20)
-    }):Play()
-    
-    task.wait(0.2)
-    
-    -- Sembunyikan semua kecuali title bar
-    for _, v in pairs(MainFrame:GetChildren()) do
-        if v ~= TitleBar and v ~= Shadow and v ~= GlassEffect and v ~= GlowFrame then
-            v.Visible = false
-        end
-    end
-    
-    -- Update button states
-    MaxBtn.Visible = true
-    MinBtn.Visible = false
-    MinBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    
-    -- Ubah title saat minimize
-    Title.Text = "VIOLENCE DISTRICT [MINIMIZED]"
-    Title.TextSize = 18
-end)
-
--- Maximize button
-local MaxBtn = Instance.new("TextButton")
-MaxBtn.Size = UDim2.new(0, 45, 0, 45)
-MaxBtn.Position = UDim2.new(0, 0, 0, 0)
-MaxBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-MaxBtn.Text = "□"
-MaxBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MaxBtn.TextSize = 24
-MaxBtn.Font = Enum.Font.GothamBold
-MaxBtn.Visible = false
-MaxBtn.Parent = ControlFrame
-
-local MaxCorner = Instance.new("UICorner")
-MaxCorner.CornerRadius = UDim.new(0, 15)
-MaxCorner.Parent = MaxBtn
-
-MaxBtn.MouseEnter:Connect(function()
-    TweenService:Create(MaxBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}):Play()
-end)
-MaxBtn.MouseLeave:Connect(function()
-    if Minimized then
-        TweenService:Create(MaxBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 50)}):Play()
-    end
-end)
-
-MaxBtn.MouseButton1Click:Connect(function()
-    Minimized = false
-    
-    -- Tampilkan semua komponen
-    for _, v in pairs(MainFrame:GetChildren()) do
-        v.Visible = true
-    end
-    
-    -- Animasi maximize
-    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, NormalSize.Width, 0, NormalSize.Height),
-        Position = UDim2.new(0.5, -NormalSize.Width/2, 0.5, -NormalSize.Height/2)
-    }):Play()
-    
-    -- Update button states
-    MaxBtn.Visible = false
-    MinBtn.Visible = true
-    
-    -- Kembalikan title
-    Title.Text = "VIOLENCE DISTRICT"
-    Title.TextSize = 24
-    
-    -- Refresh konten
-    UpdateTabContent(CurrentTab)
-end)
-
 -- Settings button
 local SettingsBtn = Instance.new("TextButton")
 SettingsBtn.Size = UDim2.new(0, 45, 0, 45)
@@ -425,17 +336,6 @@ SettingsBtn.Parent = ControlFrame
 local SettingsCorner = Instance.new("UICorner")
 SettingsCorner.CornerRadius = UDim.new(0, 15)
 SettingsCorner.Parent = SettingsBtn
-
-SettingsBtn.MouseEnter:Connect(function()
-    TweenService:Create(SettingsBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}):Play()
-end)
-SettingsBtn.MouseLeave:Connect(function()
-    TweenService:Create(SettingsBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 50)}):Play()
-end)
-
-SettingsBtn.MouseButton1Click:Connect(function()
-    UpdateTabContent("SETTINGS")
-end)
 
 -- Close button
 local CloseBtn = Instance.new("TextButton")
@@ -452,24 +352,78 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 15)
 CloseCorner.Parent = CloseBtn
 
-CloseBtn.MouseEnter:Connect(function()
-    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 80, 80)}):Play()
-end)
-CloseBtn.MouseLeave:Connect(function()
-    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(220, 60, 60)}):Play()
-end)
+--==================================================
+-- MINIMIZED BAR (untuk saat minimize)
+--==================================================
+local MinimizedBar = Instance.new("Frame")
+MinimizedBar.Size = UDim2.new(1, 0, 0, 60)
+MinimizedBar.BackgroundColor3 = Color3.fromRGB(8, 8, 15)
+MinimizedBar.BackgroundTransparency = 0.2
+MinimizedBar.BorderSizePixel = 0
+MinimizedBar.Visible = false
+MinimizedBar.Parent = MainFrame
 
-CloseBtn.MouseButton1Click:Connect(function()
-    -- Animasi close
-    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        BackgroundTransparency = 1
-    }):Play()
-    
-    task.wait(0.4)
-    ScreenGui:Destroy()
-end)
+local MinimizedCorner = Instance.new("UICorner")
+MinimizedCorner.CornerRadius = UDim.new(0, 25)
+MinimizedCorner.Parent = MinimizedBar
+
+-- Logo kecil di minimized bar
+local MiniLogo = Instance.new("TextLabel")
+MiniLogo.Size = UDim2.new(0, 40, 0, 40)
+MiniLogo.Position = UDim2.new(0, 15, 0.5, -20)
+MiniLogo.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+MiniLogo.BackgroundTransparency = 0.3
+MiniLogo.Text = "🎮"
+MiniLogo.TextColor3 = Color3.fromRGB(255, 255, 255)
+MiniLogo.TextSize = 24
+MiniLogo.Font = Enum.Font.Gotham
+MiniLogo.Parent = MinimizedBar
+
+local MiniLogoCorner = Instance.new("UICorner")
+MiniLogoCorner.CornerRadius = UDim.new(0, 12)
+MiniLogoCorner.Parent = MiniLogo
+
+-- Text di minimized bar
+local MiniText = Instance.new("TextLabel")
+MiniText.Size = UDim2.new(0, 200, 0, 30)
+MiniText.Position = UDim2.new(0, 65, 0.5, -15)
+MiniText.BackgroundTransparency = 1
+MiniText.Text = "VIOLENCE DISTRICT [MINIMIZED]"
+MiniText.TextColor3 = Color3.fromRGB(255, 255, 255)
+MiniText.TextSize = 16
+MiniText.Font = Enum.Font.GothamBold
+MiniText.TextXAlignment = Enum.TextXAlignment.Left
+MiniText.Parent = MinimizedBar
+
+-- Tombol maximize di minimized bar
+local MiniMaxBtn = Instance.new("TextButton")
+MiniMaxBtn.Size = UDim2.new(0, 45, 0, 45)
+MiniMaxBtn.Position = UDim2.new(1, -55, 0.5, -22.5)
+MiniMaxBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+MiniMaxBtn.Text = "□"
+MiniMaxBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MiniMaxBtn.TextSize = 24
+MiniMaxBtn.Font = Enum.Font.GothamBold
+MiniMaxBtn.Parent = MinimizedBar
+
+local MiniMaxCorner = Instance.new("UICorner")
+MiniMaxCorner.CornerRadius = UDim.new(0, 15)
+MiniMaxCorner.Parent = MiniMaxBtn
+
+-- Tombol close di minimized bar
+local MiniCloseBtn = Instance.new("TextButton")
+MiniCloseBtn.Size = UDim2.new(0, 45, 0, 45)
+MiniCloseBtn.Position = UDim2.new(1, -105, 0.5, -22.5)
+MiniCloseBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+MiniCloseBtn.Text = "×"
+MiniCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MiniCloseBtn.TextSize = 32
+MiniCloseBtn.Font = Enum.Font.GothamBold
+MiniCloseBtn.Parent = MinimizedBar
+
+local MiniCloseCorner = Instance.new("UICorner")
+MiniCloseCorner.CornerRadius = UDim.new(0, 15)
+MiniCloseCorner.Parent = MiniCloseBtn
 
 --==================================================
 -- SIDE BAR ULTRA MODERN
@@ -1194,6 +1148,125 @@ function CreateLabel(parent, text, color, size, icon)
 end
 
 --==================================================
+-- FUNGSI MINIMIZE/MAXIMIZE
+--==================================================
+
+-- Fungsi minimize
+local function MinimizeGUI()
+    Minimized = true
+    
+    -- Sembunyikan komponen normal
+    SideBar.Visible = false
+    ContentBg.Visible = false
+    
+    -- Tampilkan minimized bar
+    MinimizedBar.Visible = true
+    
+    -- Animasi minimize
+    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, MinimizedSize.Width, 0, MinimizedSize.Height),
+        Position = UDim2.new(0.5, -MinimizedSize.Width/2, 0, 20)
+    }):Play()
+    
+    -- Update button states
+    MinBtn.Visible = false
+    MaxBtn.Visible = false -- Kita pakai MiniMaxBtn di minimized bar
+end
+
+-- Fungsi maximize
+local function MaximizeGUI()
+    Minimized = false
+    
+    -- Tampilkan komponen normal
+    SideBar.Visible = true
+    ContentBg.Visible = true
+    
+    -- Sembunyikan minimized bar
+    MinimizedBar.Visible = false
+    
+    -- Animasi maximize
+    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, NormalSize.Width, 0, NormalSize.Height),
+        Position = UDim2.new(0.5, -NormalSize.Width/2, 0.5, -NormalSize.Height/2)
+    }):Play()
+    
+    -- Update button states
+    MinBtn.Visible = true
+    MaxBtn.Visible = false
+end
+
+-- Hubungkan tombol minimize
+MinBtn.MouseButton1Click:Connect(MinimizeGUI)
+
+-- Hubungkan tombol maximize di minimized bar
+MiniMaxBtn.MouseButton1Click:Connect(MaximizeGUI)
+
+-- Hubungkan tombol close di minimized bar
+MiniCloseBtn.MouseButton1Click:Connect(function()
+    -- Animasi close
+    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundTransparency = 1
+    }):Play()
+    
+    task.wait(0.4)
+    ScreenGui:Destroy()
+end)
+
+-- Hover effects untuk tombol minimize bar
+MinBtn.MouseEnter:Connect(function()
+    TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}):Play()
+end)
+MinBtn.MouseLeave:Connect(function()
+    TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 50)}):Play()
+end)
+
+MiniMaxBtn.MouseEnter:Connect(function()
+    TweenService:Create(MiniMaxBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(85, 125, 245)}):Play()
+end)
+MiniMaxBtn.MouseLeave:Connect(function()
+    TweenService:Create(MiniMaxBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(65, 105, 225)}):Play()
+end)
+
+MiniCloseBtn.MouseEnter:Connect(function()
+    TweenService:Create(MiniCloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 80, 80)}):Play()
+end)
+MiniCloseBtn.MouseLeave:Connect(function()
+    TweenService:Create(MiniCloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(220, 60, 60)}):Play()
+end)
+
+SettingsBtn.MouseEnter:Connect(function()
+    TweenService:Create(SettingsBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}):Play()
+end)
+SettingsBtn.MouseLeave:Connect(function()
+    TweenService:Create(SettingsBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 50)}):Play()
+end)
+
+SettingsBtn.MouseButton1Click:Connect(function()
+    UpdateTabContent("SETTINGS")
+end)
+
+CloseBtn.MouseEnter:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 80, 80)}):Play()
+end)
+CloseBtn.MouseLeave:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(220, 60, 60)}):Play()
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    -- Animasi close
+    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundTransparency = 1
+    }):Play()
+    
+    task.wait(0.4)
+    ScreenGui:Destroy()
+end)
+
+--==================================================
 -- UPDATE TAB CONTENT
 --==================================================
 function UpdateTabContent(tabName)
@@ -1330,15 +1403,11 @@ function UpdateTabContent(tabName)
         end)
         
         CreateQuickBtn("⬇️", "MINIMIZE", Color3.fromRGB(147, 112, 219), 0.52, 0, function()
-            if not Minimized then
-                MinBtn.MouseButton1Click:Fire()
-            end
+            MinimizeGUI()
         end)
         
         CreateQuickBtn("⬆️", "MAXIMIZE", Color3.fromRGB(0, 200, 100), 0.78, 0, function()
-            if Minimized then
-                MaxBtn.MouseButton1Click:Fire()
-            end
+            MaximizeGUI()
         end)
         
         CreateQuickBtn("⚙️", "SETTINGS", Color3.fromRGB(100, 100, 100), 0, 100, function()
@@ -1805,15 +1874,11 @@ function UpdateTabContent(tabName)
         end)
         
         CreateButton(ScrollingFrame, "⬇️ Minimize", Color3.fromRGB(100, 100, 100), "⬇️", function()
-            if not Minimized then
-                MinBtn.MouseButton1Click:Fire()
-            end
+            MinimizeGUI()
         end)
         
         CreateButton(ScrollingFrame, "⬆️ Maximize", Color3.fromRGB(100, 100, 100), "⬆️", function()
-            if Minimized then
-                MaxBtn.MouseButton1Click:Fire()
-            end
+            MaximizeGUI()
         end)
         
         CreateButton(ScrollingFrame, "❌ Close GUI", Color3.fromRGB(220, 60, 60), "❌", function()
@@ -1823,7 +1888,7 @@ function UpdateTabContent(tabName)
         CreateSection(ScrollingFrame, "INFORMATION")
         
         CreateLabel(ScrollingFrame, "Keybind: F4 to toggle menu", Color3.fromRGB(150, 150, 150), 25, "⌨️")
-        CreateLabel(ScrollingFrame, "Version: 6.0 Ultimate Deluxe", Color3.fromRGB(150, 150, 150), 25, "📌")
+        CreateLabel(ScrollingFrame, "Version: 6.1 Ultimate Deluxe", Color3.fromRGB(150, 150, 150), 25, "📌")
         CreateLabel(ScrollingFrame, "Author: LuckyBimZy", Color3.fromRGB(150, 150, 150), 25, "👤")
         CreateLabel(ScrollingFrame, "GitHub: Machadepanmu", Color3.fromRGB(150, 150, 150), 25, "🔗")
     end
