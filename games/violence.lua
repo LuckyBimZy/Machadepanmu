@@ -5,7 +5,7 @@
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Violence District",
+        Title = "Violence District - BimZy Coba Coba",
         Text = "Script already loaded!",
         Duration = 2
     })
