@@ -1,5 +1,5 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
--- UI Modern dengan Floating Button dan Kontrol Lengkap
+-- UI Modern dengan Floating Button dan Semua Fitur Lengkap
 -- Author: LuckyBimZy
 -- Version: 4.0
 
@@ -80,6 +80,7 @@ local Loops = {}
 local ESPObjects = {}
 local GUIState = "open" -- open, closed
 local SavedPosition = nil
+local ActiveLoops = {} -- Untuk melacak loop yang aktif
 
 --==================================================
 -- NOTIFIKASI
@@ -114,7 +115,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999
 
 --==================================================
--- FLOATING BUTTON (TOMBOL MENGAMBANG)
+-- FLOATING BUTTON (TOMBOL MENGAMBANG) - SELALU ADA
 --==================================================
 local FloatingBtn = Instance.new("ImageButton")
 FloatingBtn.Name = "FloatingButton"
@@ -146,12 +147,12 @@ FloatShadow.SliceCenter = Rect.new(50, 50, 50, 50)
 FloatShadow.Parent = FloatingBtn
 FloatShadow.ZIndex = 999
 
--- Rounded corners
+-- Rounded corners untuk floating button
 local FloatCorner = Instance.new("UICorner")
 FloatCorner.CornerRadius = UDim.new(0, 25)
 FloatCorner.Parent = FloatingBtn
 
--- Icon
+-- Icon di floating button
 local FloatIcon = Instance.new("TextLabel")
 FloatIcon.Name = "Icon"
 FloatIcon.Size = UDim2.new(1, 0, 1, 0)
@@ -163,10 +164,10 @@ FloatIcon.Font = Enum.Font.Gotham
 FloatIcon.Parent = FloatingBtn
 FloatIcon.ZIndex = 1001
 
--- Tooltip
+-- Tooltip untuk floating button
 local FloatTooltip = Instance.new("Frame")
 FloatTooltip.Name = "Tooltip"
-FloatTooltip.Size = UDim2.new(0, 140, 0, 30)
+FloatTooltip.Size = UDim2.new(0, 150, 0, 30)
 FloatTooltip.Position = UDim2.new(1, 10, 0.5, -15)
 FloatTooltip.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 FloatTooltip.BackgroundTransparency = 0.1
@@ -181,13 +182,14 @@ TooltipCorner.Parent = FloatTooltip
 local TooltipText = Instance.new("TextLabel")
 TooltipText.Size = UDim2.new(1, 0, 1, 0)
 TooltipText.BackgroundTransparency = 1
-TooltipText.Text = "Toggle Menu (F4)"
+TooltipText.Text = "Klik untuk toggle menu"
 TooltipText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TooltipText.TextSize = 12
 TooltipText.Font = Enum.Font.Gotham
 TooltipText.Parent = FloatTooltip
+TooltipText.ZIndex = 1003
 
--- Hover effect
+-- Hover effect untuk floating button
 FloatingBtn.MouseEnter:Connect(function()
     TweenService:Create(FloatingBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 55, 0, 55)}):Play()
     FloatTooltip.Visible = true
@@ -203,8 +205,8 @@ end)
 --==================================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 380, 0, 550)
-MainFrame.Position = UDim2.new(0.5, -190, 0.5, -275)
+MainFrame.Size = UDim2.new(0, 400, 0, 580)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -290)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
@@ -215,7 +217,7 @@ MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 MainFrame.ZIndex = 10
 
--- Shadow
+-- Shadow untuk main menu
 local MainShadow = Instance.new("ImageLabel")
 MainShadow.Name = "Shadow"
 MainShadow.Size = UDim2.new(1, 20, 1, 20)
@@ -258,7 +260,7 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 15)
 TitleCorner.Parent = TitleBar
 
--- Icon
+-- Icon di title bar
 local TitleIcon = Instance.new("Frame")
 TitleIcon.Size = UDim2.new(0, 30, 0, 30)
 TitleIcon.Position = UDim2.new(0, 15, 0.5, -15)
@@ -314,7 +316,7 @@ ControlFrame.BackgroundTransparency = 1
 ControlFrame.Parent = TitleBar
 ControlFrame.ZIndex = 12
 
--- Minimize button (untuk sembunyikan menu, floating button tetap ada)
+-- Minimize button (ke floating mode)
 local MinBtn = Instance.new("TextButton")
 MinBtn.Size = UDim2.new(0, 30, 0, 30)
 MinBtn.Position = UDim2.new(0, 0, 0, 0)
@@ -336,35 +338,25 @@ MinBtn.MouseButton1Click:Connect(function()
     FloatTooltip.Text = "Tampilkan menu"
 end)
 
--- Settings button (ke tab Misc)
-local SettingsBtn = Instance.new("TextButton")
-SettingsBtn.Size = UDim2.new(0, 30, 0, 30)
-SettingsBtn.Position = UDim2.new(0, 35, 0, 0)
-SettingsBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-SettingsBtn.Text = "⚙️"
-SettingsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SettingsBtn.TextSize = 16
-SettingsBtn.Font = Enum.Font.Gotham
-SettingsBtn.Parent = ControlFrame
-SettingsBtn.ZIndex = 13
+-- Hide button (sembunyikan semua)
+local HideBtn = Instance.new("TextButton")
+HideBtn.Size = UDim2.new(0, 30, 0, 30)
+HideBtn.Position = UDim2.new(0, 35, 0, 0)
+HideBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+HideBtn.Text = "●"
+HideBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+HideBtn.TextSize = 16
+HideBtn.Font = Enum.Font.GothamBold
+HideBtn.Parent = ControlFrame
+HideBtn.ZIndex = 13
 
-local SettingsCorner = Instance.new("UICorner")
-SettingsCorner.CornerRadius = UDim.new(0, 8)
-SettingsCorner.Parent = SettingsBtn
+local HideCorner = Instance.new("UICorner")
+HideCorner.CornerRadius = UDim.new(0, 8)
+HideCorner.Parent = HideBtn
 
-SettingsBtn.MouseButton1Click:Connect(function()
-    CurrentTab = "Misc"
-    UpdateTab("Misc")
-    -- Update tab button colors
-    for i, btn in ipairs(TabButtons) do
-        if i == 7 then -- Misc is 7th tab
-            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(65, 105, 225)}):Play()
-            btn:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
-            btn:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(200, 200, 200)
-        end
-    end
+HideBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    FloatingBtn.Visible = false
 end)
 
 -- Close button
@@ -413,8 +405,8 @@ local CurrentTab = "Main"
 
 for i, tabData in ipairs(Tabs) do
     local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0, 48, 0, 45)
-    TabBtn.Position = UDim2.new(0, (i-1) * 50, 0, 0)
+    TabBtn.Size = UDim2.new(0, 50, 0, 45)
+    TabBtn.Position = UDim2.new(0, (i-1) * 52, 0, 0)
     TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     TabBtn.Text = ""
     TabBtn.Parent = TabFrame
@@ -429,7 +421,7 @@ for i, tabData in ipairs(Tabs) do
     Icon.BackgroundTransparency = 1
     Icon.Text = tabData.icon
     Icon.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Icon.TextSize = 20
+    Icon.TextSize = 22
     Icon.Font = Enum.Font.Gotham
     Icon.Parent = TabBtn
     Icon.ZIndex = 13
@@ -460,6 +452,10 @@ for i, tabData in ipairs(Tabs) do
     
     table.insert(TabButtons, TabBtn)
 end
+
+-- Set tab pertama aktif
+TabButtons[1].BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+TabButtons[1]:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(255, 255, 255)
 
 --==================================================
 -- CONTENT AREA
@@ -507,7 +503,7 @@ HeaderTitle.Position = UDim2.new(0, 35, 0, 0)
 HeaderTitle.BackgroundTransparency = 1
 HeaderTitle.Text = "MAIN"
 HeaderTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-HeaderTitle.TextSize = 13
+HeaderTitle.TextSize = 14
 HeaderTitle.Font = Enum.Font.GothamBold
 HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
 HeaderTitle.Parent = ContentHeader
@@ -540,7 +536,7 @@ function CreateSection(text)
     Section.BackgroundTransparency = 1
     Section.Text = "  " .. text
     Section.TextColor3 = Color3.fromRGB(65, 105, 225)
-    Section.TextSize = 14
+    Section.TextSize = 15
     Section.Font = Enum.Font.GothamBold
     Section.TextXAlignment = Enum.TextXAlignment.Left
     Section.Parent = ScrollingFrame
@@ -560,7 +556,7 @@ end
 
 function CreateToggle(text, desc, callback)
     local ToggleFrame = Instance.new("Frame")
-    ToggleFrame.Size = UDim2.new(1, 0, 0, 55)
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 60)
     ToggleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     ToggleFrame.BackgroundTransparency = 0.1
     ToggleFrame.Parent = ScrollingFrame
@@ -571,36 +567,36 @@ function CreateToggle(text, desc, callback)
     ToggleCorner.Parent = ToggleFrame
     
     local ToggleText = Instance.new("TextLabel")
-    ToggleText.Size = UDim2.new(0.7, -20, 0, 22)
+    ToggleText.Size = UDim2.new(0.7, -20, 0, 24)
     ToggleText.Position = UDim2.new(0, 15, 0, 8)
     ToggleText.BackgroundTransparency = 1
     ToggleText.Text = text
     ToggleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleText.TextSize = 14
+    ToggleText.TextSize = 15
     ToggleText.Font = Enum.Font.GothamBold
     ToggleText.TextXAlignment = Enum.TextXAlignment.Left
     ToggleText.Parent = ToggleFrame
     ToggleText.ZIndex = 14
     
     local ToggleDesc = Instance.new("TextLabel")
-    ToggleDesc.Size = UDim2.new(0.7, -20, 0, 16)
-    ToggleDesc.Position = UDim2.new(0, 15, 0, 30)
+    ToggleDesc.Size = UDim2.new(0.7, -20, 0, 18)
+    ToggleDesc.Position = UDim2.new(0, 15, 0, 32)
     ToggleDesc.BackgroundTransparency = 1
     ToggleDesc.Text = desc or ""
     ToggleDesc.TextColor3 = Color3.fromRGB(150, 150, 150)
-    ToggleDesc.TextSize = 10
+    ToggleDesc.TextSize = 11
     ToggleDesc.Font = Enum.Font.Gotham
     ToggleDesc.TextXAlignment = Enum.TextXAlignment.Left
     ToggleDesc.Parent = ToggleFrame
     ToggleDesc.ZIndex = 14
     
     local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(0, 70, 0, 30)
-    ToggleBtn.Position = UDim2.new(1, -85, 0.5, -15)
+    ToggleBtn.Size = UDim2.new(0, 75, 0, 32)
+    ToggleBtn.Position = UDim2.new(1, -90, 0.5, -16)
     ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     ToggleBtn.Text = "OFF"
     ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    ToggleBtn.TextSize = 12
+    ToggleBtn.TextSize = 13
     ToggleBtn.Font = Enum.Font.GothamBold
     ToggleBtn.Parent = ToggleFrame
     ToggleBtn.ZIndex = 15
@@ -637,7 +633,7 @@ function CreateButton(text, color, callback)
     Button.BackgroundColor3 = color or Color3.fromRGB(65, 105, 225)
     Button.Text = text
     Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Button.TextSize = 13
+    Button.TextSize = 14
     Button.Font = Enum.Font.GothamBold
     Button.Parent = ScrollingFrame
     Button.ZIndex = 14
@@ -666,47 +662,48 @@ end
 
 function CreateDropdown(text, options, callback)
     local DropdownFrame = Instance.new("Frame")
-    DropdownFrame.Size = UDim2.new(1, 0, 0, 55)
+    DropdownFrame.Size = UDim2.new(1, 0, 0, 60)
     DropdownFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     DropdownFrame.BackgroundTransparency = 0.1
     DropdownFrame.Parent = ScrollingFrame
     DropdownFrame.ZIndex = 13
+    DropdownFrame.ClipsDescendants = false
     
     local DropdownCorner = Instance.new("UICorner")
     DropdownCorner.CornerRadius = UDim.new(0, 8)
     DropdownCorner.Parent = DropdownFrame
     
     local DropdownText = Instance.new("TextLabel")
-    DropdownText.Size = UDim2.new(0.6, -20, 0, 22)
+    DropdownText.Size = UDim2.new(0.5, -20, 0, 24)
     DropdownText.Position = UDim2.new(0, 15, 0, 8)
     DropdownText.BackgroundTransparency = 1
     DropdownText.Text = text
     DropdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DropdownText.TextSize = 14
+    DropdownText.TextSize = 15
     DropdownText.Font = Enum.Font.GothamBold
     DropdownText.TextXAlignment = Enum.TextXAlignment.Left
     DropdownText.Parent = DropdownFrame
     DropdownText.ZIndex = 14
     
     local DropdownDesc = Instance.new("TextLabel")
-    DropdownDesc.Size = UDim2.new(0.6, -20, 0, 16)
-    DropdownDesc.Position = UDim2.new(0, 15, 0, 30)
+    DropdownDesc.Size = UDim2.new(0.5, -20, 0, 18)
+    DropdownDesc.Position = UDim2.new(0, 15, 0, 32)
     DropdownDesc.BackgroundTransparency = 1
     DropdownDesc.Text = "Click to select"
     DropdownDesc.TextColor3 = Color3.fromRGB(150, 150, 150)
-    DropdownDesc.TextSize = 10
+    DropdownDesc.TextSize = 11
     DropdownDesc.Font = Enum.Font.Gotham
     DropdownDesc.TextXAlignment = Enum.TextXAlignment.Left
     DropdownDesc.Parent = DropdownFrame
     DropdownDesc.ZIndex = 14
     
     local DropdownBtn = Instance.new("TextButton")
-    DropdownBtn.Size = UDim2.new(0, 100, 0, 30)
-    DropdownBtn.Position = UDim2.new(1, -115, 0.5, -15)
+    DropdownBtn.Size = UDim2.new(0, 120, 0, 32)
+    DropdownBtn.Position = UDim2.new(1, -135, 0.5, -16)
     DropdownBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     DropdownBtn.Text = options[1] or "Select"
     DropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DropdownBtn.TextSize = 11
+    DropdownBtn.TextSize = 12
     DropdownBtn.Font = Enum.Font.Gotham
     DropdownBtn.Parent = DropdownFrame
     DropdownBtn.ZIndex = 15
@@ -715,63 +712,87 @@ function CreateDropdown(text, options, callback)
     BtnCorner.CornerRadius = UDim.new(0, 20)
     BtnCorner.Parent = DropdownBtn
     
+    local menuOpen = false
+    local menu = nil
+    
     DropdownBtn.MouseButton1Click:Connect(function()
-        -- Hapus menu lama
-        local oldMenu = DropdownFrame:FindFirstChild("DropdownMenu")
-        if oldMenu then oldMenu:Destroy() end
+        if menuOpen then
+            if menu then menu:Destroy() end
+            menuOpen = false
+            return
+        end
         
-        -- Buat menu baru dengan ZIndex tinggi
-        local menu = Instance.new("Frame")
+        -- Hapus menu lama
+        if menu then menu:Destroy() end
+        
+        menu = Instance.new("Frame")
         menu.Name = "DropdownMenu"
-        menu.Size = UDim2.new(0, 130, 0, math.min(#options, 5) * 35)
-        menu.Position = UDim2.new(1, -115, 1, 5)
-        menu.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        menu.Size = UDim2.new(0, 140, 0, math.min(#options, 6) * 35)
+        menu.Position = UDim2.new(1, -135, 1, 5)
+        menu.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
         menu.BorderSizePixel = 0
         menu.Parent = DropdownFrame
         menu.ZIndex = 999 -- ZIndex sangat tinggi agar muncul di depan
+        menu.ClipsDescendants = true
         
         local menuCorner = Instance.new("UICorner")
         menuCorner.CornerRadius = UDim.new(0, 8)
         menuCorner.Parent = menu
         
+        local menuList = Instance.new("ScrollingFrame")
+        menuList.Size = UDim2.new(1, -2, 1, -2)
+        menuList.Position = UDim2.new(0, 1, 0, 1)
+        menuList.BackgroundTransparency = 1
+        menuList.ScrollBarThickness = 4
+        menuList.CanvasSize = UDim2.new(0, 0, 0, #options * 35)
+        menuList.Parent = menu
+        menuList.ZIndex = 1000
+        
         for i, option in ipairs(options) do
             local optionBtn = Instance.new("TextButton")
             optionBtn.Size = UDim2.new(1, 0, 0, 35)
             optionBtn.Position = UDim2.new(0, 0, 0, (i-1) * 35)
-            optionBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+            optionBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
             optionBtn.Text = option
             optionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            optionBtn.TextSize = 11
+            optionBtn.TextSize = 12
             optionBtn.Font = Enum.Font.Gotham
-            optionBtn.Parent = menu
-            optionBtn.ZIndex = 1000 -- ZIndex lebih tinggi dari menu
+            optionBtn.Parent = menuList
+            optionBtn.ZIndex = 1001
             
             optionBtn.MouseEnter:Connect(function()
-                optionBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 60)
+                optionBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
             end)
             
             optionBtn.MouseLeave:Connect(function()
-                optionBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+                optionBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
             end)
             
             optionBtn.MouseButton1Click:Connect(function()
                 DropdownBtn.Text = option
                 callback(option)
                 menu:Destroy()
+                menuOpen = false
             end)
         end
         
+        menuOpen = true
+        
         -- Tutup menu jika klik di luar
-        local function closeMenu()
-            if menu then menu:Destroy() end
+        local function onInputBegan(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local pos = UserInputService:GetMouseLocation()
+                local absPos = menu.AbsolutePosition
+                local size = menu.AbsoluteSize
+                if pos.X < absPos.X or pos.X > absPos.X + size.X or pos.Y < absPos.Y or pos.Y > absPos.Y + size.Y then
+                    menu:Destroy()
+                    menuOpen = false
+                    UserInputService.InputBegan:Disconnect(connection)
+                end
+            end
         end
         
-        UserInputService.InputBegan:Once(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                task.wait(0.1)
-                closeMenu()
-            end
-        end)
+        local connection = UserInputService.InputBegan:Connect(onInputBegan)
     end)
     
     return DropdownFrame
@@ -783,7 +804,7 @@ function CreateLabel(text)
     Label.BackgroundTransparency = 1
     Label.Text = "• " .. text
     Label.TextColor3 = Color3.fromRGB(180, 180, 180)
-    Label.TextSize = 12
+    Label.TextSize = 13
     Label.Font = Enum.Font.Gotham
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = ScrollingFrame
@@ -805,12 +826,12 @@ function CreateSlider(text, min, max, default, callback)
     SliderCorner.Parent = SliderFrame
     
     local SliderText = Instance.new("TextLabel")
-    SliderText.Size = UDim2.new(0.5, -20, 0, 22)
+    SliderText.Size = UDim2.new(0.5, -20, 0, 24)
     SliderText.Position = UDim2.new(0, 15, 0, 8)
     SliderText.BackgroundTransparency = 1
     SliderText.Text = text
     SliderText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SliderText.TextSize = 14
+    SliderText.TextSize = 15
     SliderText.Font = Enum.Font.GothamBold
     SliderText.TextXAlignment = Enum.TextXAlignment.Left
     SliderText.Parent = SliderFrame
@@ -818,14 +839,13 @@ function CreateSlider(text, min, max, default, callback)
     
     -- Input box untuk angka
     local InputBox = Instance.new("TextBox")
-    InputBox.Size = UDim2.new(0, 60, 0, 25)
-    InputBox.Position = UDim2.new(1, -145, 0, 7)
-    InputBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    InputBox.Size = UDim2.new(0, 60, 0, 30)
+    InputBox.Position = UDim2.new(0.5, -30, 0, 6)
+    InputBox.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     InputBox.Text = tostring(default)
-    InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    InputBox.TextSize = 12
+    InputBox.TextColor3 = Color3.fromRGB(65, 105, 225)
+    InputBox.TextSize = 16
     InputBox.Font = Enum.Font.GothamBold
-    InputBox.PlaceholderText = "Value"
     InputBox.ClearTextOnFocus = false
     InputBox.Parent = SliderFrame
     InputBox.ZIndex = 15
@@ -834,35 +854,21 @@ function CreateSlider(text, min, max, default, callback)
     InputCorner.CornerRadius = UDim.new(0, 6)
     InputCorner.Parent = InputBox
     
-    InputBox.FocusLost:Connect(function()
-        local val = tonumber(InputBox.Text)
-        if val then
-            val = math.clamp(val, min, max)
-            InputBox.Text = tostring(val)
-            callback(val)
-            -- Update slider position
-            local percent = (val - min) / (max - min)
-            SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-            SliderButton.Position = UDim2.new(percent, -8, 0.5, -8)
-        else
-            InputBox.Text = tostring(default)
-        end
-    end)
-    
     local ValueLabel = Instance.new("TextLabel")
-    ValueLabel.Size = UDim2.new(0, 40, 0, 22)
-    ValueLabel.Position = UDim2.new(1, -75, 0, 8)
+    ValueLabel.Size = UDim2.new(0, 50, 0, 24)
+    ValueLabel.Position = UDim2.new(0.5, 40, 0, 8)
     ValueLabel.BackgroundTransparency = 1
     ValueLabel.Text = tostring(default)
     ValueLabel.TextColor3 = Color3.fromRGB(65, 105, 225)
-    ValueLabel.TextSize = 14
+    ValueLabel.TextSize = 16
     ValueLabel.Font = Enum.Font.GothamBold
     ValueLabel.Parent = SliderFrame
     ValueLabel.ZIndex = 14
+    ValueLabel.Visible = false -- Sembunyikan, pakai InputBox
     
     local SliderBg = Instance.new("Frame")
     SliderBg.Size = UDim2.new(1, -30, 0, 6)
-    SliderBg.Position = UDim2.new(0, 15, 0, 55)
+    SliderBg.Position = UDim2.new(0, 15, 0, 50)
     SliderBg.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     SliderBg.Parent = SliderFrame
     SliderBg.ZIndex = 14
@@ -874,8 +880,8 @@ function CreateSlider(text, min, max, default, callback)
     SliderFill.ZIndex = 15
     
     local SliderButton = Instance.new("Frame")
-    SliderButton.Size = UDim2.new(0, 16, 0, 16)
-    SliderButton.Position = UDim2.new((default - min) / (max - min), -8, 0.5, -8)
+    SliderButton.Size = UDim2.new(0, 18, 0, 18)
+    SliderButton.Position = UDim2.new((default - min) / (max - min), -9, 0.5, -9)
     SliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     SliderButton.Parent = SliderFill
     SliderButton.ZIndex = 16
@@ -883,6 +889,23 @@ function CreateSlider(text, min, max, default, callback)
     local ButtonCorner = Instance.new("UICorner")
     ButtonCorner.CornerRadius = UDim.new(1, 0)
     ButtonCorner.Parent = SliderButton
+    
+    -- Update slider dari input box
+    InputBox.FocusLost:Connect(function(enterPressed)
+        local value = tonumber(InputBox.Text)
+        if value then
+            value = math.clamp(value, min, max)
+            InputBox.Text = tostring(value)
+            
+            local percent = (value - min) / (max - min)
+            SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+            SliderButton.Position = UDim2.new(percent, -9, 0.5, -9)
+            
+            callback(value)
+        else
+            InputBox.Text = tostring(default)
+        end
+    end)
     
     -- Drag functionality
     local dragging = false
@@ -907,8 +930,7 @@ function CreateSlider(text, min, max, default, callback)
             local value = math.floor(min + (max - min) * percent)
             
             SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-            SliderButton.Position = UDim2.new(percent, -8, 0.5, -8)
-            ValueLabel.Text = tostring(value)
+            SliderButton.Position = UDim2.new(percent, -9, 0.5, -9)
             InputBox.Text = tostring(value)
             callback(value)
         end
@@ -918,7 +940,7 @@ function CreateSlider(text, min, max, default, callback)
 end
 
 --==================================================
--- FLOATING BUTTON CLICK HANDLER
+-- FLOATING BUTTON CLICK HANDLER (TOGGLE MENU)
 --==================================================
 FloatingBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
@@ -928,22 +950,6 @@ FloatingBtn.MouseButton1Click:Connect(function()
     else
         FloatIcon.Text = "🎯"
         FloatTooltip.Text = "Tampilkan menu"
-    end
-end)
-
---==================================================
--- KEYBIND F4
---==================================================
-UserInputService.InputBegan:Connect(function(input, gp)
-    if not gp and input.KeyCode == Enum.KeyCode.F4 then
-        MainFrame.Visible = not MainFrame.Visible
-        if MainFrame.Visible then
-            FloatIcon.Text = "🎮"
-            FloatTooltip.Text = "Sembunyikan menu"
-        else
-            FloatIcon.Text = "🎯"
-            FloatTooltip.Text = "Tampilkan menu"
-        end
     end
 end)
 
@@ -993,20 +999,14 @@ function UpdateTab(tab)
             game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
         end)
         
-        CreateButton("Server Hop", Color3.fromRGB(255, 165, 0), function()
-            local servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100"))
-            for _, server in ipairs(servers.data) do
-                if server.id ~= game.JobId then
-                    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, server.id, Player)
-                    break
-                end
+        CreateSection("ACTIVE FEATURES")
+        local activeCount = 0
+        for name, enabled in pairs(Toggles) do
+            if type(enabled) == "boolean" and enabled then
+                activeCount = activeCount + 1
             end
-        end)
-        
-        CreateSection("CREDITS")
-        CreateLabel("Violence District Ultimate")
-        CreateLabel("Version 4.0")
-        CreateLabel("Made by LuckyBimZy")
+        end
+        CreateLabel("Active: " .. activeCount .. " features")
         
     elseif tab == "Visuals" then
         CreateSection("ESP SETTINGS")
@@ -1061,12 +1061,22 @@ function UpdateTab(tab)
         CreateSection("AUTO FARM")
         CreateToggle("Auto Farm Present", "Automatically collect presents", function(state)
             Toggles.AutoFarmPresent = state
-            if state then StartLoop("AutoFarmPresent") else StopLoop("AutoFarmPresent") end
+            if state then 
+                StartLoop("AutoFarmPresent")
+                Notify("Auto Farm", "Auto Farm Present diaktifkan", 1)
+            else 
+                StopLoop("AutoFarmPresent")
+            end
         end)
         
         CreateToggle("Auto Farm Gift", "Collect gifts and teleport to tree", function(state)
             Toggles.AutoFarmGift = state
-            if state then StartLoop("AutoFarmGift") else StopLoop("AutoFarmGift") end
+            if state then 
+                StartLoop("AutoFarmGift")
+                Notify("Auto Farm", "Auto Farm Gift diaktifkan", 1)
+            else 
+                StopLoop("AutoFarmGift")
+            end
         end)
         
         CreateToggle("Auto Open Presents", "Automatically open presents", function(state)
@@ -1075,12 +1085,20 @@ function UpdateTab(tab)
         
         CreateToggle("Auto Collect Coins", "Collect coins automatically", function(state)
             Toggles.AutoCollectCoins = state
-            if state then StartLoop("AutoCollectCoins") else StopLoop("AutoCollectCoins") end
+            if state then 
+                StartLoop("AutoCollectCoins")
+            else 
+                StopLoop("AutoCollectCoins")
+            end
         end)
         
         CreateToggle("Auto Heal", "Auto heal when health low", function(state)
             Toggles.AutoHeal = state
-            if state then StartLoop("AutoHeal") else StopLoop("AutoHeal") end
+            if state then 
+                StartLoop("AutoHeal")
+            else 
+                StopLoop("AutoHeal")
+            end
         end)
         
         CreateSection("MOVEMENT")
@@ -1109,7 +1127,7 @@ function UpdateTab(tab)
             end
         end)
         
-        CreateSlider("Jump Value", 50, 200, Toggles.JumpValue, function(value)
+        CreateSlider("Jump Value", 50, 300, Toggles.JumpValue, function(value)
             Toggles.JumpValue = value
             if Toggles.JumpBoost then
                 Player.Character.Humanoid.JumpPower = value
@@ -1120,7 +1138,11 @@ function UpdateTab(tab)
         CreateSection("COMBAT")
         CreateToggle("Aimbot", "Auto aim at nearest player", function(state)
             Toggles.Aimbot = state
-            if state then StartLoop("Aimbot") else StopLoop("Aimbot") end
+            if state then 
+                StartLoop("Aimbot")
+            else 
+                StopLoop("Aimbot")
+            end
         end)
         
         CreateToggle("Silent Aim", "Aim without moving camera", function(state)
@@ -1129,7 +1151,11 @@ function UpdateTab(tab)
         
         CreateToggle("Kill Aura", "Auto kill nearby players", function(state)
             Toggles.KillAura = state
-            if state then StartLoop("KillAura") else StopLoop("KillAura") end
+            if state then 
+                StartLoop("KillAura")
+            else 
+                StopLoop("KillAura")
+            end
         end)
         
         CreateSlider("Kill Aura Range", 5, 50, Toggles.KillAuraRange, function(value)
@@ -1189,16 +1215,30 @@ function UpdateTab(tab)
         CreateSection("GENERATOR FARM")
         CreateToggle("Auto Farm Generator", "Automatically repair generators", function(state)
             Toggles.AutoFarmGenerator = state
-            if state then StartLoop("AutoFarmGenerator") else StopLoop("AutoFarmGenerator") end
+            if state then 
+                StartLoop("AutoFarmGenerator")
+                Notify("Auto Farm", "Auto Farm Generator diaktifkan", 1)
+            else 
+                StopLoop("AutoFarmGenerator")
+            end
         end)
         
         CreateToggle("Auto Complete", "Auto complete generators", function(state)
             Toggles.AutoCompleteGenerator = state
-            if state then StartLoop("AutoCompleteGenerator") else StopLoop("AutoCompleteGenerator") end
+            if state then 
+                StartLoop("AutoCompleteGenerator")
+            else 
+                StopLoop("AutoCompleteGenerator")
+            end
         end)
         
         CreateToggle("Auto Repair", "Auto repair when damaged", function(state)
             Toggles.AutoRepair = state
+            if state then 
+                StartLoop("AutoRepair")
+            else 
+                StopLoop("AutoRepair")
+            end
         end)
         
         CreateToggle("Auto Collect Gens", "Auto collect from generators", function(state)
@@ -1238,7 +1278,11 @@ function UpdateTab(tab)
         
         CreateToggle("Auto Click", "Automatically click", function(state)
             Toggles.AutoClick = state
-            if state then StartLoop("AutoClick") else StopLoop("AutoClick") end
+            if state then 
+                StartLoop("AutoClick")
+            else 
+                StopLoop("AutoClick")
+            end
         end)
         
         CreateToggle("No Skill Check", "Remove all skill checks", function(state)
@@ -1251,7 +1295,7 @@ function UpdateTab(tab)
         end)
         
         CreateSection("GUI CONTROLS")
-        CreateButton("Toggle Menu (F4)", Color3.fromRGB(65, 105, 225), function()
+        CreateButton("Toggle Menu (Floating)", Color3.fromRGB(65, 105, 225), function()
             MainFrame.Visible = not MainFrame.Visible
             if MainFrame.Visible then
                 FloatIcon.Text = "🎮"
@@ -1262,10 +1306,21 @@ function UpdateTab(tab)
             end
         end)
         
-        CreateButton("Minimize", Color3.fromRGB(100, 100, 100), function()
+        CreateButton("Minimize to Floating", Color3.fromRGB(100, 100, 100), function()
             MainFrame.Visible = false
             FloatIcon.Text = "🎯"
             FloatTooltip.Text = "Tampilkan menu"
+        end)
+        
+        CreateButton("Hide All", Color3.fromRGB(80, 80, 90), function()
+            MainFrame.Visible = false
+            FloatingBtn.Visible = false
+        end)
+        
+        CreateButton("Show All", Color3.fromRGB(65, 105, 225), function()
+            MainFrame.Visible = true
+            FloatingBtn.Visible = true
+            FloatIcon.Text = "🎮"
         end)
         
         CreateButton("Close GUI", Color3.fromRGB(220, 60, 60), function()
@@ -1275,8 +1330,18 @@ function UpdateTab(tab)
         
         CreateSection("STATUS")
         local activeLoops = 0
-        for _, v in pairs(Loops) do if v then activeLoops = activeLoops + 1 end end
-        CreateLabel("Active Features: " .. activeLoops)
+        for name, enabled in pairs(Loops) do
+            if enabled then activeLoops = activeLoops + 1 end
+        end
+        CreateLabel("Active Loops: " .. activeLoops)
+        
+        local activeToggles = 0
+        for name, enabled in pairs(Toggles) do
+            if type(enabled) == "boolean" and enabled then
+                activeToggles = activeToggles + 1
+            end
+        end
+        CreateLabel("Active Toggles: " .. activeToggles)
     end
     
     -- Update canvas size
@@ -1285,7 +1350,7 @@ function UpdateTab(tab)
 end
 
 --==================================================
--- CORE FUNCTIONS
+-- LOOP MANAGEMENT
 --==================================================
 
 function StartLoop(name)
@@ -1302,18 +1367,14 @@ function StartLoop(name)
             if name == "AutoFarmPresent" then
                 local present = FindNearestPresent()
                 if present then
-                    -- Coba proximity prompt
                     local prompt = present:FindFirstChildWhichIsA("ProximityPrompt")
                     if prompt then 
                         fireproximityprompt(prompt)
                     else
-                        -- Coba remote event
-                        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent") or
-                                      game:GetService("ReplicatedStorage"):FindFirstChild("PresentEvent")
+                        -- Try to collect via remote
+                        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
                         if remote then
-                            pcall(function()
-                                remote:FireServer("CollectPresent", present)
-                            end)
+                            remote:FireServer("CollectPresent", present)
                         end
                     end
                 end
@@ -1325,15 +1386,14 @@ function StartLoop(name)
                     if prompt then 
                         fireproximityprompt(prompt)
                         
-                        -- Teleport ke tree setelah mengumpulkan
+                        -- Teleport to tree after collecting
                         local tree = FindChristmasTree()
                         if tree then
-                            if tree:IsA("Model") and tree.PrimaryPart then
-                                task.wait(0.3)
-                                Player.Character.HumanoidRootPart.CFrame = tree.PrimaryPart.CFrame * CFrame.new(0, 5, 0)
-                            elseif tree:IsA("BasePart") then
-                                task.wait(0.3)
-                                Player.Character.HumanoidRootPart.CFrame = tree.CFrame * CFrame.new(0, 5, 0)
+                            task.wait(0.3)
+                            if tree:IsA("BasePart") then
+                                Player.Character.HumanoidRootPart.CFrame = tree.CFrame + Vector3.new(0, 5, 0)
+                            elseif tree:IsA("Model") and tree.PrimaryPart then
+                                Player.Character.HumanoidRootPart.CFrame = tree.PrimaryPart.CFrame + Vector3.new(0, 5, 0)
                             end
                         end
                     end
@@ -1343,12 +1403,9 @@ function StartLoop(name)
                 for _, v in pairs(Workspace:GetDescendants()) do
                     if v.Name == "Coin" and v:IsA("BasePart") then
                         local dist = (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude
-                        if dist < 30 then
+                        if dist < 20 then
                             Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
                             task.wait(0.1)
-                            
-                            local prompt = v:FindFirstChildWhichIsA("ProximityPrompt")
-                            if prompt then fireproximityprompt(prompt) end
                         end
                     end
                 end
@@ -1356,13 +1413,10 @@ function StartLoop(name)
             elseif name == "AutoHeal" then
                 if Player.Character and Player.Character:FindFirstChild("Humanoid") then
                     if Player.Character.Humanoid.Health < 50 then
-                        -- Coba heal
-                        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent") or
-                                      game:GetService("ReplicatedStorage"):FindFirstChild("HealEvent")
+                        -- Try to heal
+                        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
                         if remote then
-                            pcall(function()
-                                remote:FireServer("Heal")
-                            end)
+                            remote:FireServer("Heal")
                         end
                     end
                 end
@@ -1396,17 +1450,24 @@ function StartLoop(name)
                         Player.Character.HumanoidRootPart.CFrame = gen.PrimaryPart.CFrame + Vector3.new(0, 3, 0)
                     end
                     
-                    -- Coba proximity prompt
+                    -- Coba repair dengan proximity prompt
                     local prompt = gen:FindFirstChildWhichIsA("ProximityPrompt")
                     if prompt then 
                         fireproximityprompt(prompt)
                     else
-                        -- Coba remote event
-                        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent") or
-                                      game:GetService("ReplicatedStorage"):FindFirstChild("GeneratorEvent")
+                        -- Coba repair dengan remote
+                        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
                         if remote then
                             pcall(function()
                                 remote:FireServer("RepairGenerator", gen)
+                            end)
+                        end
+                        
+                        -- Coba remote lain
+                        local generatorRemote = game:GetService("ReplicatedStorage"):FindFirstChild("GeneratorEvent")
+                        if generatorRemote then
+                            pcall(function()
+                                generatorRemote:FireServer("Repair", gen)
                             end)
                         end
                     end
@@ -1415,12 +1476,28 @@ function StartLoop(name)
             elseif name == "AutoCompleteGenerator" then
                 local gen = FindNearestGenerator()
                 if gen then
-                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent") or
-                                  game:GetService("ReplicatedStorage"):FindFirstChild("CompleteEvent")
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
                     if remote then
                         pcall(function()
                             remote:FireServer("CompleteGenerator", gen)
                         end)
+                    end
+                end
+                
+            elseif name == "AutoRepair" then
+                -- Auto repair when damaged
+                if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+                    if Player.Character.Humanoid.Health < 100 then
+                        local gen = FindNearestGenerator()
+                        if gen and gen.PrimaryPart then
+                            local dist = (Player.Character.HumanoidRootPart.Position - gen.PrimaryPart.Position).Magnitude
+                            if dist < 10 then
+                                local prompt = gen:FindFirstChildWhichIsA("ProximityPrompt")
+                                if prompt then 
+                                    fireproximityprompt(prompt)
+                                end
+                            end
+                        end
                     end
                 end
                 
@@ -1435,6 +1512,7 @@ end
 
 function StopLoop(name)
     Loops[name] = false
+    print("Stopped loop: " .. name)
 end
 
 function EnableESP()
@@ -1468,7 +1546,6 @@ function AddESP(player)
     billboard.Size = UDim2.new(0, 150, 0, 30)
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.AlwaysOnTop = true
-    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Parent = billboard
@@ -1479,7 +1556,6 @@ function AddESP(player)
     nameLabel.TextStrokeTransparency = 0.5
     nameLabel.TextScaled = true
     nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.ZIndex = 10
     
     -- Update distance
     task.spawn(function()
@@ -1491,19 +1567,6 @@ function AddESP(player)
             end
         end
     end)
-    
-    -- Tracer (line)
-    if Toggles.ESPType == "Tracer" then
-        -- For tracer, we'd need a drawing library, but we'll use highlight as fallback
-        if not player.Character:FindFirstChild("VD_ESP") then
-            local highlight = Instance.new("Highlight")
-            highlight.Name = "VD_ESP"
-            highlight.Parent = player.Character
-            highlight.FillColor = Toggles.ESPColor
-            highlight.OutlineColor = Color3.new(1, 1, 1)
-            highlight.FillTransparency = 0.5
-        end
-    end
 end
 
 function DisableESP()
@@ -1563,7 +1626,6 @@ end
 function ToggleSkillCheck(state)
     if state then
         local mt = getrawmetatable(game)
-        if not mt then return end
         local old = mt.__namecall
         setreadonly(mt, false)
         mt.__namecall = newcclosure(function(self, ...)
@@ -1721,22 +1783,13 @@ end)
 -- Set tab pertama
 UpdateTab("Main")
 
--- Set tab pertama aktif di UI
-for i, btn in ipairs(TabButtons) do
-    if i == 1 then
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(65, 105, 225)}):Play()
-        btn:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(255, 255, 255)
-    else
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
-        btn:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(200, 200, 200)
-    end
-end
-
 -- Notifikasi
-Notify("Violence District", "Tekan F4 atau klik floating button untuk toggle menu", 3)
+Notify("Violence District", "Klik floating button untuk toggle menu", 3)
 
 print("========================================")
 print("✅ VIOLENCE DISTRICT ULTIMATE LOADED!")
-print("Tekan F4 untuk toggle menu")
-print("Floating button selalu tersedia")
+print("Floating button always available")
+print("Click floating button to toggle menu")
+print("Tombol - untuk minimize ke floating")
+print("Tombol ● untuk hide all")
 print("========================================")
