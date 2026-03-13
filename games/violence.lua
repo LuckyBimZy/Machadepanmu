@@ -58,7 +58,7 @@ local Window
 
 -- Try loading Kavo UI
 local success, lib = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/LuckyBimZy/Machadepanmu/refs/heads/main/loader.lua"))()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/LuckyBimZy/Machadepanmu/main/loader.lua"))()
 end)
 
 if success and lib then
