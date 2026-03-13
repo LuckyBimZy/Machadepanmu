@@ -3,11 +3,11 @@
 -- Simpan di root folder
 
 local placeId = game.PlaceId
-local githubRaw = "https://raw.githubusercontent.com/LuckyBimZy/Machadepanmu/main/games/"
+local githubRaw = "https://raw.githubusercontent.com/LuckyBimZy/Machadepanmu/refs/heads/main/games/"
 
 -- Daftar game yang didukung
 local supportedGames = {
-    [1234567890] = { -- Ganti dengan ID game Violence District yang sebenarnya
+    [93978595733734] = { -- Ganti dengan ID game Violence District yang sebenarnya
         name = "Violence District",
         file = "violence.lua"
     },
