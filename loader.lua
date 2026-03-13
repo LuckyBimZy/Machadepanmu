@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
--- UI Modern dengan Floating Button
+-- UI Modern dengan Floating Button yang Selalu Ada
 -- Author: LuckyBimZy
--- Version: 2.0
+-- Version: 3.0
 
 --==================================================
 -- CEK APAKAH SUDAH DILOAD
@@ -35,23 +35,30 @@ local Camera = Workspace.CurrentCamera
 local Toggles = {
     -- Visuals
     ESP = false,
-    ESPType = "Box",
+    ESPType = "Highlight",
     ESPColor = Color3.fromRGB(255, 255, 255),
+    Wallhack = false,
     FullBright = false,
     NoFog = false,
+    RainbowMode = false,
     
     -- Survivor
     AutoFarmPresent = false,
     AutoFarmGift = false,
+    AutoOpenPresents = false,
+    AutoCollectCoins = false,
+    AutoHeal = false,
     SpeedBoost = false,
     JumpBoost = false,
-    AutoOpenPresents = false,
+    SpeedValue = 50,
+    JumpValue = 100,
     
     -- Killer
     Aimbot = false,
     KillAura = false,
     KillAuraRange = 20,
     SilentAim = false,
+    AutoAttack = false,
     
     -- Teleport
     NoClip = false,
@@ -60,17 +67,21 @@ local Toggles = {
     -- Farm
     AutoFarmGenerator = false,
     AutoCompleteGenerator = false,
+    AutoRepair = false,
+    AutoCollectLoot = false,
     
     -- Misc
     AntiAFK = false,
     NoSkillCheck = false,
-    AutoClick = false
+    AutoClick = false,
+    AntiVoid = false
 }
 
 -- Loop control
 local Loops = {}
 local ESPObjects = {}
-local GUIState = "open" -- open, closed, floating
+local GUIState = "open" -- open, floating
+local WallhackMaterials = {}
 
 --==================================================
 -- NOTIFIKASI
@@ -105,7 +116,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999
 
 --==================================================
--- FLOATING BUTTON (TOMBOL MENGAMBANG)
+-- FLOATING BUTTON (SELALU ADA)
 --==================================================
 local FloatingBtn = Instance.new("ImageButton")
 FloatingBtn.Name = "FloatingButton"
@@ -119,7 +130,7 @@ FloatingBtn.ScaleType = Enum.ScaleType.Fit
 FloatingBtn.BorderSizePixel = 0
 FloatingBtn.Active = true
 FloatingBtn.Draggable = true
-FloatingBtn.Visible = false
+FloatingBtn.Visible = true  -- Selalu visible
 FloatingBtn.Parent = ScreenGui
 
 -- Shadow untuk floating button
@@ -154,7 +165,7 @@ FloatIcon.Parent = FloatingBtn
 -- Tooltip untuk floating button
 local FloatTooltip = Instance.new("Frame")
 FloatTooltip.Name = "Tooltip"
-FloatTooltip.Size = UDim2.new(0, 100, 0, 30)
+FloatTooltip.Size = UDim2.new(0, 120, 0, 30)
 FloatTooltip.Position = UDim2.new(1, 10, 0.5, -15)
 FloatTooltip.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 FloatTooltip.BackgroundTransparency = 0.1
@@ -168,7 +179,7 @@ TooltipCorner.Parent = FloatTooltip
 local TooltipText = Instance.new("TextLabel")
 TooltipText.Size = UDim2.new(1, 0, 1, 0)
 TooltipText.BackgroundTransparency = 1
-TooltipText.Text = "Open Menu"
+TooltipText.Text = "Click to Toggle Menu"
 TooltipText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TooltipText.TextSize = 12
 TooltipText.Font = Enum.Font.Gotham
@@ -185,13 +196,28 @@ FloatingBtn.MouseLeave:Connect(function()
     FloatTooltip.Visible = false
 end)
 
+-- Floating button click untuk toggle menu
+FloatingBtn.MouseButton1Click:Connect(function()
+    if GUIState == "open" then
+        GUIState = "floating"
+        MainFrame.Visible = false
+        FloatTooltip.Text = "Click to Open Menu"
+        FloatIcon.Text = "🎮"
+    else
+        GUIState = "open"
+        MainFrame.Visible = true
+        FloatTooltip.Text = "Click to Close Menu"
+        FloatIcon.Text = "✕"
+    end
+end)
+
 --==================================================
 -- MAIN MENU FRAME
 --==================================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 350, 0, 500)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -250)
+MainFrame.Size = UDim2.new(0, 380, 0, 550)
+MainFrame.Position = UDim2.new(0.5, -190, 0.5, -275)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
@@ -278,7 +304,7 @@ local VersionText = Instance.new("TextLabel")
 VersionText.Size = UDim2.new(0, 50, 0, 20)
 VersionText.Position = UDim2.new(0, 55, 0.5, 7)
 VersionText.BackgroundTransparency = 1
-VersionText.Text = "v2.0"
+VersionText.Text = "v3.0"
 VersionText.TextColor3 = Color3.fromRGB(150, 150, 150)
 VersionText.TextSize = 10
 VersionText.Font = Enum.Font.Gotham
@@ -287,8 +313,8 @@ VersionText.Parent = TitleBar
 
 -- Control buttons
 local ControlFrame = Instance.new("Frame")
-ControlFrame.Size = UDim2.new(0, 90, 0, 30)
-ControlFrame.Position = UDim2.new(1, -100, 0.5, -15)
+ControlFrame.Size = UDim2.new(0, 60, 0, 30)
+ControlFrame.Position = UDim2.new(1, -70, 0.5, -15)
 ControlFrame.BackgroundTransparency = 1
 ControlFrame.Parent = TitleBar
 
@@ -297,9 +323,9 @@ local FloatModeBtn = Instance.new("TextButton")
 FloatModeBtn.Size = UDim2.new(0, 30, 0, 30)
 FloatModeBtn.Position = UDim2.new(0, 0, 0, 0)
 FloatModeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-FloatModeBtn.Text = "●"
+FloatModeBtn.Text = "-"
 FloatModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatModeBtn.TextSize = 16
+FloatModeBtn.TextSize = 20
 FloatModeBtn.Font = Enum.Font.GothamBold
 FloatModeBtn.Parent = ControlFrame
 
@@ -308,40 +334,16 @@ FloatBtnCorner.CornerRadius = UDim.new(0, 8)
 FloatBtnCorner.Parent = FloatModeBtn
 
 FloatModeBtn.MouseButton1Click:Connect(function()
-    -- Pindah ke mode floating
     GUIState = "floating"
     MainFrame.Visible = false
-    FloatingBtn.Visible = true
-    FloatTooltip.Text = "Open Menu"
+    FloatTooltip.Text = "Click to Open Menu"
     FloatIcon.Text = "🎮"
-end)
-
--- Minimize button (sembunyikan semua)
-local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 30, 0, 30)
-MinBtn.Position = UDim2.new(0, 35, 0, 0)
-MinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-MinBtn.Text = "−"
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.TextSize = 20
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.Parent = ControlFrame
-
-local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 8)
-MinCorner.Parent = MinBtn
-
-MinBtn.MouseButton1Click:Connect(function()
-    -- Sembunyikan semua
-    GUIState = "closed"
-    MainFrame.Visible = false
-    FloatingBtn.Visible = false
 end)
 
 -- Close button
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(0, 70, 0, 0)
+CloseBtn.Position = UDim2.new(0, 35, 0, 0)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
 CloseBtn.Text = "×"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -362,7 +364,7 @@ end)
 -- TAB BUTTONS
 --==================================================
 local TabFrame = Instance.new("Frame")
-TabFrame.Size = UDim2.new(1, -20, 0, 40)
+TabFrame.Size = UDim2.new(1, -20, 0, 45)
 TabFrame.Position = UDim2.new(0, 10, 0, 55)
 TabFrame.BackgroundTransparency = 1
 TabFrame.Parent = MainFrame
@@ -382,8 +384,8 @@ local CurrentTab = "Main"
 
 for i, tabData in ipairs(Tabs) do
     local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0, 45, 0, 40)
-    TabBtn.Position = UDim2.new(0, (i-1) * 47, 0, 0)
+    TabBtn.Size = UDim2.new(0, 48, 0, 45)
+    TabBtn.Position = UDim2.new(0, (i-1) * 50, 0, 0)
     TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     TabBtn.Text = ""
     TabBtn.Parent = TabFrame
@@ -428,12 +430,16 @@ for i, tabData in ipairs(Tabs) do
     table.insert(TabButtons, TabBtn)
 end
 
+-- Set tab pertama aktif
+TabButtons[1].BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+TabButtons[1]:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(255, 255, 255)
+
 --==================================================
 -- CONTENT AREA
 --==================================================
 local ContentBg = Instance.new("Frame")
-ContentBg.Size = UDim2.new(1, -20, 1, -110)
-ContentBg.Position = UDim2.new(0, 10, 0, 100)
+ContentBg.Size = UDim2.new(1, -20, 1, -120)
+ContentBg.Position = UDim2.new(0, 10, 0, 105)
 ContentBg.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 ContentBg.BackgroundTransparency = 0.1
 ContentBg.ClipsDescendants = true
@@ -601,7 +607,6 @@ function CreateButton(text, color, callback)
     BtnCorner.CornerRadius = UDim.new(0, 8)
     BtnCorner.Parent = Button
     
-    -- Hover effect
     Button.MouseEnter:Connect(function()
         TweenService:Create(Button, TweenInfo.new(0.2), {
             BackgroundColor3 = color and color:Lerp(Color3.fromRGB(255, 255, 255), 0.2) or Color3.fromRGB(85, 125, 245)
@@ -649,7 +654,6 @@ function CreateDropdown(text, options, callback)
     DropdownDesc.TextColor3 = Color3.fromRGB(150, 150, 150)
     DropdownDesc.TextSize = 10
     DropdownDesc.Font = Enum.Font.Gotham
-    DropdownDesc.TextXAlignment = Enum.TextXAlignment.Left
     DropdownDesc.Parent = DropdownFrame
     
     local DropdownBtn = Instance.new("TextButton")
@@ -667,7 +671,6 @@ function CreateDropdown(text, options, callback)
     BtnCorner.Parent = DropdownBtn
     
     DropdownBtn.MouseButton1Click:Connect(function()
-        -- Hapus menu lama
         local oldMenu = DropdownFrame:FindFirstChild("DropdownMenu")
         if oldMenu then oldMenu:Destroy() end
         
@@ -770,7 +773,6 @@ function CreateSlider(text, min, max, default, callback)
     SliderFill.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
     SliderFill.Parent = SliderBg
     
-    -- Drag functionality
     local dragging = false
     SliderFill.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -848,14 +850,20 @@ function UpdateTab(tab)
         end)
         
         CreateButton("Server Hop", Color3.fromRGB(255, 165, 0), function()
-            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
+            local servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100"))
+            for _, server in pairs(servers.data) do
+                if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, server.id, Player)
+                    break
+                end
+            end
         end)
         
         CreateSection("CREDITS")
         CreateLabel("Violence District Ultimate")
-        CreateLabel("Version 2.0")
+        CreateLabel("Version 3.0")
         CreateLabel("Made by LuckyBimZy")
-        CreateLabel("UI Style: Modern Floating")
+        CreateLabel("Floating Button Always Available")
         
     elseif tab == "Visuals" then
         CreateSection("ESP SETTINGS")
@@ -868,12 +876,17 @@ function UpdateTab(tab)
             end
         end)
         
-        CreateDropdown("ESP Type", {"Box", "Highlight", "Tracer", "Name Only"}, function(option)
+        CreateDropdown("ESP Type", {"Highlight", "Box", "Tracer", "Name Only"}, function(option)
             Toggles.ESPType = option
             if Toggles.ESP then
                 DisableESP()
                 EnableESP()
             end
+        end)
+        
+        CreateToggle("Wallhack", "See through all walls", function(state)
+            Toggles.Wallhack = state
+            UpdateWallhack()
         end)
         
         CreateSection("VISUAL EFFECTS")
@@ -884,11 +897,6 @@ function UpdateTab(tab)
                 Lighting.GlobalShadows = false
                 Lighting.FogEnd = 1e9
                 Lighting.Ambient = Color3.new(1, 1, 1)
-                for _, v in pairs(Lighting:GetChildren()) do
-                    if v:IsA("BloomEffect") or v:IsA("ColorCorrectionEffect") then
-                        v.Enabled = false
-                    end
-                end
             else
                 Lighting.Brightness = 1
                 Lighting.GlobalShadows = true
@@ -906,6 +914,10 @@ function UpdateTab(tab)
             end
         end)
         
+        CreateToggle("Rainbow Mode", "Rainbow colors", function(state)
+            Toggles.RainbowMode = state
+        end)
+        
     elseif tab == "Survivor" then
         CreateSection("AUTO FARM")
         CreateToggle("Auto Farm Present", "Automatically collect presents", function(state)
@@ -920,19 +932,30 @@ function UpdateTab(tab)
         
         CreateToggle("Auto Open Presents", "Automatically open presents", function(state)
             Toggles.AutoOpenPresents = state
+            if state then StartLoop("AutoOpenPresents") end
+        end)
+        
+        CreateToggle("Auto Collect Coins", "Collect coins automatically", function(state)
+            Toggles.AutoCollectCoins = state
+            if state then StartLoop("AutoCollectCoins") end
+        end)
+        
+        CreateToggle("Auto Heal", "Auto heal when low health", function(state)
+            Toggles.AutoHeal = state
         end)
         
         CreateSection("MOVEMENT")
         CreateToggle("Speed Boost", "Increase movement speed", function(state)
             Toggles.SpeedBoost = state
             if state then
-                Player.Character.Humanoid.WalkSpeed = 50
+                Player.Character.Humanoid.WalkSpeed = Toggles.SpeedValue
             else
                 Player.Character.Humanoid.WalkSpeed = 16
             end
         end)
         
-        CreateSlider("Speed Value", 16, 120, 50, function(value)
+        CreateSlider("Speed Value", 16, 200, Toggles.SpeedValue, function(value)
+            Toggles.SpeedValue = value
             if Toggles.SpeedBoost then
                 Player.Character.Humanoid.WalkSpeed = value
             end
@@ -941,9 +964,16 @@ function UpdateTab(tab)
         CreateToggle("Jump Boost", "Higher jumps", function(state)
             Toggles.JumpBoost = state
             if state then
-                Player.Character.Humanoid.JumpPower = 100
+                Player.Character.Humanoid.JumpPower = Toggles.JumpValue
             else
                 Player.Character.Humanoid.JumpPower = 50
+            end
+        end)
+        
+        CreateSlider("Jump Value", 50, 200, Toggles.JumpValue, function(value)
+            Toggles.JumpValue = value
+            if Toggles.JumpBoost then
+                Player.Character.Humanoid.JumpPower = value
             end
         end)
         
@@ -963,8 +993,13 @@ function UpdateTab(tab)
             if state then StartLoop("KillAura") end
         end)
         
-        CreateSlider("Kill Aura Range", 5, 50, 20, function(value)
+        CreateSlider("Kill Aura Range", 5, 50, Toggles.KillAuraRange, function(value)
             Toggles.KillAuraRange = value
+        end)
+        
+        CreateToggle("Auto Attack", "Automatically attack", function(state)
+            Toggles.AutoAttack = state
+            if state then StartLoop("AutoAttack") end
         end)
         
         CreateSection("TARGET INFO")
@@ -993,6 +1028,7 @@ function UpdateTab(tab)
             local target = Players:FindFirstChild(name)
             if target and target.Character then
                 Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+                Notify("Teleport", "Teleported to " .. name, 1)
             end
         end)
         
@@ -1009,6 +1045,7 @@ function UpdateTab(tab)
         CreateButton("Teleport to Saved", Color3.fromRGB(65, 105, 225), function()
             if _G.SavedPosition then
                 Player.Character.HumanoidRootPart.CFrame = _G.SavedPosition
+                Notify("Teleport", "Teleported to saved position", 1)
             else
                 Notify("Error", "No saved position!", 1)
             end
@@ -1026,6 +1063,15 @@ function UpdateTab(tab)
             if state then StartLoop("AutoCompleteGenerator") end
         end)
         
+        CreateToggle("Auto Repair", "Auto repair when damaged", function(state)
+            Toggles.AutoRepair = state
+        end)
+        
+        CreateToggle("Auto Collect Loot", "Auto collect all loot", function(state)
+            Toggles.AutoCollectLoot = state
+            if state then StartLoop("AutoCollectLoot") end
+        end)
+        
         CreateButton("Find Nearest Generator", Color3.fromRGB(65, 105, 225), function()
             local gen = FindNearestGenerator()
             if gen then
@@ -1038,6 +1084,8 @@ function UpdateTab(tab)
         
         CreateSection("RESOURCES")
         CreateLabel("Generators nearby: " .. CountGenerators())
+        CreateLabel("Presents nearby: " .. CountPresents())
+        CreateLabel("Gifts nearby: " .. CountGifts())
         
     elseif tab == "Misc" then
         CreateSection("UTILITY")
@@ -1061,17 +1109,24 @@ function UpdateTab(tab)
             ToggleSkillCheck(state)
         end)
         
+        CreateToggle("Anti Void", "Prevent falling into void", function(state)
+            Toggles.AntiVoid = state
+            if state then StartLoop("AntiVoid") end
+        end)
+        
         CreateSection("GUI CONTROLS")
         CreateButton("Hide Menu (Floating Mode)", Color3.fromRGB(100, 100, 100), function()
             GUIState = "floating"
             MainFrame.Visible = false
-            FloatingBtn.Visible = true
+            FloatTooltip.Text = "Click to Open Menu"
+            FloatIcon.Text = "🎮"
         end)
         
         CreateButton("Show Menu", Color3.fromRGB(65, 105, 225), function()
             GUIState = "open"
             MainFrame.Visible = true
-            FloatingBtn.Visible = false
+            FloatTooltip.Text = "Click to Close Menu"
+            FloatIcon.Text = "✕"
         end)
         
         CreateButton("Close GUI", Color3.fromRGB(220, 60, 60), function()
@@ -1082,6 +1137,8 @@ function UpdateTab(tab)
         CreateSection("STATUS")
         CreateLabel("GUI Mode: " .. GUIState)
         CreateLabel("Active Loops: " .. table.count(Loops))
+        CreateLabel("Floating Button: Always Available")
+        CreateLabel("Press '-' on title bar to hide")
     end
     
     -- Update canvas size
@@ -1090,7 +1147,7 @@ function UpdateTab(tab)
 end
 
 --==================================================
--- CORE FUNCTIONS
+-- CORE FUNCTIONS (IMPROVED)
 --==================================================
 
 function StartLoop(name)
@@ -1107,31 +1164,36 @@ function StartLoop(name)
             if name == "AutoFarmPresent" then
                 local present = FindNearestPresent()
                 if present then
+                    Player.Character.HumanoidRootPart.CFrame = present.CFrame + Vector3.new(0, 3, 0)
                     local prompt = present:FindFirstChildWhichIsA("ProximityPrompt")
                     if prompt then 
                         fireproximityprompt(prompt)
-                    else
-                        -- Try to collect via remote
-                        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
-                        if remote then
-                            remote:FireServer("CollectPresent", present)
-                        end
                     end
                 end
                 
             elseif name == "AutoFarmGift" then
                 local gift = FindNearestGift()
                 if gift then
+                    Player.Character.HumanoidRootPart.CFrame = gift.CFrame + Vector3.new(0, 3, 0)
                     local prompt = gift:FindFirstChildWhichIsA("ProximityPrompt")
                     if prompt then 
                         fireproximityprompt(prompt)
-                        
-                        -- Teleport to tree after collecting
-                        local tree = FindChristmasTree()
-                        if tree then
-                            task.wait(0.3)
-                            Player.Character.HumanoidRootPart.CFrame = tree.CFrame + Vector3.new(0, 5, 0)
-                        end
+                    end
+                end
+                
+            elseif name == "AutoOpenPresents" then
+                for _, v in pairs(Workspace:GetDescendants()) do
+                    if v.Name == "Present" and v:IsA("BasePart") and (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude < 10 then
+                        local prompt = v:FindFirstChildWhichIsA("ProximityPrompt")
+                        if prompt then fireproximityprompt(prompt) end
+                    end
+                end
+                
+            elseif name == "AutoCollectCoins" then
+                for _, v in pairs(Workspace:GetDescendants()) do
+                    if v.Name == "Coin" and v:IsA("BasePart") and (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude < 20 then
+                        Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
+                        task.wait(0.1)
                     end
                 end
                 
@@ -1139,10 +1201,18 @@ function StartLoop(name)
                 local target = FindNearestPlayer()
                 if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
                     local targetPos = target.Character.HumanoidRootPart.Position
-                    Player.Character.HumanoidRootPart.CFrame = CFrame.lookAt(
-                        Player.Character.HumanoidRootPart.Position, 
-                        targetPos
-                    )
+                    if Toggles.SilentAim then
+                        -- Silent aim implementation
+                        local tool = Player.Character:FindFirstChildWhichIsA("Tool")
+                        if tool then
+                            tool:Activate()
+                        end
+                    else
+                        Player.Character.HumanoidRootPart.CFrame = CFrame.lookAt(
+                            Player.Character.HumanoidRootPart.Position, 
+                            targetPos
+                        )
+                    end
                 end
                 
             elseif name == "KillAura" then
@@ -1156,31 +1226,52 @@ function StartLoop(name)
                     end
                 end
                 
+            elseif name == "AutoAttack" then
+                local target = FindNearestPlayer()
+                if target and target.Character then
+                    local tool = Player.Character:FindFirstChildWhichIsA("Tool")
+                    if tool then
+                        tool:Activate()
+                    end
+                end
+                
             elseif name == "AutoFarmGenerator" then
                 local gen = FindNearestGenerator()
                 if gen then
+                    Player.Character.HumanoidRootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
                     local prompt = gen:FindFirstChildWhichIsA("ProximityPrompt")
                     if prompt then 
                         fireproximityprompt(prompt)
-                    else
-                        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
-                        if remote then
-                            remote:FireServer("RepairGenerator", gen)
-                        end
                     end
                 end
                 
             elseif name == "AutoCompleteGenerator" then
                 local gen = FindNearestGenerator()
                 if gen then
+                    Player.Character.HumanoidRootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
                     local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
                     if remote then
                         remote:FireServer("CompleteGenerator", gen)
                     end
                 end
                 
+            elseif name == "AutoCollectLoot" then
+                for _, v in pairs(Workspace:GetDescendants()) do
+                    if v:IsA("BasePart") and (v.Name == "Loot" or v.Name == "Item") and (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude < 15 then
+                        Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
+                        local prompt = v:FindFirstChildWhichIsA("ProximityPrompt")
+                        if prompt then fireproximityprompt(prompt) end
+                        task.wait(0.1)
+                    end
+                end
+                
             elseif name == "AutoClick" then
                 mouse1click()
+                
+            elseif name == "AntiVoid" then
+                if Player.Character and Player.Character.HumanoidRootPart.Position.Y < -50 then
+                    Player.Character.HumanoidRootPart.CFrame = CFrame.new(0, 100, 0)
+                end
             end
             
             task.wait(0.1)
@@ -1188,26 +1279,41 @@ function StartLoop(name)
     end)
 end
 
+-- ESP Functions (IMPROVED)
 function EnableESP()
+    DisableESP()
+    
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= Player and player.Character then
             AddESP(player)
         end
     end
+    
+    -- Update ESP for new players
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function()
+            task.wait(0.5)
+            if Toggles.ESP then
+                AddESP(player)
+            end
+        end)
+    end)
 end
 
 function AddESP(player)
     if not player.Character then return end
     
-    -- Highlight
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "VD_ESP"
-    highlight.Parent = player.Character
-    highlight.FillColor = Toggles.ESPColor
-    highlight.OutlineColor = Color3.new(1, 1, 1)
-    highlight.FillTransparency = 0.5
+    if Toggles.ESPType == "Highlight" or Toggles.ESPType == "Box" then
+        -- Highlight
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "VD_ESP"
+        highlight.Parent = player.Character
+        highlight.FillColor = Toggles.ESPColor
+        highlight.OutlineColor = Color3.new(1, 1, 1)
+        highlight.FillTransparency = 0.5
+    end
     
-    -- Name tag with distance
+    -- Name tag with distance (always on)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "VD_Name"
     billboard.Parent = player.Character
@@ -1221,17 +1327,32 @@ function AddESP(player)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = player.Name
     nameLabel.TextColor3 = Color3.new(1, 1, 1)
-    nameLabel.TextStrokeTransparency = 0.5
+    nameLabel.TextStrokeTransparency = 0.3
     nameLabel.TextScaled = true
     nameLabel.Font = Enum.Font.GothamBold
+    
+    -- Tracers
+    if Toggles.ESPType == "Tracer" then
+        local tracer = Instance.new("Frame")
+        tracer.Name = "VD_Tracer"
+        tracer.Size = UDim2.new(0, 2, 0, 100)
+        tracer.BackgroundColor3 = Toggles.ESPColor
+        tracer.BorderSizePixel = 0
+        tracer.Parent = player.Character
+    end
     
     -- Update distance
     task.spawn(function()
         while billboard and billboard.Parent do
-            task.wait(0.5)
+            task.wait(0.3)
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
                 local dist = math.floor((player.Character.HumanoidRootPart.Position - Player.Character.HumanoidRootPart.Position).Magnitude)
                 nameLabel.Text = player.Name .. " [" .. dist .. "m]"
+                
+                -- Update tracer
+                if Toggles.ESPType == "Tracer" then
+                    -- Tracer implementation would go here
+                end
             end
         end
     end)
@@ -1244,6 +1365,33 @@ function DisableESP()
             if highlight then highlight:Destroy() end
             local nameTag = player.Character:FindFirstChild("VD_Name")
             if nameTag then nameTag:Destroy() end
+            local tracer = player.Character:FindFirstChild("VD_Tracer")
+            if tracer then tracer:Destroy() end
+        end
+    end
+end
+
+-- Wallhack (IMPROVED)
+function UpdateWallhack()
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
+            if Toggles.Wallhack then
+                if v.Name ~= "HumanoidRootPart" then
+                    -- Save original material
+                    if not WallhackMaterials[v] then
+                        WallhackMaterials[v] = v.Material
+                    end
+                    v.Material = Enum.Material.ForceField
+                    v.Transparency = 0.5
+                end
+            else
+                -- Restore original material
+                if WallhackMaterials[v] then
+                    v.Material = WallhackMaterials[v]
+                    v.Transparency = 0
+                    WallhackMaterials[v] = nil
+                end
+            end
         end
     end
 end
@@ -1296,32 +1444,6 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
--- Floating button click
-FloatingBtn.MouseButton1Click:Connect(function()
-    GUIState = "open"
-    MainFrame.Visible = true
-    FloatingBtn.Visible = false
-end)
-
--- Keybind F4 untuk toggle
-UserInputService.InputBegan:Connect(function(input, gp)
-    if not gp and input.KeyCode == Enum.KeyCode.F4 then
-        if GUIState == "open" then
-            GUIState = "floating"
-            MainFrame.Visible = false
-            FloatingBtn.Visible = true
-        elseif GUIState == "floating" then
-            GUIState = "open"
-            MainFrame.Visible = true
-            FloatingBtn.Visible = false
-        elseif GUIState == "closed" then
-            GUIState = "open"
-            MainFrame.Visible = true
-            FloatingBtn.Visible = false
-        end
-    end
-end)
-
 -- Find object functions
 function FindNearestGenerator()
     local nearest = nil
@@ -1369,6 +1491,16 @@ function FindNearestPresent()
     return nearest
 end
 
+function CountPresents()
+    local count = 0
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name == "Present" and v:IsA("BasePart") then
+            count = count + 1
+        end
+    end
+    return count
+end
+
 function FindNearestGift()
     local nearest = nil
     local dist = math.huge
@@ -1385,6 +1517,16 @@ function FindNearestGift()
         end
     end
     return nearest
+end
+
+function CountGifts()
+    local count = 0
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name == "Gift" and v:IsA("BasePart") then
+            count = count + 1
+        end
+    end
+    return count
 end
 
 function FindChristmasTree()
@@ -1437,6 +1579,22 @@ Player.CharacterAdded:Connect(function(newChar)
 end)
 
 --==================================================
+-- RAINBOW MODE
+--==================================================
+task.spawn(function()
+    while true do
+        if Toggles.RainbowMode then
+            Toggles.ESPColor = Color3.fromHSV(tick() % 5 / 5, 1, 1)
+            if Toggles.ESP then
+                DisableESP()
+                EnableESP()
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+--==================================================
 -- INITIALIZE
 --==================================================
 
@@ -1444,10 +1602,10 @@ end)
 UpdateTab("Main")
 
 -- Notifikasi
-Notify("Violence District", "Press F4 to toggle menu | Floating button available", 3)
+Notify("Violence District", "Floating button always available | Click '-' to hide", 3)
 
 print("========================================")
 print("✅ VIOLENCE DISTRICT ULTIMATE LOADED!")
-print("Press F4 to toggle menu")
-print("Floating button: " .. (FloatingBtn and "Yes" or "No"))
+print("Floating button: Always visible on screen")
+print("Click '-' on title bar to hide menu")
 print("========================================")
