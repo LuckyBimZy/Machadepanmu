@@ -5,7 +5,7 @@
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Violence District - BimZy Coba Coba",
+        Title = "Violence District",
         Text = "Script already loaded!",
         Duration = 2
     })
@@ -78,7 +78,7 @@ local NoClipConnection = nil
 --==================================================
 local function Notify(msg)
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Violence District - BimZy",
+        Title = "Violence District Notif",
         Text = msg,
         Duration = 2
     })
@@ -226,7 +226,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(0, 200, 0, 25)
 TitleText.Position = UDim2.new(0, 55, 0.5, -12.5)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "Violence District - BimZy"
+TitleText.Text = "Violence District - BimZy Coba"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleText.TextSize = 16
 TitleText.Font = Enum.Font.GothamBold
@@ -237,7 +237,7 @@ local VersionText = Instance.new("TextLabel")
 VersionText.Size = UDim2.new(0, 50, 0, 20)
 VersionText.Position = UDim2.new(0, 55, 0.5, 8)
 VersionText.BackgroundTransparency = 1
-VersionText.Text = "v7.2"
+VersionText.Text = "v1.0 [BETA]"
 VersionText.TextColor3 = Color3.fromRGB(150, 150, 150)
 VersionText.TextSize = 10
 VersionText.Font = Enum.Font.Gotham
