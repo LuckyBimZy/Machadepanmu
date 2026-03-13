@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - PROFESSIONAL EDITION ====================
--- UI Premium dengan ESP + Distance
+-- UI Premium dengan ESP + Distance + Fixed Features
 -- Author: LuckyBimZy
--- Version: 7.1 (Final)
+-- Version: 7.2 (Final)
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -71,6 +71,7 @@ local Loops = {}
 local SavedPosition = nil
 local ESPObjects = {}
 local ESPConnections = {}
+local NoClipConnection = nil
 
 --==================================================
 -- NOTIFICATION
@@ -236,7 +237,7 @@ local VersionText = Instance.new("TextLabel")
 VersionText.Size = UDim2.new(0, 50, 0, 20)
 VersionText.Position = UDim2.new(0, 55, 0.5, 8)
 VersionText.BackgroundTransparency = 1
-VersionText.Text = "v7.1"
+VersionText.Text = "v7.2"
 VersionText.TextColor3 = Color3.fromRGB(150, 150, 150)
 VersionText.TextSize = 10
 VersionText.Font = Enum.Font.Gotham
@@ -823,7 +824,46 @@ function UpdateWallhack()
 end
 
 --==================================================
--- UPDATE TAB CONTENT - MENGGUNAKAN STATE TERSIMPAN
+-- NOCLIP FUNCTION - FIXED
+--==================================================
+function UpdateNoClip()
+    if Toggles.NoClip then
+        -- Hapus koneksi lama jika ada
+        if NoClipConnection then
+            NoClipConnection:Disconnect()
+            NoClipConnection = nil
+        end
+        
+        -- Buat koneksi baru
+        NoClipConnection = RunService.Stepped:Connect(function()
+            if Toggles.NoClip and Player.Character then
+                for _, part in pairs(Player.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    else
+        -- Hapus koneksi
+        if NoClipConnection then
+            NoClipConnection:Disconnect()
+            NoClipConnection = nil
+        end
+        
+        -- Kembalikan collision
+        if Player.Character then
+            for _, part in pairs(Player.Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
+end
+
+--==================================================
+-- UPDATE TAB CONTENT
 --==================================================
 function UpdateTab(tab)
     -- Clear content
@@ -848,7 +888,7 @@ function UpdateTab(tab)
         CreateButton("Rejoin", function() game:GetService("TeleportService"):Teleport(game.PlaceId, Player) end)
         
         CreateSection("CREDITS")
-        CreateLabel("Violence District v7.1")
+        CreateLabel("Violence District v7.2")
         CreateLabel("Professional Edition")
         
     elseif tab == "Visuals" then
@@ -973,16 +1013,18 @@ function UpdateTab(tab)
         CreateToggle("NoClip", Toggles.NoClip, function(state)
             Toggles.NoClip = state
             UpdateNoClip()
+            Notify(state and "NoClip ON" or "NoClip OFF")
         end)
         
         CreateToggle("TP to Mouse", Toggles.TeleportToMouse, function(state)
             Toggles.TeleportToMouse = state
+            Notify(state and "Teleport to Mouse ON (Right Click)" or "Teleport to Mouse OFF")
         end)
         
         CreateSection("TELEPORT")
         CreateDropdown("Target", GetPlayerList(), GetPlayerList()[1] or "None", function(name)
             local target = Players:FindFirstChild(name)
-            if target and target.Character then
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
                 Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
                 Notify("Teleported to " .. name)
             end
@@ -992,14 +1034,18 @@ function UpdateTab(tab)
         
         CreateSection("WAYPOINTS")
         CreateButton("Save Position", function()
-            SavedPosition = Player.Character.HumanoidRootPart.CFrame
-            Notify("Position saved!")
+            if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                SavedPosition = Player.Character.HumanoidRootPart.CFrame
+                Notify("Position saved!")
+            end
         end)
         
         CreateButton("Load Position", function()
             if SavedPosition then
                 Player.Character.HumanoidRootPart.CFrame = SavedPosition
                 Notify("Teleported to saved position")
+            else
+                Notify("No saved position!")
             end
         end)
         
@@ -1020,6 +1066,8 @@ function UpdateTab(tab)
             if gen then
                 Player.Character.HumanoidRootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
                 Notify("Found generator")
+            else
+                Notify("No generator found")
             end
         end)
         
@@ -1107,6 +1155,8 @@ function StartLoop(name)
                             task.wait(0.3)
                             if tree:IsA("Model") and tree.PrimaryPart then
                                 Player.Character.HumanoidRootPart.CFrame = tree.PrimaryPart.CFrame * CFrame.new(0, 5, 0)
+                            elseif tree:IsA("BasePart") then
+                                Player.Character.HumanoidRootPart.CFrame = tree.CFrame * CFrame.new(0, 5, 0)
                             end
                         end
                     end
@@ -1187,29 +1237,6 @@ end
 --==================================================
 -- UTILITY FUNCTIONS
 --==================================================
-
-function UpdateNoClip()
-    if Toggles.NoClip then
-        RunService:BindToRenderStep("NoClip", 0, function()
-            if Player.Character then
-                for _, part in pairs(Player.Character:GetChildren()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end
-        end)
-    else
-        RunService:UnbindFromRenderStep("NoClip")
-        if Player.Character then
-            for _, part in pairs(Player.Character:GetChildren()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
-    end
-end
 
 function ToggleSkillCheck(state)
     if state then
@@ -1354,6 +1381,10 @@ end
 Player.CharacterAdded:Connect(function(char)
     Player.Character = char
     task.wait(1)
+    -- Re-apply NoClip if enabled
+    if Toggles.NoClip then
+        UpdateNoClip()
+    end
 end)
 
 --==================================================
@@ -1362,6 +1393,7 @@ end)
 UpdateTab("Main")
 Notify("Press F4 or click floating button")
 
-print("=== Violence District Professional v7.1 ===")
+print("=== Violence District Professional v7.2 ===")
 print("Press F4 to toggle menu")
 print("ESP with distance enabled!")
+print("NoClip fixed and working!")
