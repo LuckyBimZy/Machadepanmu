@@ -1,14 +1,8 @@
 -- ==================== VIOLENCE DISTRICT - PROFESSIONAL EDITION ====================
 -- UI Premium dengan ESP + Distance
 -- Author: LuckyBimZy
--- Version: 7.2 (Fixed)
+-- Version: 7.1 (Final)
 
--- Loadstring yang benar:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/LuckyBimZy/Machadepanmu/main/games/violence.lua"))()
-
---==================================================
--- CEK APAKAH SUDAH DILOAD
---==================================================
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Violence District",
@@ -34,7 +28,7 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local Camera = Workspace.CurrentCamera
 
--- Toggles
+-- Toggles - STATE AKAN TERSIMPAN
 local Toggles = {
     -- Visuals
     ESP = false,
@@ -82,13 +76,11 @@ local ESPConnections = {}
 -- NOTIFICATION
 --==================================================
 local function Notify(msg)
-    pcall(function()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Violence District",
-            Text = msg,
-            Duration = 2
-        })
-    end)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Violence District",
+        Text = msg,
+        Duration = 2
+    })
 end
 
 Notify("Script loaded successfully!")
@@ -99,9 +91,7 @@ Notify("Script loaded successfully!")
 
 -- Clean old GUI
 for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v.Name == "VD_Premium" then 
-        v:Destroy()
-    end
+    if v.Name == "VD_Premium" then v:Destroy() end
 end
 
 -- Main ScreenGui
@@ -133,6 +123,28 @@ local FloatCorner = Instance.new("UICorner")
 FloatCorner.CornerRadius = UDim.new(0, 12)
 FloatCorner.Parent = FloatBtn
 
+-- Shadow
+local FloatShadow = Instance.new("Frame")
+FloatShadow.Size = UDim2.new(1, 8, 1, 8)
+FloatShadow.Position = UDim2.new(0, -4, 0, -4)
+FloatShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+FloatShadow.BackgroundTransparency = 0.6
+FloatShadow.BorderSizePixel = 0
+FloatShadow.Parent = FloatBtn
+
+local ShadowCorner = Instance.new("UICorner")
+ShadowCorner.CornerRadius = UDim.new(0, 14)
+ShadowCorner.Parent = FloatShadow
+
+-- Hover effect
+FloatBtn.MouseEnter:Connect(function()
+    TweenService:Create(FloatBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 55, 0, 55)}):Play()
+end)
+
+FloatBtn.MouseLeave:Connect(function()
+    TweenService:Create(FloatBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+end)
+
 --==================================================
 -- MAIN MENU
 --==================================================
@@ -152,6 +164,28 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
+-- Main shadow
+local MainShadow = Instance.new("Frame")
+MainShadow.Size = UDim2.new(1, 10, 1, 10)
+MainShadow.Position = UDim2.new(0, -5, 0, -5)
+MainShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+MainShadow.BackgroundTransparency = 0.5
+MainShadow.BorderSizePixel = 0
+MainShadow.Parent = MainFrame
+
+local MainShadowCorner = Instance.new("UICorner")
+MainShadowCorner.CornerRadius = UDim.new(0, 14)
+MainShadowCorner.Parent = MainShadow
+
+-- Gradient background
+local Gradient = Instance.new("UIGradient")
+Gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 25, 30)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 20))
+})
+Gradient.Rotation = 90
+Gradient.Parent = MainFrame
+
 --==================================================
 -- TITLE BAR
 --==================================================
@@ -165,29 +199,68 @@ local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 12)
 TitleCorner.Parent = TitleBar
 
+-- Icon
+local IconFrame = Instance.new("Frame")
+IconFrame.Size = UDim2.new(0, 30, 0, 30)
+IconFrame.Position = UDim2.new(0, 15, 0.5, -15)
+IconFrame.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+IconFrame.BorderSizePixel = 0
+IconFrame.Parent = TitleBar
+
+local IconCorner = Instance.new("UICorner")
+IconCorner.CornerRadius = UDim.new(0, 8)
+IconCorner.Parent = IconFrame
+
+local IconLabel = Instance.new("TextLabel")
+IconLabel.Size = UDim2.new(1, 0, 1, 0)
+IconLabel.BackgroundTransparency = 1
+IconLabel.Text = "🎮"
+IconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+IconLabel.TextSize = 18
+IconLabel.Font = Enum.Font.Gotham
+IconLabel.Parent = IconFrame
+
 -- Title
 local TitleText = Instance.new("TextLabel")
-TitleText.Size = UDim2.new(0, 250, 0, 30)
-TitleText.Position = UDim2.new(0, 15, 0.5, -15)
+TitleText.Size = UDim2.new(0, 200, 0, 25)
+TitleText.Position = UDim2.new(0, 55, 0.5, -12.5)
 TitleText.BackgroundTransparency = 1
 TitleText.Text = "Violence District"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleText.TextSize = 18
+TitleText.TextSize = 16
 TitleText.Font = Enum.Font.GothamBold
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Parent = TitleBar
 
+local VersionText = Instance.new("TextLabel")
+VersionText.Size = UDim2.new(0, 50, 0, 20)
+VersionText.Position = UDim2.new(0, 55, 0.5, 8)
+VersionText.BackgroundTransparency = 1
+VersionText.Text = "v7.1"
+VersionText.TextColor3 = Color3.fromRGB(150, 150, 150)
+VersionText.TextSize = 10
+VersionText.Font = Enum.Font.Gotham
+VersionText.TextXAlignment = Enum.TextXAlignment.Left
+VersionText.Parent = TitleBar
+
 -- Control buttons
+local ControlFrame = Instance.new("Frame")
+ControlFrame.Size = UDim2.new(0, 60, 0, 30)
+ControlFrame.Position = UDim2.new(1, -70, 0.5, -15)
+ControlFrame.BackgroundTransparency = 1
+ControlFrame.Parent = TitleBar
+
+-- Minimize button
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 30, 0, 30)
-MinBtn.Position = UDim2.new(1, -65, 0.5, -15)
+MinBtn.Size = UDim2.new(0, 28, 0, 28)
+MinBtn.Position = UDim2.new(0, 0, 0.5, -14)
 MinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
 MinBtn.Text = "−"
 MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinBtn.TextSize = 20
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.BorderSizePixel = 0
-MinBtn.Parent = TitleBar
+MinBtn.Parent = ControlFrame
 
 local MinCorner = Instance.new("UICorner")
 MinCorner.CornerRadius = UDim.new(0, 6)
@@ -198,16 +271,17 @@ MinBtn.MouseButton1Click:Connect(function()
     FloatBtn.Text = "🎯"
 end)
 
+-- Close button
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -30, 0.5, -15)
+CloseBtn.Size = UDim2.new(0, 28, 0, 28)
+CloseBtn.Position = UDim2.new(0, 32, 0.5, -14)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 CloseBtn.Text = "×"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.TextSize = 20
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.BorderSizePixel = 0
-CloseBtn.Parent = TitleBar
+CloseBtn.Parent = ControlFrame
 
 local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 6)
@@ -248,13 +322,26 @@ for i = 1, #Tabs do
     BtnCorner.CornerRadius = UDim.new(0, 8)
     BtnCorner.Parent = TabBtn
     
+    -- Hover
+    TabBtn.MouseEnter:Connect(function()
+        if CurrentTab ~= Tabs[i] then
+            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 50)}):Play()
+        end
+    end)
+    
+    TabBtn.MouseLeave:Connect(function()
+        if CurrentTab ~= Tabs[i] then
+            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
+        end
+    end)
+    
     TabBtn.MouseButton1Click:Connect(function()
         CurrentTab = Tabs[i]
         for _, btn in pairs(TabButtons) do
-            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
             btn.TextColor3 = Color3.fromRGB(200, 200, 200)
         end
-        TabBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+        TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(65, 105, 225)}):Play()
         TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         UpdateTab(Tabs[i])
     end)
@@ -311,6 +398,14 @@ function CreateSection(title)
     Section.Font = Enum.Font.GothamBold
     Section.TextXAlignment = Enum.TextXAlignment.Left
     Section.Parent = ScrollingFrame
+    
+    local Line = Instance.new("Frame")
+    Line.Size = UDim2.new(1, -10, 0, 1)
+    Line.Position = UDim2.new(0, 5, 0, 28)
+    Line.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+    Line.BackgroundTransparency = 0.5
+    Line.BorderSizePixel = 0
+    Line.Parent = Section
 end
 
 function CreateToggle(text, var, callback)
@@ -353,13 +448,17 @@ function CreateToggle(text, var, callback)
     ToggleBtn.MouseButton1Click:Connect(function()
         local newState = not var
         if newState then
-            ToggleBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+            TweenService:Create(ToggleBtn, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(65, 105, 225),
+                TextColor3 = Color3.fromRGB(255, 255, 255)
+            }):Play()
             ToggleBtn.Text = "ON"
-            ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         else
-            ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+            TweenService:Create(ToggleBtn, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(50, 50, 55),
+                TextColor3 = Color3.fromRGB(255, 100, 100)
+            }):Play()
             ToggleBtn.Text = "OFF"
-            ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
         callback(newState)
     end)
@@ -379,6 +478,19 @@ function CreateButton(text, callback)
     local BtnCorner = Instance.new("UICorner")
     BtnCorner.CornerRadius = UDim.new(0, 6)
     BtnCorner.Parent = Button
+    
+    -- Hover
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(85, 125, 245)
+        }):Play()
+    end)
+    
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+        }):Play()
+    end)
     
     Button.MouseButton1Click:Connect(callback)
 end
@@ -428,7 +540,7 @@ function CreateDropdown(text, options, current, callback)
         local oldMenu = DropdownFrame:FindFirstChild("DropdownMenu")
         if oldMenu then oldMenu:Destroy() end
         
-        -- Buat menu baru
+        -- Buat menu baru dengan ZIndex tinggi
         local menu = Instance.new("Frame")
         menu.Name = "DropdownMenu"
         menu.Size = UDim2.new(0, 140, 0, math.min(#options, 5) * 35)
@@ -454,6 +566,14 @@ function CreateDropdown(text, options, current, callback)
             optBtn.BorderSizePixel = 0
             optBtn.Parent = menu
             optBtn.ZIndex = 11
+            
+            optBtn.MouseEnter:Connect(function()
+                optBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 60)
+            end)
+            
+            optBtn.MouseLeave:Connect(function()
+                optBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+            end)
             
             optBtn.MouseButton1Click:Connect(function()
                 DropdownBtn.Text = option
@@ -596,7 +716,7 @@ UserInputService.InputBegan:Connect(function(input, gp)
 end)
 
 --==================================================
--- ESP FUNCTIONS
+-- ESP FUNCTIONS - DENGAN JARAK
 --==================================================
 function EnableESP()
     DisableESP()
@@ -606,6 +726,16 @@ function EnableESP()
             AddESP(player)
         end
     end
+    
+    -- Untuk player yang baru join
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function()
+            task.wait(0.5)
+            if Toggles.ESP and player ~= Player then
+                AddESP(player)
+            end
+        end)
+    end)
 end
 
 function AddESP(player)
@@ -635,13 +765,15 @@ function AddESP(player)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = player.Name
     nameLabel.TextColor3 = Color3.new(1, 1, 1)
-    nameLabel.TextStrokeTransparency = 0.5
+    nameLabel.TextStrokeTransparency = 0.3
+    nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
     nameLabel.TextScaled = true
     nameLabel.Font = Enum.Font.GothamBold
     nameLabel.ZIndex = 10
     
-    -- Update jarak
-    local connection = RunService.Heartbeat:Connect(function()
+    -- Update jarak setiap 0.1 detik
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
         if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") or not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
             return
         end
@@ -650,6 +782,7 @@ function AddESP(player)
         nameLabel.Text = player.Name .. " [" .. math.floor(distance) .. "m]"
     end)
     
+    -- Simpan connection untuk cleanup nanti
     ESPConnections[player] = connection
 end
 
@@ -662,6 +795,7 @@ function DisableESP()
             if nameTag then nameTag:Destroy() end
         end
         
+        -- Hapus connection
         if ESPConnections[player] then
             ESPConnections[player]:Disconnect()
             ESPConnections[player] = nil
@@ -689,7 +823,7 @@ function UpdateWallhack()
 end
 
 --==================================================
--- UPDATE TAB CONTENT
+-- UPDATE TAB CONTENT - MENGGUNAKAN STATE TERSIMPAN
 --==================================================
 function UpdateTab(tab)
     -- Clear content
@@ -714,7 +848,7 @@ function UpdateTab(tab)
         CreateButton("Rejoin", function() game:GetService("TeleportService"):Teleport(game.PlaceId, Player) end)
         
         CreateSection("CREDITS")
-        CreateLabel("Violence District v7.2")
+        CreateLabel("Violence District v7.1")
         CreateLabel("Professional Edition")
         
     elseif tab == "Visuals" then
@@ -757,18 +891,22 @@ function UpdateTab(tab)
         CreateSection("AUTO FARM")
         CreateToggle("Auto Present", Toggles.AutoPresent, function(state)
             Toggles.AutoPresent = state
+            if state then StartLoop("Present") else StopLoop("Present") end
         end)
         
         CreateToggle("Auto Gift", Toggles.AutoGift, function(state)
             Toggles.AutoGift = state
+            if state then StartLoop("Gift") else StopLoop("Gift") end
         end)
         
         CreateToggle("Auto Coins", Toggles.AutoCoins, function(state)
             Toggles.AutoCoins = state
+            if state then StartLoop("Coins") else StopLoop("Coins") end
         end)
         
         CreateToggle("Auto Heal", Toggles.AutoHeal, function(state)
             Toggles.AutoHeal = state
+            if state then StartLoop("Heal") else StopLoop("Heal") end
         end)
         
         CreateSection("MOVEMENT")
@@ -808,25 +946,49 @@ function UpdateTab(tab)
         CreateSection("COMBAT")
         CreateToggle("Aimbot", Toggles.Aimbot, function(state)
             Toggles.Aimbot = state
+            if state then StartLoop("Aimbot") else StopLoop("Aimbot") end
         end)
         
         CreateToggle("Kill Aura", Toggles.KillAura, function(state)
             Toggles.KillAura = state
+            if state then StartLoop("KillAura") else StopLoop("KillAura") end
         end)
         
         CreateSlider("Range", 5, 50, Toggles.KillAuraRange, function(val)
             Toggles.KillAuraRange = val
         end)
         
+        CreateSection("TARGET")
+        local target = FindNearestPlayer()
+        if target then
+            local dist = (Player.Character.HumanoidRootPart.Position - target.Character.HumanoidRootPart.Position).Magnitude
+            CreateLabel("Nearest: " .. target.Name)
+            CreateLabel("Distance: " .. math.floor(dist) .. "m")
+        else
+            CreateLabel("No players nearby")
+        end
+        
     elseif tab == "Teleport" then
         CreateSection("MOVEMENT")
         CreateToggle("NoClip", Toggles.NoClip, function(state)
             Toggles.NoClip = state
+            UpdateNoClip()
         end)
         
         CreateToggle("TP to Mouse", Toggles.TeleportToMouse, function(state)
             Toggles.TeleportToMouse = state
         end)
+        
+        CreateSection("TELEPORT")
+        CreateDropdown("Target", GetPlayerList(), GetPlayerList()[1] or "None", function(name)
+            local target = Players:FindFirstChild(name)
+            if target and target.Character then
+                Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+                Notify("Teleported to " .. name)
+            end
+        end)
+        
+        CreateButton("Refresh List", function() UpdateTab("Teleport") end)
         
         CreateSection("WAYPOINTS")
         CreateButton("Save Position", function()
@@ -845,26 +1007,46 @@ function UpdateTab(tab)
         CreateSection("GENERATOR")
         CreateToggle("Auto Farm", Toggles.AutoFarmGenerator, function(state)
             Toggles.AutoFarmGenerator = state
+            if state then StartLoop("Generator") else StopLoop("Generator") end
         end)
         
         CreateToggle("Auto Complete", Toggles.AutoCompleteGenerator, function(state)
             Toggles.AutoCompleteGenerator = state
+            if state then StartLoop("Complete") else StopLoop("Complete") end
+        end)
+        
+        CreateButton("Find Generator", function()
+            local gen = FindNearestGenerator()
+            if gen then
+                Player.Character.HumanoidRootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
+                Notify("Found generator")
+            end
         end)
         
         CreateLabel("Generators: " .. CountGenerators())
+        CreateLabel("Presents: " .. CountPresents())
+        CreateLabel("Gifts: " .. CountGifts())
         
     elseif tab == "Misc" then
         CreateSection("UTILITY")
         CreateToggle("Anti AFK", Toggles.AntiAFK, function(state)
             Toggles.AntiAFK = state
+            if state then
+                Player.Idled:Connect(function()
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new())
+                end)
+            end
         end)
         
         CreateToggle("Auto Click", Toggles.AutoClick, function(state)
             Toggles.AutoClick = state
+            if state then StartLoop("Click") else StopLoop("Click") end
         end)
         
         CreateToggle("No Skill Check", Toggles.NoSkillCheck, function(state)
             Toggles.NoSkillCheck = state
+            ToggleSkillCheck(state)
         end)
         
         CreateSection("GUI")
@@ -877,6 +1059,10 @@ function UpdateTab(tab)
             ScreenGui:Destroy()
             _G.VD_Loaded = false
         end)
+        
+        local active = 0
+        for _, v in pairs(Loops) do if v then active = active + 1 end end
+        CreateLabel("Active: " .. active .. " features")
     end
     
     -- Update canvas size
@@ -885,8 +1071,188 @@ function UpdateTab(tab)
 end
 
 --==================================================
+-- LOOP FUNCTIONS
+--==================================================
+
+function StartLoop(name)
+    if Loops[name] then return end
+    Loops[name] = true
+    
+    task.spawn(function()
+        while Loops[name] do
+            if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
+                task.wait(1)
+                continue
+            end
+            
+            if name == "Present" and Toggles.AutoPresent then
+                local present = FindNearestPresent()
+                if present then
+                    Player.Character.HumanoidRootPart.CFrame = present.CFrame + Vector3.new(0, 3, 0)
+                    task.wait(0.05)
+                    local prompt = present:FindFirstChildWhichIsA("ProximityPrompt")
+                    if prompt then fireproximityprompt(prompt) end
+                end
+                
+            elseif name == "Gift" and Toggles.AutoGift then
+                local gift = FindNearestGift()
+                if gift then
+                    Player.Character.HumanoidRootPart.CFrame = gift.CFrame + Vector3.new(0, 3, 0)
+                    task.wait(0.05)
+                    local prompt = gift:FindFirstChildWhichIsA("ProximityPrompt")
+                    if prompt then 
+                        fireproximityprompt(prompt)
+                        local tree = FindChristmasTree()
+                        if tree then
+                            task.wait(0.3)
+                            if tree:IsA("Model") and tree.PrimaryPart then
+                                Player.Character.HumanoidRootPart.CFrame = tree.PrimaryPart.CFrame * CFrame.new(0, 5, 0)
+                            end
+                        end
+                    end
+                end
+                
+            elseif name == "Coins" and Toggles.AutoCoins then
+                for _, v in pairs(Workspace:GetDescendants()) do
+                    if v.Name == "Coin" and v:IsA("BasePart") then
+                        local dist = (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude
+                        if dist < 30 then
+                            Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
+                            task.wait(0.1)
+                            local prompt = v:FindFirstChildWhichIsA("ProximityPrompt")
+                            if prompt then fireproximityprompt(prompt) end
+                            break
+                        end
+                    end
+                end
+                
+            elseif name == "Heal" and Toggles.AutoHeal then
+                if Player.Character.Humanoid.Health < 50 then
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
+                    if remote then pcall(function() remote:FireServer("Heal") end) end
+                end
+                
+            elseif name == "Aimbot" and Toggles.Aimbot then
+                local target = FindNearestPlayer()
+                if target and target.Character then
+                    local targetPos = target.Character.HumanoidRootPart.Position
+                    Player.Character.HumanoidRootPart.CFrame = CFrame.lookAt(Player.Character.HumanoidRootPart.Position, targetPos)
+                end
+                
+            elseif name == "KillAura" and Toggles.KillAura then
+                local range = Toggles.KillAuraRange
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= Player and player.Character and player.Character:FindFirstChild("Humanoid") then
+                        local dist = (Player.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                        if dist <= range then
+                            player.Character.Humanoid.Health = 0
+                        end
+                    end
+                end
+                
+            elseif name == "Generator" and Toggles.AutoFarmGenerator then
+                local gen = FindNearestGenerator()
+                if gen and gen.PrimaryPart then
+                    Player.Character.HumanoidRootPart.CFrame = gen.PrimaryPart.CFrame + Vector3.new(0, 3, 0)
+                    task.wait(0.05)
+                    local prompt = gen:FindFirstChildWhichIsA("ProximityPrompt")
+                    if prompt then 
+                        fireproximityprompt(prompt)
+                    else
+                        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
+                        if remote then pcall(function() remote:FireServer("RepairGenerator", gen) end) end
+                    end
+                end
+                
+            elseif name == "Complete" and Toggles.AutoCompleteGenerator then
+                local gen = FindNearestGenerator()
+                if gen then
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
+                    if remote then pcall(function() remote:FireServer("CompleteGenerator", gen) end) end
+                end
+                
+            elseif name == "Click" and Toggles.AutoClick then
+                mouse1click()
+            end
+            
+            task.wait(0.1)
+        end
+    end)
+end
+
+function StopLoop(name)
+    Loops[name] = false
+end
+
+--==================================================
 -- UTILITY FUNCTIONS
 --==================================================
+
+function UpdateNoClip()
+    if Toggles.NoClip then
+        RunService:BindToRenderStep("NoClip", 0, function()
+            if Player.Character then
+                for _, part in pairs(Player.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    else
+        RunService:UnbindFromRenderStep("NoClip")
+        if Player.Character then
+            for _, part in pairs(Player.Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
+end
+
+function ToggleSkillCheck(state)
+    if state then
+        local mt = getrawmetatable(game)
+        if mt then
+            local old = mt.__namecall
+            setreadonly(mt, false)
+            mt.__namecall = newcclosure(function(self, ...)
+                if getnamecallmethod() == "FireServer" and tostring(self):find("SkillCheck") then
+                    return
+                end
+                return old(self, ...)
+            end)
+            setreadonly(mt, true)
+        end
+    end
+end
+
+-- Teleport to mouse
+UserInputService.InputBegan:Connect(function(input)
+    if Toggles.TeleportToMouse and input.UserInputType == Enum.UserInputType.MouseButton2 then
+        local target = Mouse.Hit.p
+        Player.Character.HumanoidRootPart.CFrame = CFrame.new(target.X, target.Y + 3, target.Z)
+    end
+end)
+
+-- Find functions
+function FindNearestGenerator()
+    local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    
+    local nearest, dist = nil, math.huge
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name == "Generator" and v:IsA("Model") and v.PrimaryPart then
+            local d = (root.Position - v.PrimaryPart.Position).Magnitude
+            if d < dist then
+                dist, nearest = d, v
+            end
+        end
+    end
+    return nearest
+end
+
 function CountGenerators()
     local count = 0
     for _, v in pairs(Workspace:GetDescendants()) do
@@ -897,17 +1263,98 @@ function CountGenerators()
     return count
 end
 
-function FindNearestGenerator()
+function FindNearestPresent()
     local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
     if not root then return nil end
     
+    local nearest, dist = nil, math.huge
     for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name == "Generator" and v:IsA("Model") and v.PrimaryPart then
+        if v.Name == "Present" and v:IsA("BasePart") then
+            local d = (root.Position - v.Position).Magnitude
+            if d < dist then
+                dist, nearest = d, v
+            end
+        end
+    end
+    return nearest
+end
+
+function CountPresents()
+    local count = 0
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name == "Present" and v:IsA("BasePart") then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+function FindNearestGift()
+    local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    
+    local nearest, dist = nil, math.huge
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name == "Gift" and v:IsA("BasePart") then
+            local d = (root.Position - v.Position).Magnitude
+            if d < dist then
+                dist, nearest = d, v
+            end
+        end
+    end
+    return nearest
+end
+
+function CountGifts()
+    local count = 0
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name == "Gift" and v:IsA("BasePart") then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+function FindChristmasTree()
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name == "ChristmasTree" or v.Name == "Tree" then
             return v
         end
     end
     return nil
 end
+
+function FindNearestPlayer()
+    local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    
+    local nearest, dist = nil, math.huge
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local d = (root.Position - player.Character.HumanoidRootPart.Position).Magnitude
+            if d < dist then
+                dist, nearest = d, player
+            end
+        end
+    end
+    return nearest
+end
+
+function GetPlayerList()
+    local list = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player then
+            table.insert(list, player.Name)
+        end
+    end
+    return list
+end
+
+-- Character update
+Player.CharacterAdded:Connect(function(char)
+    Player.Character = char
+    task.wait(1)
+end)
 
 --==================================================
 -- INITIALIZE
@@ -915,5 +1362,6 @@ end
 UpdateTab("Main")
 Notify("Press F4 or click floating button")
 
-print("=== Violence District Professional v7.2 ===")
+print("=== Violence District Professional v7.1 ===")
 print("Press F4 to toggle menu")
+print("ESP with distance enabled!")
