@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
--- UI Modern dengan Floating Button yang Selalu Ada
+-- UI Modern dengan Floating Button (Fixed)
 -- Author: LuckyBimZy
--- Version: 3.0
+-- Version: 2.1
 
 --==================================================
 -- CEK APAKAH SUDAH DILOAD
@@ -37,28 +37,30 @@ local Toggles = {
     ESP = false,
     ESPType = "Highlight",
     ESPColor = Color3.fromRGB(255, 255, 255),
-    Wallhack = false,
     FullBright = false,
     NoFog = false,
-    RainbowMode = false,
+    Wallhack = false,
+    XRay = false,
     
     -- Survivor
     AutoFarmPresent = false,
     AutoFarmGift = false,
     AutoOpenPresents = false,
     AutoCollectCoins = false,
-    AutoHeal = false,
     SpeedBoost = false,
-    JumpBoost = false,
     SpeedValue = 50,
+    JumpBoost = false,
     JumpValue = 100,
+    InfiniteStamina = false,
+    AutoHeal = false,
+    AutoEscape = false,
     
     -- Killer
     Aimbot = false,
     KillAura = false,
     KillAuraRange = 20,
     SilentAim = false,
-    AutoAttack = false,
+    InstantKill = false,
     
     -- Teleport
     NoClip = false,
@@ -72,16 +74,14 @@ local Toggles = {
     
     -- Misc
     AntiAFK = false,
-    NoSkillCheck = false,
     AutoClick = false,
-    AntiVoid = false
+    NoSkillCheck = false
 }
 
 -- Loop control
 local Loops = {}
 local ESPObjects = {}
 local GUIState = "open" -- open, floating
-local WallhackMaterials = {}
 
 --==================================================
 -- NOTIFIKASI
@@ -120,17 +120,18 @@ ScreenGui.DisplayOrder = 999
 --==================================================
 local FloatingBtn = Instance.new("ImageButton")
 FloatingBtn.Name = "FloatingButton"
-FloatingBtn.Size = UDim2.new(0, 50, 0, 50)
-FloatingBtn.Position = UDim2.new(0, 20, 0.5, -25)
+FloatingBtn.Size = UDim2.new(0, 55, 0, 55)
+FloatingBtn.Position = UDim2.new(0, 20, 0.5, -27.5)
 FloatingBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-FloatingBtn.BackgroundTransparency = 0.2
+FloatingBtn.BackgroundTransparency = 0.1
 FloatingBtn.Image = "rbxassetid://3926305904"
 FloatingBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
 FloatingBtn.ScaleType = Enum.ScaleType.Fit
 FloatingBtn.BorderSizePixel = 0
 FloatingBtn.Active = true
 FloatingBtn.Draggable = true
-FloatingBtn.Visible = true  -- Selalu visible
+FloatingBtn.Visible = true
+FloatingBtn.ZIndex = 1000
 FloatingBtn.Parent = ScreenGui
 
 -- Shadow untuk floating button
@@ -148,7 +149,7 @@ FloatShadow.Parent = FloatingBtn
 
 -- Rounded corners untuk floating button
 local FloatCorner = Instance.new("UICorner")
-FloatCorner.CornerRadius = UDim.new(0, 25)
+FloatCorner.CornerRadius = UDim.new(0, 30)
 FloatCorner.Parent = FloatingBtn
 
 -- Icon di floating button
@@ -158,57 +159,43 @@ FloatIcon.Size = UDim2.new(1, 0, 1, 0)
 FloatIcon.BackgroundTransparency = 1
 FloatIcon.Text = "🎮"
 FloatIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatIcon.TextSize = 30
+FloatIcon.TextSize = 32
 FloatIcon.Font = Enum.Font.Gotham
 FloatIcon.Parent = FloatingBtn
 
 -- Tooltip untuk floating button
 local FloatTooltip = Instance.new("Frame")
 FloatTooltip.Name = "Tooltip"
-FloatTooltip.Size = UDim2.new(0, 120, 0, 30)
-FloatTooltip.Position = UDim2.new(1, 10, 0.5, -15)
+FloatTooltip.Size = UDim2.new(0, 120, 0, 35)
+FloatTooltip.Position = UDim2.new(1, 10, 0.5, -17.5)
 FloatTooltip.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 FloatTooltip.BackgroundTransparency = 0.1
 FloatTooltip.Visible = false
+FloatTooltip.ZIndex = 1001
 FloatTooltip.Parent = FloatingBtn
 
 local TooltipCorner = Instance.new("UICorner")
-TooltipCorner.CornerRadius = UDim.new(0, 6)
+TooltipCorner.CornerRadius = UDim.new(0, 8)
 TooltipCorner.Parent = FloatTooltip
 
 local TooltipText = Instance.new("TextLabel")
 TooltipText.Size = UDim2.new(1, 0, 1, 0)
 TooltipText.BackgroundTransparency = 1
-TooltipText.Text = "Click to Toggle Menu"
+TooltipText.Text = "Open Menu"
 TooltipText.TextColor3 = Color3.fromRGB(255, 255, 255)
-TooltipText.TextSize = 12
-TooltipText.Font = Enum.Font.Gotham
+TooltipText.TextSize = 13
+TooltipText.Font = Enum.Font.GothamBold
 TooltipText.Parent = FloatTooltip
 
 -- Hover effect untuk floating button
 FloatingBtn.MouseEnter:Connect(function()
-    TweenService:Create(FloatingBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 55, 0, 55)}):Play()
+    TweenService:Create(FloatingBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 60, 0, 60)}):Play()
     FloatTooltip.Visible = true
 end)
 
 FloatingBtn.MouseLeave:Connect(function()
-    TweenService:Create(FloatingBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+    TweenService:Create(FloatingBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 55, 0, 55)}):Play()
     FloatTooltip.Visible = false
-end)
-
--- Floating button click untuk toggle menu
-FloatingBtn.MouseButton1Click:Connect(function()
-    if GUIState == "open" then
-        GUIState = "floating"
-        MainFrame.Visible = false
-        FloatTooltip.Text = "Click to Open Menu"
-        FloatIcon.Text = "🎮"
-    else
-        GUIState = "open"
-        MainFrame.Visible = true
-        FloatTooltip.Text = "Click to Close Menu"
-        FloatIcon.Text = "✕"
-    end
 end)
 
 --==================================================
@@ -224,6 +211,7 @@ MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.ClipsDescendants = true
+MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 
 -- Shadow untuk main menu
@@ -257,7 +245,7 @@ MainGradient.Parent = MainFrame
 -- TITLE BAR
 --==================================================
 local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 50)
+TitleBar.Size = UDim2.new(1, 0, 0, 55)
 TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 TitleBar.BackgroundTransparency = 0.1
 TitleBar.BorderSizePixel = 0
@@ -269,14 +257,14 @@ TitleCorner.Parent = TitleBar
 
 -- Icon di title bar
 local TitleIcon = Instance.new("Frame")
-TitleIcon.Size = UDim2.new(0, 30, 0, 30)
-TitleIcon.Position = UDim2.new(0, 15, 0.5, -15)
+TitleIcon.Size = UDim2.new(0, 35, 0, 35)
+TitleIcon.Position = UDim2.new(0, 15, 0.5, -17.5)
 TitleIcon.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
 TitleIcon.BackgroundTransparency = 0.2
 TitleIcon.Parent = TitleBar
 
 local IconCorner = Instance.new("UICorner")
-IconCorner.CornerRadius = UDim.new(0, 8)
+IconCorner.CornerRadius = UDim.new(0, 10)
 IconCorner.Parent = TitleIcon
 
 local IconLabel = Instance.new("TextLabel")
@@ -284,14 +272,14 @@ IconLabel.Size = UDim2.new(1, 0, 1, 0)
 IconLabel.BackgroundTransparency = 1
 IconLabel.Text = "🎮"
 IconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-IconLabel.TextSize = 18
+IconLabel.TextSize = 20
 IconLabel.Font = Enum.Font.Gotham
 IconLabel.Parent = TitleIcon
 
 -- Title text
 local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(0, 200, 0, 25)
-TitleText.Position = UDim2.new(0, 55, 0.5, -12.5)
+TitleText.Position = UDim2.new(0, 60, 0.5, -12.5)
 TitleText.BackgroundTransparency = 1
 TitleText.Text = "VIOLENCE DISTRICT"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -302,9 +290,9 @@ TitleText.Parent = TitleBar
 
 local VersionText = Instance.new("TextLabel")
 VersionText.Size = UDim2.new(0, 50, 0, 20)
-VersionText.Position = UDim2.new(0, 55, 0.5, 7)
+VersionText.Position = UDim2.new(0, 60, 0.5, 7)
 VersionText.BackgroundTransparency = 1
-VersionText.Text = "v3.0"
+VersionText.Text = "v2.1"
 VersionText.TextColor3 = Color3.fromRGB(150, 150, 150)
 VersionText.TextSize = 10
 VersionText.Font = Enum.Font.Gotham
@@ -313,46 +301,48 @@ VersionText.Parent = TitleBar
 
 -- Control buttons
 local ControlFrame = Instance.new("Frame")
-ControlFrame.Size = UDim2.new(0, 60, 0, 30)
-ControlFrame.Position = UDim2.new(1, -70, 0.5, -15)
+ControlFrame.Size = UDim2.new(0, 90, 0, 35)
+ControlFrame.Position = UDim2.new(1, -100, 0.5, -17.5)
 ControlFrame.BackgroundTransparency = 1
 ControlFrame.Parent = TitleBar
 
--- Minimize button (ke floating)
-local FloatModeBtn = Instance.new("TextButton")
-FloatModeBtn.Size = UDim2.new(0, 30, 0, 30)
-FloatModeBtn.Position = UDim2.new(0, 0, 0, 0)
-FloatModeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-FloatModeBtn.Text = "-"
-FloatModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatModeBtn.TextSize = 20
-FloatModeBtn.Font = Enum.Font.GothamBold
-FloatModeBtn.Parent = ControlFrame
+-- Minimize button (ke floating) - SEKARANG JADI -
+local MinToFloatBtn = Instance.new("TextButton")
+MinToFloatBtn.Size = UDim2.new(0, 35, 0, 35)
+MinToFloatBtn.Position = UDim2.new(0, 0, 0, 0)
+MinToFloatBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+MinToFloatBtn.Text = "-"
+MinToFloatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinToFloatBtn.TextSize = 24
+MinToFloatBtn.Font = Enum.Font.GothamBold
+MinToFloatBtn.Parent = ControlFrame
 
-local FloatBtnCorner = Instance.new("UICorner")
-FloatBtnCorner.CornerRadius = UDim.new(0, 8)
-FloatBtnCorner.Parent = FloatModeBtn
+local MinBtnCorner = Instance.new("UICorner")
+MinBtnCorner.CornerRadius = UDim.new(0, 10)
+MinBtnCorner.Parent = MinToFloatBtn
 
-FloatModeBtn.MouseButton1Click:Connect(function()
+MinToFloatBtn.MouseButton1Click:Connect(function()
+    -- Pindah ke mode floating
     GUIState = "floating"
     MainFrame.Visible = false
-    FloatTooltip.Text = "Click to Open Menu"
+    FloatingBtn.Visible = true
+    FloatTooltip.Text = "Open Menu"
     FloatIcon.Text = "🎮"
 end)
 
 -- Close button
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(0, 35, 0, 0)
+CloseBtn.Size = UDim2.new(0, 35, 0, 35)
+CloseBtn.Position = UDim2.new(0, 40, 0, 0)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
 CloseBtn.Text = "×"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 20
+CloseBtn.TextSize = 24
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.Parent = ControlFrame
 
 local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.CornerRadius = UDim.new(0, 10)
 CloseCorner.Parent = CloseBtn
 
 CloseBtn.MouseButton1Click:Connect(function()
@@ -365,7 +355,7 @@ end)
 --==================================================
 local TabFrame = Instance.new("Frame")
 TabFrame.Size = UDim2.new(1, -20, 0, 45)
-TabFrame.Position = UDim2.new(0, 10, 0, 55)
+TabFrame.Position = UDim2.new(0, 10, 0, 60)
 TabFrame.BackgroundTransparency = 1
 TabFrame.Parent = MainFrame
 
@@ -391,7 +381,7 @@ for i, tabData in ipairs(Tabs) do
     TabBtn.Parent = TabFrame
     
     local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 10)
+    BtnCorner.CornerRadius = UDim.new(0, 12)
     BtnCorner.Parent = TabBtn
     
     local Icon = Instance.new("TextLabel")
@@ -399,7 +389,7 @@ for i, tabData in ipairs(Tabs) do
     Icon.BackgroundTransparency = 1
     Icon.Text = tabData.icon
     Icon.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Icon.TextSize = 20
+    Icon.TextSize = 22
     Icon.Font = Enum.Font.Gotham
     Icon.Parent = TabBtn
     
@@ -430,16 +420,12 @@ for i, tabData in ipairs(Tabs) do
     table.insert(TabButtons, TabBtn)
 end
 
--- Set tab pertama aktif
-TabButtons[1].BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-TabButtons[1]:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(255, 255, 255)
-
 --==================================================
 -- CONTENT AREA
 --==================================================
 local ContentBg = Instance.new("Frame")
-ContentBg.Size = UDim2.new(1, -20, 1, -120)
-ContentBg.Position = UDim2.new(0, 10, 0, 105)
+ContentBg.Size = UDim2.new(1, -20, 1, -125)
+ContentBg.Position = UDim2.new(0, 10, 0, 110)
 ContentBg.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 ContentBg.BackgroundTransparency = 0.1
 ContentBg.ClipsDescendants = true
@@ -451,50 +437,50 @@ ContentCorner.Parent = ContentBg
 
 -- Header content
 local ContentHeader = Instance.new("Frame")
-ContentHeader.Size = UDim2.new(1, -20, 0, 35)
+ContentHeader.Size = UDim2.new(1, -20, 0, 40)
 ContentHeader.Position = UDim2.new(0, 10, 0, 10)
 ContentHeader.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 ContentHeader.BackgroundTransparency = 0.1
 ContentHeader.Parent = ContentBg
 
 local HeaderCorner = Instance.new("UICorner")
-HeaderCorner.CornerRadius = UDim.new(0, 8)
+HeaderCorner.CornerRadius = UDim.new(0, 10)
 HeaderCorner.Parent = ContentHeader
 
 local HeaderIcon = Instance.new("TextLabel")
-HeaderIcon.Size = UDim2.new(0, 30, 1, 0)
+HeaderIcon.Size = UDim2.new(0, 35, 1, 0)
 HeaderIcon.Position = UDim2.new(0, 5, 0, 0)
 HeaderIcon.BackgroundTransparency = 1
 HeaderIcon.Text = "🏠"
 HeaderIcon.TextColor3 = Color3.fromRGB(65, 105, 225)
-HeaderIcon.TextSize = 18
+HeaderIcon.TextSize = 20
 HeaderIcon.Font = Enum.Font.Gotham
 HeaderIcon.Parent = ContentHeader
 
 local HeaderTitle = Instance.new("TextLabel")
-HeaderTitle.Size = UDim2.new(1, -40, 1, 0)
-HeaderTitle.Position = UDim2.new(0, 35, 0, 0)
+HeaderTitle.Size = UDim2.new(1, -45, 1, 0)
+HeaderTitle.Position = UDim2.new(0, 40, 0, 0)
 HeaderTitle.BackgroundTransparency = 1
 HeaderTitle.Text = "MAIN"
 HeaderTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-HeaderTitle.TextSize = 13
+HeaderTitle.TextSize = 14
 HeaderTitle.Font = Enum.Font.GothamBold
 HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
 HeaderTitle.Parent = ContentHeader
 
 -- Scrolling frame
 local ScrollingFrame = Instance.new("ScrollingFrame")
-ScrollingFrame.Size = UDim2.new(1, -20, 1, -60)
-ScrollingFrame.Position = UDim2.new(0, 10, 0, 50)
+ScrollingFrame.Size = UDim2.new(1, -20, 1, -65)
+ScrollingFrame.Position = UDim2.new(0, 10, 0, 55)
 ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
-ScrollingFrame.ScrollBarThickness = 4
+ScrollingFrame.ScrollBarThickness = 6
 ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(65, 105, 225)
 ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 ScrollingFrame.Parent = ContentBg
 
 local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Padding = UDim.new(0, 6)
+UIListLayout.Padding = UDim.new(0, 8)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Parent = ScrollingFrame
 
@@ -504,18 +490,18 @@ UIListLayout.Parent = ScrollingFrame
 
 function CreateSection(text)
     local Section = Instance.new("TextLabel")
-    Section.Size = UDim2.new(1, 0, 0, 30)
+    Section.Size = UDim2.new(1, 0, 0, 35)
     Section.BackgroundTransparency = 1
     Section.Text = "  " .. text
     Section.TextColor3 = Color3.fromRGB(65, 105, 225)
-    Section.TextSize = 14
+    Section.TextSize = 15
     Section.Font = Enum.Font.GothamBold
     Section.TextXAlignment = Enum.TextXAlignment.Left
     Section.Parent = ScrollingFrame
     
     local Line = Instance.new("Frame")
-    Line.Size = UDim2.new(1, -10, 0, 1)
-    Line.Position = UDim2.new(0, 5, 0, 28)
+    Line.Size = UDim2.new(1, -10, 0, 2)
+    Line.Position = UDim2.new(0, 5, 0, 32)
     Line.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
     Line.BackgroundTransparency = 0.5
     Line.BorderSizePixel = 0
@@ -526,17 +512,17 @@ end
 
 function CreateToggle(text, desc, callback)
     local ToggleFrame = Instance.new("Frame")
-    ToggleFrame.Size = UDim2.new(1, 0, 0, 50)
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 55)
     ToggleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     ToggleFrame.BackgroundTransparency = 0.1
     ToggleFrame.Parent = ScrollingFrame
     
     local ToggleCorner = Instance.new("UICorner")
-    ToggleCorner.CornerRadius = UDim.new(0, 8)
+    ToggleCorner.CornerRadius = UDim.new(0, 10)
     ToggleCorner.Parent = ToggleFrame
     
     local ToggleText = Instance.new("TextLabel")
-    ToggleText.Size = UDim2.new(0.7, -20, 0, 20)
+    ToggleText.Size = UDim2.new(0.7, -20, 0, 22)
     ToggleText.Position = UDim2.new(0, 15, 0, 8)
     ToggleText.BackgroundTransparency = 1
     ToggleText.Text = text
@@ -547,23 +533,23 @@ function CreateToggle(text, desc, callback)
     ToggleText.Parent = ToggleFrame
     
     local ToggleDesc = Instance.new("TextLabel")
-    ToggleDesc.Size = UDim2.new(0.7, -20, 0, 15)
-    ToggleDesc.Position = UDim2.new(0, 15, 0, 28)
+    ToggleDesc.Size = UDim2.new(0.7, -20, 0, 18)
+    ToggleDesc.Position = UDim2.new(0, 15, 0, 30)
     ToggleDesc.BackgroundTransparency = 1
     ToggleDesc.Text = desc or ""
     ToggleDesc.TextColor3 = Color3.fromRGB(150, 150, 150)
-    ToggleDesc.TextSize = 10
+    ToggleDesc.TextSize = 11
     ToggleDesc.Font = Enum.Font.Gotham
     ToggleDesc.TextXAlignment = Enum.TextXAlignment.Left
     ToggleDesc.Parent = ToggleFrame
     
     local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(0, 70, 0, 30)
-    ToggleBtn.Position = UDim2.new(1, -85, 0.5, -15)
+    ToggleBtn.Size = UDim2.new(0, 75, 0, 35)
+    ToggleBtn.Position = UDim2.new(1, -90, 0.5, -17.5)
     ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     ToggleBtn.Text = "OFF"
     ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    ToggleBtn.TextSize = 12
+    ToggleBtn.TextSize = 13
     ToggleBtn.Font = Enum.Font.GothamBold
     ToggleBtn.Parent = ToggleFrame
     
@@ -595,18 +581,19 @@ end
 
 function CreateButton(text, color, callback)
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1, 0, 0, 40)
+    Button.Size = UDim2.new(1, 0, 0, 45)
     Button.BackgroundColor3 = color or Color3.fromRGB(65, 105, 225)
     Button.Text = text
     Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Button.TextSize = 13
+    Button.TextSize = 14
     Button.Font = Enum.Font.GothamBold
     Button.Parent = ScrollingFrame
     
     local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 8)
+    BtnCorner.CornerRadius = UDim.new(0, 10)
     BtnCorner.Parent = Button
     
+    -- Hover effect
     Button.MouseEnter:Connect(function()
         TweenService:Create(Button, TweenInfo.new(0.2), {
             BackgroundColor3 = color and color:Lerp(Color3.fromRGB(255, 255, 255), 0.2) or Color3.fromRGB(85, 125, 245)
@@ -626,17 +613,17 @@ end
 
 function CreateDropdown(text, options, callback)
     local DropdownFrame = Instance.new("Frame")
-    DropdownFrame.Size = UDim2.new(1, 0, 0, 50)
+    DropdownFrame.Size = UDim2.new(1, 0, 0, 55)
     DropdownFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     DropdownFrame.BackgroundTransparency = 0.1
     DropdownFrame.Parent = ScrollingFrame
     
     local DropdownCorner = Instance.new("UICorner")
-    DropdownCorner.CornerRadius = UDim.new(0, 8)
+    DropdownCorner.CornerRadius = UDim.new(0, 10)
     DropdownCorner.Parent = DropdownFrame
     
     local DropdownText = Instance.new("TextLabel")
-    DropdownText.Size = UDim2.new(0.6, -20, 0, 20)
+    DropdownText.Size = UDim2.new(0.6, -20, 0, 22)
     DropdownText.Position = UDim2.new(0, 15, 0, 8)
     DropdownText.BackgroundTransparency = 1
     DropdownText.Text = text
@@ -647,22 +634,23 @@ function CreateDropdown(text, options, callback)
     DropdownText.Parent = DropdownFrame
     
     local DropdownDesc = Instance.new("TextLabel")
-    DropdownDesc.Size = UDim2.new(0.6, -20, 0, 15)
-    DropdownDesc.Position = UDim2.new(0, 15, 0, 28)
+    DropdownDesc.Size = UDim2.new(0.6, -20, 0, 18)
+    DropdownDesc.Position = UDim2.new(0, 15, 0, 30)
     DropdownDesc.BackgroundTransparency = 1
-    DropdownDesc.Text = "Select an option"
+    DropdownDesc.Text = "Click to select"
     DropdownDesc.TextColor3 = Color3.fromRGB(150, 150, 150)
-    DropdownDesc.TextSize = 10
+    DropdownDesc.TextSize = 11
     DropdownDesc.Font = Enum.Font.Gotham
+    DropdownDesc.TextXAlignment = Enum.TextXAlignment.Left
     DropdownDesc.Parent = DropdownFrame
     
     local DropdownBtn = Instance.new("TextButton")
-    DropdownBtn.Size = UDim2.new(0, 100, 0, 30)
-    DropdownBtn.Position = UDim2.new(1, -115, 0.5, -15)
+    DropdownBtn.Size = UDim2.new(0, 120, 0, 35)
+    DropdownBtn.Position = UDim2.new(1, -135, 0.5, -17.5)
     DropdownBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     DropdownBtn.Text = options[1] or "Select"
     DropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DropdownBtn.TextSize = 11
+    DropdownBtn.TextSize = 12
     DropdownBtn.Font = Enum.Font.Gotham
     DropdownBtn.Parent = DropdownFrame
     
@@ -671,31 +659,43 @@ function CreateDropdown(text, options, callback)
     BtnCorner.Parent = DropdownBtn
     
     DropdownBtn.MouseButton1Click:Connect(function()
+        -- Hapus menu lama
         local oldMenu = DropdownFrame:FindFirstChild("DropdownMenu")
         if oldMenu then oldMenu:Destroy() end
         
         local menu = Instance.new("Frame")
         menu.Name = "DropdownMenu"
-        menu.Size = UDim2.new(0, 120, 0, math.min(#options, 5) * 35)
-        menu.Position = UDim2.new(1, -115, 1, 5)
+        menu.Size = UDim2.new(0, 140, 0, math.min(#options, 6) * 40)
+        menu.Position = UDim2.new(1, -135, 1, 5)
         menu.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         menu.BorderSizePixel = 0
+        menu.ZIndex = 10
         menu.Parent = DropdownFrame
         
         local menuCorner = Instance.new("UICorner")
-        menuCorner.CornerRadius = UDim.new(0, 8)
+        menuCorner.CornerRadius = UDim.new(0, 10)
         menuCorner.Parent = menu
+        
+        local menuList = Instance.new("ScrollingFrame")
+        menuList.Size = UDim2.new(1, -2, 1, -2)
+        menuList.Position = UDim2.new(0, 1, 0, 1)
+        menuList.BackgroundTransparency = 1
+        menuList.ScrollBarThickness = 4
+        menuList.CanvasSize = UDim2.new(0, 0, 0, #options * 40)
+        menuList.ZIndex = 10
+        menuList.Parent = menu
         
         for i, option in ipairs(options) do
             local optionBtn = Instance.new("TextButton")
-            optionBtn.Size = UDim2.new(1, 0, 0, 35)
-            optionBtn.Position = UDim2.new(0, 0, 0, (i-1) * 35)
+            optionBtn.Size = UDim2.new(1, 0, 0, 40)
+            optionBtn.Position = UDim2.new(0, 0, 0, (i-1) * 40)
             optionBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
             optionBtn.Text = option
             optionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            optionBtn.TextSize = 11
+            optionBtn.TextSize = 12
             optionBtn.Font = Enum.Font.Gotham
-            optionBtn.Parent = menu
+            optionBtn.ZIndex = 10
+            optionBtn.Parent = menuList
             
             optionBtn.MouseEnter:Connect(function()
                 optionBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 60)
@@ -718,11 +718,11 @@ end
 
 function CreateLabel(text)
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 0, 25)
+    Label.Size = UDim2.new(1, 0, 0, 28)
     Label.BackgroundTransparency = 1
     Label.Text = "• " .. text
     Label.TextColor3 = Color3.fromRGB(180, 180, 180)
-    Label.TextSize = 12
+    Label.TextSize = 13
     Label.Font = Enum.Font.Gotham
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = ScrollingFrame
@@ -732,17 +732,17 @@ end
 
 function CreateSlider(text, min, max, default, callback)
     local SliderFrame = Instance.new("Frame")
-    SliderFrame.Size = UDim2.new(1, 0, 0, 60)
+    SliderFrame.Size = UDim2.new(1, 0, 0, 65)
     SliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     SliderFrame.BackgroundTransparency = 0.1
     SliderFrame.Parent = ScrollingFrame
     
     local SliderCorner = Instance.new("UICorner")
-    SliderCorner.CornerRadius = UDim.new(0, 8)
+    SliderCorner.CornerRadius = UDim.new(0, 10)
     SliderCorner.Parent = SliderFrame
     
     local SliderText = Instance.new("TextLabel")
-    SliderText.Size = UDim2.new(0.6, -20, 0, 20)
+    SliderText.Size = UDim2.new(0.6, -20, 0, 22)
     SliderText.Position = UDim2.new(0, 15, 0, 8)
     SliderText.BackgroundTransparency = 1
     SliderText.Text = text
@@ -753,7 +753,7 @@ function CreateSlider(text, min, max, default, callback)
     SliderText.Parent = SliderFrame
     
     local ValueLabel = Instance.new("TextLabel")
-    ValueLabel.Size = UDim2.new(0.3, -10, 0, 20)
+    ValueLabel.Size = UDim2.new(0.3, -10, 0, 22)
     ValueLabel.Position = UDim2.new(0.7, -10, 0, 8)
     ValueLabel.BackgroundTransparency = 1
     ValueLabel.Text = tostring(default)
@@ -763,8 +763,8 @@ function CreateSlider(text, min, max, default, callback)
     ValueLabel.Parent = SliderFrame
     
     local SliderBg = Instance.new("Frame")
-    SliderBg.Size = UDim2.new(1, -30, 0, 4)
-    SliderBg.Position = UDim2.new(0, 15, 0, 40)
+    SliderBg.Size = UDim2.new(1, -30, 0, 6)
+    SliderBg.Position = UDim2.new(0, 15, 0, 45)
     SliderBg.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     SliderBg.Parent = SliderFrame
     
@@ -773,11 +773,21 @@ function CreateSlider(text, min, max, default, callback)
     SliderFill.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
     SliderFill.Parent = SliderBg
     
+    local SliderButton = Instance.new("TextButton")
+    SliderButton.Size = UDim2.new(0, 18, 0, 18)
+    SliderButton.Position = UDim2.new((default - min) / (max - min), -9, 0.5, -9)
+    SliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    SliderButton.Text = ""
+    SliderButton.Parent = SliderFill
+    
+    local SliderButtonCorner = Instance.new("UICorner")
+    SliderButtonCorner.CornerRadius = UDim.new(1, 0)
+    SliderButtonCorner.Parent = SliderButton
+    
+    -- Drag functionality
     local dragging = false
-    SliderFill.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-        end
+    SliderButton.MouseButton1Down:Connect(function()
+        dragging = true
     end)
     
     UserInputService.InputEnded:Connect(function(input)
@@ -795,12 +805,32 @@ function CreateSlider(text, min, max, default, callback)
             local value = math.floor(min + (max - min) * percent)
             
             SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+            SliderButton.Position = UDim2.new(percent, -9, 0.5, -9)
             ValueLabel.Text = tostring(value)
             callback(value)
         end
     end)
     
     return SliderFrame
+end
+
+--==================================================
+-- WALLHACK FUNCTION
+--==================================================
+function UpdateWallhack()
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
+            if Toggles.Wallhack or Toggles.XRay then
+                if v.Name ~= "HumanoidRootPart" and v.Transparency < 0.5 then
+                    v.Material = Enum.Material.ForceField
+                    v.Transparency = 0.5
+                end
+            else
+                v.Material = Enum.Material.Plastic
+                v.Transparency = 0
+            end
+        end
+    end
 end
 
 --==================================================
@@ -850,18 +880,12 @@ function UpdateTab(tab)
         end)
         
         CreateButton("Server Hop", Color3.fromRGB(255, 165, 0), function()
-            local servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100"))
-            for _, server in pairs(servers.data) do
-                if server.playing < server.maxPlayers and server.id ~= game.JobId then
-                    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, server.id, Player)
-                    break
-                end
-            end
+            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
         end)
         
         CreateSection("CREDITS")
         CreateLabel("Violence District Ultimate")
-        CreateLabel("Version 3.0")
+        CreateLabel("Version 2.1")
         CreateLabel("Made by LuckyBimZy")
         CreateLabel("Floating Button Always Available")
         
@@ -884,8 +908,14 @@ function UpdateTab(tab)
             end
         end)
         
-        CreateToggle("Wallhack", "See through all walls", function(state)
+        CreateSection("WALLHACK")
+        CreateToggle("Wallhack", "See through walls (translucent)", function(state)
             Toggles.Wallhack = state
+            UpdateWallhack()
+        end)
+        
+        CreateToggle("X-Ray Vision", "See all objects", function(state)
+            Toggles.XRay = state
             UpdateWallhack()
         end)
         
@@ -897,6 +927,11 @@ function UpdateTab(tab)
                 Lighting.GlobalShadows = false
                 Lighting.FogEnd = 1e9
                 Lighting.Ambient = Color3.new(1, 1, 1)
+                for _, v in pairs(Lighting:GetChildren()) do
+                    if v:IsA("BloomEffect") or v:IsA("ColorCorrectionEffect") then
+                        v.Enabled = false
+                    end
+                end
             else
                 Lighting.Brightness = 1
                 Lighting.GlobalShadows = true
@@ -912,10 +947,6 @@ function UpdateTab(tab)
             else
                 Lighting.FogEnd = 100000
             end
-        end)
-        
-        CreateToggle("Rainbow Mode", "Rainbow colors", function(state)
-            Toggles.RainbowMode = state
         end)
         
     elseif tab == "Survivor" then
@@ -940,10 +971,6 @@ function UpdateTab(tab)
             if state then StartLoop("AutoCollectCoins") end
         end)
         
-        CreateToggle("Auto Heal", "Auto heal when low health", function(state)
-            Toggles.AutoHeal = state
-        end)
-        
         CreateSection("MOVEMENT")
         CreateToggle("Speed Boost", "Increase movement speed", function(state)
             Toggles.SpeedBoost = state
@@ -954,7 +981,7 @@ function UpdateTab(tab)
             end
         end)
         
-        CreateSlider("Speed Value", 16, 200, Toggles.SpeedValue, function(value)
+        CreateSlider("Speed Value", 16, 120, Toggles.SpeedValue, function(value)
             Toggles.SpeedValue = value
             if Toggles.SpeedBoost then
                 Player.Character.Humanoid.WalkSpeed = value
@@ -977,6 +1004,20 @@ function UpdateTab(tab)
             end
         end)
         
+        CreateToggle("Infinite Stamina", "Never run out of stamina", function(state)
+            Toggles.InfiniteStamina = state
+        end)
+        
+        CreateSection("SURVIVAL")
+        CreateToggle("Auto Heal", "Auto heal when health low", function(state)
+            Toggles.AutoHeal = state
+            if state then StartLoop("AutoHeal") end
+        end)
+        
+        CreateToggle("Auto Escape", "Auto escape when grabbed", function(state)
+            Toggles.AutoEscape = state
+        end)
+        
     elseif tab == "Killer" then
         CreateSection("COMBAT")
         CreateToggle("Aimbot", "Auto aim at nearest player", function(state)
@@ -997,9 +1038,8 @@ function UpdateTab(tab)
             Toggles.KillAuraRange = value
         end)
         
-        CreateToggle("Auto Attack", "Automatically attack", function(state)
-            Toggles.AutoAttack = state
-            if state then StartLoop("AutoAttack") end
+        CreateToggle("Instant Kill", "One hit kill", function(state)
+            Toggles.InstantKill = state
         end)
         
         CreateSection("TARGET INFO")
@@ -1028,7 +1068,6 @@ function UpdateTab(tab)
             local target = Players:FindFirstChild(name)
             if target and target.Character then
                 Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-                Notify("Teleport", "Teleported to " .. name, 1)
             end
         end)
         
@@ -1045,7 +1084,6 @@ function UpdateTab(tab)
         CreateButton("Teleport to Saved", Color3.fromRGB(65, 105, 225), function()
             if _G.SavedPosition then
                 Player.Character.HumanoidRootPart.CFrame = _G.SavedPosition
-                Notify("Teleport", "Teleported to saved position", 1)
             else
                 Notify("Error", "No saved position!", 1)
             end
@@ -1065,6 +1103,7 @@ function UpdateTab(tab)
         
         CreateToggle("Auto Repair", "Auto repair when damaged", function(state)
             Toggles.AutoRepair = state
+            if state then StartLoop("AutoRepair") end
         end)
         
         CreateToggle("Auto Collect Loot", "Auto collect all loot", function(state)
@@ -1084,8 +1123,6 @@ function UpdateTab(tab)
         
         CreateSection("RESOURCES")
         CreateLabel("Generators nearby: " .. CountGenerators())
-        CreateLabel("Presents nearby: " .. CountPresents())
-        CreateLabel("Gifts nearby: " .. CountGifts())
         
     elseif tab == "Misc" then
         CreateSection("UTILITY")
@@ -1109,25 +1146,10 @@ function UpdateTab(tab)
             ToggleSkillCheck(state)
         end)
         
-        CreateToggle("Anti Void", "Prevent falling into void", function(state)
-            Toggles.AntiVoid = state
-            if state then StartLoop("AntiVoid") end
-        end)
-        
         CreateSection("GUI CONTROLS")
-        CreateButton("Hide Menu (Floating Mode)", Color3.fromRGB(100, 100, 100), function()
-            GUIState = "floating"
-            MainFrame.Visible = false
-            FloatTooltip.Text = "Click to Open Menu"
-            FloatIcon.Text = "🎮"
-        end)
-        
-        CreateButton("Show Menu", Color3.fromRGB(65, 105, 225), function()
-            GUIState = "open"
-            MainFrame.Visible = true
-            FloatTooltip.Text = "Click to Close Menu"
-            FloatIcon.Text = "✕"
-        end)
+        CreateLabel("Floating button always available")
+        CreateLabel("Click - to hide menu")
+        CreateLabel("Click floating button to show menu")
         
         CreateButton("Close GUI", Color3.fromRGB(220, 60, 60), function()
             ScreenGui:Destroy()
@@ -1137,8 +1159,6 @@ function UpdateTab(tab)
         CreateSection("STATUS")
         CreateLabel("GUI Mode: " .. GUIState)
         CreateLabel("Active Loops: " .. table.count(Loops))
-        CreateLabel("Floating Button: Always Available")
-        CreateLabel("Press '-' on title bar to hide")
     end
     
     -- Update canvas size
@@ -1147,7 +1167,7 @@ function UpdateTab(tab)
 end
 
 --==================================================
--- CORE FUNCTIONS (IMPROVED)
+-- CORE FUNCTIONS
 --==================================================
 
 function StartLoop(name)
@@ -1164,7 +1184,6 @@ function StartLoop(name)
             if name == "AutoFarmPresent" then
                 local present = FindNearestPresent()
                 if present then
-                    Player.Character.HumanoidRootPart.CFrame = present.CFrame + Vector3.new(0, 3, 0)
                     local prompt = present:FindFirstChildWhichIsA("ProximityPrompt")
                     if prompt then 
                         fireproximityprompt(prompt)
@@ -1174,7 +1193,6 @@ function StartLoop(name)
             elseif name == "AutoFarmGift" then
                 local gift = FindNearestGift()
                 if gift then
-                    Player.Character.HumanoidRootPart.CFrame = gift.CFrame + Vector3.new(0, 3, 0)
                     local prompt = gift:FindFirstChildWhichIsA("ProximityPrompt")
                     if prompt then 
                         fireproximityprompt(prompt)
@@ -1182,18 +1200,37 @@ function StartLoop(name)
                 end
                 
             elseif name == "AutoOpenPresents" then
+                -- Implement auto open presents
                 for _, v in pairs(Workspace:GetDescendants()) do
-                    if v.Name == "Present" and v:IsA("BasePart") and (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude < 10 then
-                        local prompt = v:FindFirstChildWhichIsA("ProximityPrompt")
-                        if prompt then fireproximityprompt(prompt) end
+                    if v.Name == "Present" and v:IsA("BasePart") then
+                        local dist = (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude
+                        if dist < 10 then
+                            local prompt = v:FindFirstChildWhichIsA("ProximityPrompt")
+                            if prompt then fireproximityprompt(prompt) end
+                        end
                     end
                 end
                 
             elseif name == "AutoCollectCoins" then
+                -- Implement auto collect coins
                 for _, v in pairs(Workspace:GetDescendants()) do
-                    if v.Name == "Coin" and v:IsA("BasePart") and (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude < 20 then
-                        Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
-                        task.wait(0.1)
+                    if v.Name == "Coin" and v:IsA("BasePart") then
+                        local dist = (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude
+                        if dist < 20 then
+                            Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
+                            task.wait(0.1)
+                        end
+                    end
+                end
+                
+            elseif name == "AutoHeal" then
+                if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+                    if Player.Character.Humanoid.Health < 50 then
+                        -- Try to heal
+                        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("HealEvent")
+                        if remote then
+                            remote:FireServer()
+                        end
                     end
                 end
                 
@@ -1201,18 +1238,10 @@ function StartLoop(name)
                 local target = FindNearestPlayer()
                 if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
                     local targetPos = target.Character.HumanoidRootPart.Position
-                    if Toggles.SilentAim then
-                        -- Silent aim implementation
-                        local tool = Player.Character:FindFirstChildWhichIsA("Tool")
-                        if tool then
-                            tool:Activate()
-                        end
-                    else
-                        Player.Character.HumanoidRootPart.CFrame = CFrame.lookAt(
-                            Player.Character.HumanoidRootPart.Position, 
-                            targetPos
-                        )
-                    end
+                    Player.Character.HumanoidRootPart.CFrame = CFrame.lookAt(
+                        Player.Character.HumanoidRootPart.Position, 
+                        targetPos
+                    )
                 end
                 
             elseif name == "KillAura" then
@@ -1221,17 +1250,13 @@ function StartLoop(name)
                     if player ~= Player and player.Character and player.Character:FindFirstChild("Humanoid") then
                         local dist = (Player.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
                         if dist <= range then
-                            player.Character.Humanoid.Health = 0
+                            if Toggles.InstantKill then
+                                player.Character.Humanoid.Health = 0
+                            else
+                                -- Normal damage
+                                player.Character.Humanoid.Health = player.Character.Humanoid.Health - 50
+                            end
                         end
-                    end
-                end
-                
-            elseif name == "AutoAttack" then
-                local target = FindNearestPlayer()
-                if target and target.Character then
-                    local tool = Player.Character:FindFirstChildWhichIsA("Tool")
-                    if tool then
-                        tool:Activate()
                     end
                 end
                 
@@ -1249,29 +1274,37 @@ function StartLoop(name)
                 local gen = FindNearestGenerator()
                 if gen then
                     Player.Character.HumanoidRootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
-                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("CompleteEvent")
                     if remote then
-                        remote:FireServer("CompleteGenerator", gen)
+                        remote:FireServer(gen)
+                    end
+                end
+                
+            elseif name == "AutoRepair" then
+                local gen = FindNearestGenerator()
+                if gen then
+                    Player.Character.HumanoidRootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RepairEvent")
+                    if remote then
+                        remote:FireServer(gen)
                     end
                 end
                 
             elseif name == "AutoCollectLoot" then
                 for _, v in pairs(Workspace:GetDescendants()) do
-                    if v:IsA("BasePart") and (v.Name == "Loot" or v.Name == "Item") and (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude < 15 then
-                        Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
-                        local prompt = v:FindFirstChildWhichIsA("ProximityPrompt")
-                        if prompt then fireproximityprompt(prompt) end
-                        task.wait(0.1)
+                    if v:IsA("BasePart") and (v.Name == "Loot" or v.Name == "Item") then
+                        local dist = (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude
+                        if dist < 20 then
+                            Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
+                            local prompt = v:FindFirstChildWhichIsA("ProximityPrompt")
+                            if prompt then fireproximityprompt(prompt) end
+                            task.wait(0.1)
+                        end
                     end
                 end
                 
             elseif name == "AutoClick" then
                 mouse1click()
-                
-            elseif name == "AntiVoid" then
-                if Player.Character and Player.Character.HumanoidRootPart.Position.Y < -50 then
-                    Player.Character.HumanoidRootPart.CFrame = CFrame.new(0, 100, 0)
-                end
             end
             
             task.wait(0.1)
@@ -1279,20 +1312,17 @@ function StartLoop(name)
     end)
 end
 
--- ESP Functions (IMPROVED)
 function EnableESP()
-    DisableESP()
-    
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= Player and player.Character then
             AddESP(player)
         end
     end
     
-    -- Update ESP for new players
+    -- Untuk player yang join belakangan
     Players.PlayerAdded:Connect(function(player)
         player.CharacterAdded:Connect(function()
-            task.wait(0.5)
+            task.wait(1)
             if Toggles.ESP then
                 AddESP(player)
             end
@@ -1303,8 +1333,8 @@ end
 function AddESP(player)
     if not player.Character then return end
     
+    -- Highlight (default)
     if Toggles.ESPType == "Highlight" or Toggles.ESPType == "Box" then
-        -- Highlight
         local highlight = Instance.new("Highlight")
         highlight.Name = "VD_ESP"
         highlight.Parent = player.Character
@@ -1313,11 +1343,11 @@ function AddESP(player)
         highlight.FillTransparency = 0.5
     end
     
-    -- Name tag with distance (always on)
+    -- Name tag with distance
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "VD_Name"
     billboard.Parent = player.Character
-    billboard.Size = UDim2.new(0, 150, 0, 30)
+    billboard.Size = UDim2.new(0, 150, 0, 35)
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.AlwaysOnTop = true
     
@@ -1327,32 +1357,17 @@ function AddESP(player)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = player.Name
     nameLabel.TextColor3 = Color3.new(1, 1, 1)
-    nameLabel.TextStrokeTransparency = 0.3
+    nameLabel.TextStrokeTransparency = 0.5
     nameLabel.TextScaled = true
     nameLabel.Font = Enum.Font.GothamBold
-    
-    -- Tracers
-    if Toggles.ESPType == "Tracer" then
-        local tracer = Instance.new("Frame")
-        tracer.Name = "VD_Tracer"
-        tracer.Size = UDim2.new(0, 2, 0, 100)
-        tracer.BackgroundColor3 = Toggles.ESPColor
-        tracer.BorderSizePixel = 0
-        tracer.Parent = player.Character
-    end
     
     -- Update distance
     task.spawn(function()
         while billboard and billboard.Parent do
-            task.wait(0.3)
+            task.wait(0.5)
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
                 local dist = math.floor((player.Character.HumanoidRootPart.Position - Player.Character.HumanoidRootPart.Position).Magnitude)
                 nameLabel.Text = player.Name .. " [" .. dist .. "m]"
-                
-                -- Update tracer
-                if Toggles.ESPType == "Tracer" then
-                    -- Tracer implementation would go here
-                end
             end
         end
     end)
@@ -1365,33 +1380,6 @@ function DisableESP()
             if highlight then highlight:Destroy() end
             local nameTag = player.Character:FindFirstChild("VD_Name")
             if nameTag then nameTag:Destroy() end
-            local tracer = player.Character:FindFirstChild("VD_Tracer")
-            if tracer then tracer:Destroy() end
-        end
-    end
-end
-
--- Wallhack (IMPROVED)
-function UpdateWallhack()
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
-            if Toggles.Wallhack then
-                if v.Name ~= "HumanoidRootPart" then
-                    -- Save original material
-                    if not WallhackMaterials[v] then
-                        WallhackMaterials[v] = v.Material
-                    end
-                    v.Material = Enum.Material.ForceField
-                    v.Transparency = 0.5
-                end
-            else
-                -- Restore original material
-                if WallhackMaterials[v] then
-                    v.Material = WallhackMaterials[v]
-                    v.Transparency = 0
-                    WallhackMaterials[v] = nil
-                end
-            end
         end
     end
 end
@@ -1444,6 +1432,22 @@ UserInputService.InputBegan:Connect(function(input)
     end
 end)
 
+-- Floating button click
+FloatingBtn.MouseButton1Click:Connect(function()
+    GUIState = "open"
+    MainFrame.Visible = true
+    FloatingBtn.Visible = true  -- Tetap visible
+    FloatTooltip.Text = "Menu Open"
+    FloatIcon.Text = "🎮"
+end)
+
+-- Wallhack update loop
+RunService.RenderStepped:Connect(function()
+    if Toggles.Wallhack or Toggles.XRay then
+        UpdateWallhack()
+    end
+end)
+
 -- Find object functions
 function FindNearestGenerator()
     local nearest = nil
@@ -1491,16 +1495,6 @@ function FindNearestPresent()
     return nearest
 end
 
-function CountPresents()
-    local count = 0
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name == "Present" and v:IsA("BasePart") then
-            count = count + 1
-        end
-    end
-    return count
-end
-
 function FindNearestGift()
     local nearest = nil
     local dist = math.huge
@@ -1517,16 +1511,6 @@ function FindNearestGift()
         end
     end
     return nearest
-end
-
-function CountGifts()
-    local count = 0
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name == "Gift" and v:IsA("BasePart") then
-            count = count + 1
-        end
-    end
-    return count
 end
 
 function FindChristmasTree()
@@ -1575,22 +1559,12 @@ end
 -- Character update
 Player.CharacterAdded:Connect(function(newChar)
     Player.Character = newChar
-    task.wait(1)
-end)
-
---==================================================
--- RAINBOW MODE
---==================================================
-task.spawn(function()
-    while true do
-        if Toggles.RainbowMode then
-            Toggles.ESPColor = Color3.fromHSV(tick() % 5 / 5, 1, 1)
-            if Toggles.ESP then
-                DisableESP()
-                EnableESP()
-            end
-        end
-        task.wait(0.1)
+    task.wait(2)
+    if Toggles.SpeedBoost then
+        newChar.Humanoid.WalkSpeed = Toggles.SpeedValue
+    end
+    if Toggles.JumpBoost then
+        newChar.Humanoid.JumpPower = Toggles.JumpValue
     end
 end)
 
@@ -1602,10 +1576,10 @@ end)
 UpdateTab("Main")
 
 -- Notifikasi
-Notify("Violence District", "Floating button always available | Click '-' to hide", 3)
+Notify("Violence District", "Floating button always available | Click - to hide", 3)
 
 print("========================================")
 print("✅ VIOLENCE DISTRICT ULTIMATE LOADED!")
-print("Floating button: Always visible on screen")
-print("Click '-' on title bar to hide menu")
+print("Floating button always visible")
+print("Click - to hide menu")
 print("========================================")
