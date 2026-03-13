@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - PROFESSIONAL EDITION ====================
 -- UI Sederhana, Ringan, dan Profesional
 -- Author: LuckyBimZy
--- Version: 6.0 (Final)
+-- Version: 6.1 (Fixed)
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -28,7 +28,7 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local Camera = Workspace.CurrentCamera
 
--- Toggles
+-- Toggles - SEMUA STATUS DISIMPAN DI SINI
 local Toggles = {
     -- Visuals
     ESP = false,
@@ -38,9 +38,9 @@ local Toggles = {
     NoFog = false,
     
     -- Survivor
-    AutoFarmPresent = false,
-    AutoFarmGift = false,
-    AutoCollectCoins = false,
+    AutoPresent = false,
+    AutoGift = false,
+    AutoCoins = false,
     AutoHeal = false,
     SpeedBoost = false,
     JumpBoost = false,
@@ -57,8 +57,8 @@ local Toggles = {
     TeleportToMouse = false,
     
     -- Farm
-    AutoFarmGenerator = false,
-    AutoCompleteGenerator = false,
+    AutoGenerator = false,
+    AutoComplete = false,
     
     -- Misc
     AntiAFK = false,
@@ -150,8 +150,8 @@ end)
 --==================================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 350, 0, 450)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -225)
+MainFrame.Size = UDim2.new(0, 380, 0, 480)
+MainFrame.Position = UDim2.new(0.5, -190, 0.5, -240)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -205,7 +205,7 @@ local VersionText = Instance.new("TextLabel")
 VersionText.Size = UDim2.new(0, 50, 1, 0)
 VersionText.Position = UDim2.new(1, -60, 0, 0)
 VersionText.BackgroundTransparency = 1
-VersionText.Text = "v6.0"
+VersionText.Text = "v6.1"
 VersionText.TextColor3 = Color3.fromRGB(150, 150, 150)
 VersionText.TextSize = 11
 VersionText.Font = Enum.Font.Gotham
@@ -268,8 +268,8 @@ local CurrentTab = "Main"
 
 for i = 1, #Tabs do
     local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0, 45, 0, 35)
-    TabBtn.Position = UDim2.new(0, (i-1) * 47, 0, 0)
+    TabBtn.Size = UDim2.new(0, 48, 0, 35)
+    TabBtn.Position = UDim2.new(0, (i-1) * 50, 0, 0)
     TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     TabBtn.Text = TabIcons[i]
     TabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -340,7 +340,7 @@ ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 ScrollingFrame.Parent = ContentFrame
 
 local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.Padding = UDim.new(0, 6)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Parent = ScrollingFrame
 
@@ -350,7 +350,8 @@ UIListLayout.Parent = ScrollingFrame
 
 function CreateSection(title)
     local Section = Instance.new("TextLabel")
-    Section.Size = UDim2.new(1, 0, 0, 25)
+    Section.Size = UDim2.new(1, -10, 0, 25)
+    Section.Position = UDim2.new(0, 5, 0, 0)
     Section.BackgroundTransparency = 1
     Section.Text = title
     Section.TextColor3 = Color3.fromRGB(65, 105, 225)
@@ -368,9 +369,10 @@ function CreateSection(title)
     Line.Parent = Section
 end
 
-function CreateToggle(text, callback)
+function CreateToggle(text, varName)
     local ToggleFrame = Instance.new("Frame")
-    ToggleFrame.Size = UDim2.new(1, 0, 0, 30)
+    ToggleFrame.Size = UDim2.new(1, -10, 0, 32)
+    ToggleFrame.Position = UDim2.new(0, 5, 0, 0)
     ToggleFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     ToggleFrame.BorderSizePixel = 0
     ToggleFrame.Parent = ScrollingFrame
@@ -391,12 +393,12 @@ function CreateToggle(text, callback)
     ToggleText.Parent = ToggleFrame
     
     local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(0, 50, 0, 22)
-    ToggleBtn.Position = UDim2.new(1, -60, 0.5, -11)
-    ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-    ToggleBtn.Text = "OFF"
-    ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    ToggleBtn.TextSize = 10
+    ToggleBtn.Size = UDim2.new(0, 55, 0, 24)
+    ToggleBtn.Position = UDim2.new(1, -65, 0.5, -12)
+    ToggleBtn.BackgroundColor3 = Toggles[varName] and Color3.fromRGB(65, 105, 225) or Color3.fromRGB(50, 50, 55)
+    ToggleBtn.Text = Toggles[varName] and "ON" or "OFF"
+    ToggleBtn.TextColor3 = Toggles[varName] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 100, 100)
+    ToggleBtn.TextSize = 11
     ToggleBtn.Font = Enum.Font.GothamBold
     ToggleBtn.BorderSizePixel = 0
     ToggleBtn.Parent = ToggleFrame
@@ -405,10 +407,9 @@ function CreateToggle(text, callback)
     BtnCorner.CornerRadius = UDim.new(0, 4)
     BtnCorner.Parent = ToggleBtn
     
-    local enabled = false
     ToggleBtn.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        if enabled then
+        Toggles[varName] = not Toggles[varName]
+        if Toggles[varName] then
             ToggleBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
             ToggleBtn.Text = "ON"
             ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -417,13 +418,15 @@ function CreateToggle(text, callback)
             ToggleBtn.Text = "OFF"
             ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
-        callback(enabled)
+        -- Panggil fungsi sesuai toggle
+        HandleToggle(varName, Toggles[varName])
     end)
 end
 
 function CreateButton(text, callback)
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1, 0, 0, 35)
+    Button.Size = UDim2.new(1, -10, 0, 35)
+    Button.Position = UDim2.new(0, 5, 0, 0)
     Button.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
     Button.Text = text
     Button.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -439,9 +442,10 @@ function CreateButton(text, callback)
     Button.MouseButton1Click:Connect(callback)
 end
 
-function CreateDropdown(text, options, callback)
+function CreateDropdown(text, varName, options)
     local DropdownFrame = Instance.new("Frame")
-    DropdownFrame.Size = UDim2.new(1, 0, 0, 30)
+    DropdownFrame.Size = UDim2.new(1, -10, 0, 32)
+    DropdownFrame.Position = UDim2.new(0, 5, 0, 0)
     DropdownFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     DropdownFrame.BorderSizePixel = 0
     DropdownFrame.Parent = ScrollingFrame
@@ -462,12 +466,12 @@ function CreateDropdown(text, options, callback)
     DropdownText.Parent = DropdownFrame
     
     local DropdownBtn = Instance.new("TextButton")
-    DropdownBtn.Size = UDim2.new(0, 100, 0, 22)
-    DropdownBtn.Position = UDim2.new(1, -110, 0.5, -11)
+    DropdownBtn.Size = UDim2.new(0, 100, 0, 24)
+    DropdownBtn.Position = UDim2.new(1, -110, 0.5, -12)
     DropdownBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-    DropdownBtn.Text = options[1] or "Select"
+    DropdownBtn.Text = Toggles[varName] or options[1]
     DropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DropdownBtn.TextSize = 10
+    DropdownBtn.TextSize = 11
     DropdownBtn.Font = Enum.Font.Gotham
     DropdownBtn.BorderSizePixel = 0
     DropdownBtn.Parent = DropdownFrame
@@ -477,8 +481,14 @@ function CreateDropdown(text, options, callback)
     BtnCorner.Parent = DropdownBtn
     
     DropdownBtn.MouseButton1Click:Connect(function()
+        -- Hapus menu lama
+        local oldMenu = DropdownFrame:FindFirstChild("DropdownMenu")
+        if oldMenu then oldMenu:Destroy() end
+        
+        -- Buat menu baru
         local menu = Instance.new("Frame")
-        menu.Size = UDim2.new(0, 120, 0, math.min(#options, 5) * 25)
+        menu.Name = "DropdownMenu"
+        menu.Size = UDim2.new(0, 120, 0, math.min(#options, 5) * 28)
         menu.Position = UDim2.new(1, -110, 1, 5)
         menu.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
         menu.BorderSizePixel = 0
@@ -491,8 +501,8 @@ function CreateDropdown(text, options, callback)
         
         for i, option in ipairs(options) do
             local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 25)
-            optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 25)
+            optBtn.Size = UDim2.new(1, -2, 0, 28)
+            optBtn.Position = UDim2.new(0, 1, 0, (i-1) * 28)
             optBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
             optBtn.Text = option
             optBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -504,7 +514,8 @@ function CreateDropdown(text, options, callback)
             
             optBtn.MouseButton1Click:Connect(function()
                 DropdownBtn.Text = option
-                callback(option)
+                Toggles[varName] = option
+                HandleToggle(varName, option)
                 menu:Destroy()
             end)
         end
@@ -513,7 +524,8 @@ end
 
 function CreateLabel(text)
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 0, 20)
+    Label.Size = UDim2.new(1, -10, 0, 20)
+    Label.Position = UDim2.new(0, 5, 0, 0)
     Label.BackgroundTransparency = 1
     Label.Text = "• " .. text
     Label.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -523,9 +535,10 @@ function CreateLabel(text)
     Label.Parent = ScrollingFrame
 end
 
-function CreateSlider(text, min, max, default, callback)
+function CreateSlider(text, varName, min, max)
     local SliderFrame = Instance.new("Frame")
-    SliderFrame.Size = UDim2.new(1, 0, 0, 45)
+    SliderFrame.Size = UDim2.new(1, -10, 0, 50)
+    SliderFrame.Position = UDim2.new(0, 5, 0, 0)
     SliderFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     SliderFrame.BorderSizePixel = 0
     SliderFrame.Parent = ScrollingFrame
@@ -535,23 +548,23 @@ function CreateSlider(text, min, max, default, callback)
     SliderCorner.Parent = SliderFrame
     
     local SliderText = Instance.new("TextLabel")
-    SliderText.Size = UDim2.new(0.6, -10, 0, 15)
+    SliderText.Size = UDim2.new(0.5, -10, 0, 18)
     SliderText.Position = UDim2.new(0, 10, 0, 5)
     SliderText.BackgroundTransparency = 1
     SliderText.Text = text
     SliderText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SliderText.TextSize = 11
+    SliderText.TextSize = 12
     SliderText.Font = Enum.Font.Gotham
     SliderText.TextXAlignment = Enum.TextXAlignment.Left
     SliderText.Parent = SliderFrame
     
     local ValueBox = Instance.new("TextBox")
-    ValueBox.Size = UDim2.new(0, 45, 0, 18)
-    ValueBox.Position = UDim2.new(1, -55, 0, 4)
+    ValueBox.Size = UDim2.new(0, 50, 0, 20)
+    ValueBox.Position = UDim2.new(1, -60, 0, 4)
     ValueBox.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-    ValueBox.Text = tostring(default)
+    ValueBox.Text = tostring(Toggles[varName])
     ValueBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ValueBox.TextSize = 10
+    ValueBox.TextSize = 11
     ValueBox.Font = Enum.Font.GothamBold
     ValueBox.ClearTextOnFocus = false
     ValueBox.Parent = SliderFrame
@@ -561,19 +574,19 @@ function CreateSlider(text, min, max, default, callback)
     ValueCorner.Parent = ValueBox
     
     local SliderBg = Instance.new("Frame")
-    SliderBg.Size = UDim2.new(1, -20, 0, 4)
-    SliderBg.Position = UDim2.new(0, 10, 0, 30)
+    SliderBg.Size = UDim2.new(1, -80, 0, 4)
+    SliderBg.Position = UDim2.new(0, 10, 0, 35)
     SliderBg.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
     SliderBg.Parent = SliderFrame
     
     local SliderFill = Instance.new("Frame")
-    SliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    SliderFill.Size = UDim2.new((Toggles[varName] - min) / (max - min), 0, 1, 0)
     SliderFill.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
     SliderFill.Parent = SliderBg
     
     local SliderButton = Instance.new("Frame")
-    SliderButton.Size = UDim2.new(0, 10, 0, 10)
-    SliderButton.Position = UDim2.new((default - min) / (max - min), -5, 0.5, -5)
+    SliderButton.Size = UDim2.new(0, 12, 0, 12)
+    SliderButton.Position = UDim2.new((Toggles[varName] - min) / (max - min), -6, 0.5, -6)
     SliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     SliderButton.Parent = SliderFill
     
@@ -586,9 +599,10 @@ function CreateSlider(text, min, max, default, callback)
         newValue = math.clamp(newValue, min, max)
         local percent = (newValue - min) / (max - min)
         SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-        SliderButton.Position = UDim2.new(percent, -5, 0.5, -5)
+        SliderButton.Position = UDim2.new(percent, -6, 0.5, -6)
         ValueBox.Text = tostring(math.floor(newValue))
-        callback(math.floor(newValue))
+        Toggles[varName] = math.floor(newValue)
+        HandleToggle(varName, math.floor(newValue))
     end
     
     -- Input box
@@ -597,7 +611,7 @@ function CreateSlider(text, min, max, default, callback)
         if val then
             updateValue(val)
         else
-            ValueBox.Text = tostring(default)
+            ValueBox.Text = tostring(Toggles[varName])
         end
     end)
     
@@ -628,19 +642,78 @@ function CreateSlider(text, min, max, default, callback)
 end
 
 --==================================================
--- TOGGLE HANDLERS
+-- HANDLE TOGGLE FUNCTIONS
 --==================================================
-FloatBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-    FloatBtn.Text = MainFrame.Visible and "🎮" or "🎯"
-end)
-
-UserInputService.InputBegan:Connect(function(input, gp)
-    if not gp and input.KeyCode == Enum.KeyCode.F4 then
-        MainFrame.Visible = not MainFrame.Visible
-        FloatBtn.Text = MainFrame.Visible and "🎮" or "🎯"
+function HandleToggle(name, value)
+    if name == "ESP" then
+        if value then EnableESP() else DisableESP() end
+    elseif name == "ESPType" then
+        if Toggles.ESP then DisableESP() EnableESP() end
+    elseif name == "Wallhack" then
+        UpdateWallhack()
+    elseif name == "FullBright" then
+        if value then
+            Lighting.Brightness = 2
+            Lighting.GlobalShadows = false
+            Lighting.Ambient = Color3.new(1, 1, 1)
+        else
+            Lighting.Brightness = 1
+            Lighting.GlobalShadows = true
+            Lighting.Ambient = Color3.new(0, 0, 0)
+        end
+    elseif name == "NoFog" then
+        Lighting.FogEnd = value and 1e9 or 100000
+    elseif name == "AutoPresent" then
+        if value then StartLoop("Present") else StopLoop("Present") end
+    elseif name == "AutoGift" then
+        if value then StartLoop("Gift") else StopLoop("Gift") end
+    elseif name == "AutoCoins" then
+        if value then StartLoop("Coins") else StopLoop("Coins") end
+    elseif name == "AutoHeal" then
+        if value then StartLoop("Heal") else StopLoop("Heal") end
+    elseif name == "SpeedBoost" then
+        if value then
+            Player.Character.Humanoid.WalkSpeed = Toggles.SpeedValue
+        else
+            Player.Character.Humanoid.WalkSpeed = 16
+        end
+    elseif name == "SpeedValue" then
+        if Toggles.SpeedBoost then
+            Player.Character.Humanoid.WalkSpeed = value
+        end
+    elseif name == "JumpBoost" then
+        if value then
+            Player.Character.Humanoid.JumpPower = Toggles.JumpValue
+        else
+            Player.Character.Humanoid.JumpPower = 50
+        end
+    elseif name == "JumpValue" then
+        if Toggles.JumpBoost then
+            Player.Character.Humanoid.JumpPower = value
+        end
+    elseif name == "Aimbot" then
+        if value then StartLoop("Aimbot") else StopLoop("Aimbot") end
+    elseif name == "KillAura" then
+        if value then StartLoop("KillAura") else StopLoop("KillAura") end
+    elseif name == "NoClip" then
+        UpdateNoClip()
+    elseif name == "AutoGenerator" then
+        if value then StartLoop("Generator") else StopLoop("Generator") end
+    elseif name == "AutoComplete" then
+        if value then StartLoop("Complete") else StopLoop("Complete") end
+    elseif name == "AntiAFK" then
+        if value then
+            Player.Idled:Connect(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+        end
+    elseif name == "AutoClick" then
+        if value then StartLoop("Click") else StopLoop("Click") end
+    elseif name == "NoSkillCheck" then
+        ToggleSkillCheck(value)
     end
-end)
+end
 
 --==================================================
 -- UPDATE TAB CONTENT
@@ -668,115 +741,37 @@ function UpdateTab(tab)
         CreateButton("Rejoin", function() game:GetService("TeleportService"):Teleport(game.PlaceId, Player) end)
         
         CreateSection("CREDITS")
-        CreateLabel("Violence District v6.0")
+        CreateLabel("Violence District v6.1")
         CreateLabel("Professional Edition")
         
     elseif tab == "Visuals" then
         CreateSection("ESP SETTINGS")
-        CreateToggle("Enable ESP", function(state)
-            Toggles.ESP = state
-            if state then EnableESP() else DisableESP() end
-        end)
-        
-        CreateDropdown("ESP Type", {"Highlight", "Box", "Name"}, function(opt)
-            Toggles.ESPType = opt
-            if Toggles.ESP then DisableESP() EnableESP() end
-        end)
-        
-        CreateToggle("Wallhack", function(state)
-            Toggles.Wallhack = state
-            UpdateWallhack()
-        end)
+        CreateToggle("Enable ESP", "ESP")
+        CreateDropdown("ESP Type", "ESPType", {"Highlight", "Box", "Name"})
+        CreateToggle("Wallhack", "Wallhack")
         
         CreateSection("VISUALS")
-        CreateToggle("Full Bright", function(state)
-            Toggles.FullBright = state
-            if state then
-                Lighting.Brightness = 2
-                Lighting.GlobalShadows = false
-                Lighting.Ambient = Color3.new(1, 1, 1)
-            else
-                Lighting.Brightness = 1
-                Lighting.GlobalShadows = true
-                Lighting.Ambient = Color3.new(0, 0, 0)
-            end
-        end)
-        
-        CreateToggle("No Fog", function(state)
-            Toggles.NoFog = state
-            Lighting.FogEnd = state and 1e9 or 100000
-        end)
+        CreateToggle("Full Bright", "FullBright")
+        CreateToggle("No Fog", "NoFog")
         
     elseif tab == "Survivor" then
         CreateSection("AUTO FARM")
-        CreateToggle("Auto Present", function(state)
-            Toggles.AutoFarmPresent = state
-            if state then StartLoop("Present") else StopLoop("Present") end
-        end)
-        
-        CreateToggle("Auto Gift", function(state)
-            Toggles.AutoFarmGift = state
-            if state then StartLoop("Gift") else StopLoop("Gift") end
-        end)
-        
-        CreateToggle("Auto Coins", function(state)
-            Toggles.AutoCollectCoins = state
-            if state then StartLoop("Coins") else StopLoop("Coins") end
-        end)
-        
-        CreateToggle("Auto Heal", function(state)
-            Toggles.AutoHeal = state
-            if state then StartLoop("Heal") else StopLoop("Heal") end
-        end)
+        CreateToggle("Auto Present", "AutoPresent")
+        CreateToggle("Auto Gift", "AutoGift")
+        CreateToggle("Auto Coins", "AutoCoins")
+        CreateToggle("Auto Heal", "AutoHeal")
         
         CreateSection("MOVEMENT")
-        CreateToggle("Speed Boost", function(state)
-            Toggles.SpeedBoost = state
-            if state then
-                Player.Character.Humanoid.WalkSpeed = Toggles.SpeedValue
-            else
-                Player.Character.Humanoid.WalkSpeed = 16
-            end
-        end)
-        
-        CreateSlider("Speed", 16, 200, Toggles.SpeedValue, function(val)
-            Toggles.SpeedValue = val
-            if Toggles.SpeedBoost then
-                Player.Character.Humanoid.WalkSpeed = val
-            end
-        end)
-        
-        CreateToggle("Jump Boost", function(state)
-            Toggles.JumpBoost = state
-            if state then
-                Player.Character.Humanoid.JumpPower = Toggles.JumpValue
-            else
-                Player.Character.Humanoid.JumpPower = 50
-            end
-        end)
-        
-        CreateSlider("Jump", 50, 200, Toggles.JumpValue, function(val)
-            Toggles.JumpValue = val
-            if Toggles.JumpBoost then
-                Player.Character.Humanoid.JumpPower = val
-            end
-        end)
+        CreateToggle("Speed Boost", "SpeedBoost")
+        CreateSlider("Speed", "SpeedValue", 16, 200)
+        CreateToggle("Jump Boost", "JumpBoost")
+        CreateSlider("Jump", "JumpValue", 50, 200)
         
     elseif tab == "Killer" then
         CreateSection("COMBAT")
-        CreateToggle("Aimbot", function(state)
-            Toggles.Aimbot = state
-            if state then StartLoop("Aimbot") else StopLoop("Aimbot") end
-        end)
-        
-        CreateToggle("Kill Aura", function(state)
-            Toggles.KillAura = state
-            if state then StartLoop("KillAura") else StopLoop("KillAura") end
-        end)
-        
-        CreateSlider("Range", 5, 50, Toggles.KillAuraRange, function(val)
-            Toggles.KillAuraRange = val
-        end)
+        CreateToggle("Aimbot", "Aimbot")
+        CreateToggle("Kill Aura", "KillAura")
+        CreateSlider("Range", "KillAuraRange", 5, 50)
         
         CreateSection("TARGET")
         local target = FindNearestPlayer()
@@ -790,24 +785,11 @@ function UpdateTab(tab)
         
     elseif tab == "Teleport" then
         CreateSection("MOVEMENT")
-        CreateToggle("NoClip", function(state)
-            Toggles.NoClip = state
-            UpdateNoClip()
-        end)
-        
-        CreateToggle("TP to Mouse", function(state)
-            Toggles.TeleportToMouse = state
-        end)
+        CreateToggle("NoClip", "NoClip")
+        CreateToggle("TP to Mouse", "TeleportToMouse")
         
         CreateSection("TELEPORT")
-        CreateDropdown("Target", GetPlayerList(), function(name)
-            local target = Players:FindFirstChild(name)
-            if target and target.Character then
-                Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-                Notify("Teleported to " .. name)
-            end
-        end)
-        
+        CreateDropdown("Target", "TeleportTarget", GetPlayerList())
         CreateButton("Refresh List", function() UpdateTab("Teleport") end)
         
         CreateSection("WAYPOINTS")
@@ -825,15 +807,8 @@ function UpdateTab(tab)
         
     elseif tab == "Farm" then
         CreateSection("GENERATOR")
-        CreateToggle("Auto Farm", function(state)
-            Toggles.AutoFarmGenerator = state
-            if state then StartLoop("Generator") else StopLoop("Generator") end
-        end)
-        
-        CreateToggle("Auto Complete", function(state)
-            Toggles.AutoCompleteGenerator = state
-            if state then StartLoop("Complete") else StopLoop("Complete") end
-        end)
+        CreateToggle("Auto Farm", "AutoGenerator")
+        CreateToggle("Auto Complete", "AutoComplete")
         
         CreateButton("Find Generator", function()
             local gen = FindNearestGenerator()
@@ -849,25 +824,9 @@ function UpdateTab(tab)
         
     elseif tab == "Misc" then
         CreateSection("UTILITY")
-        CreateToggle("Anti AFK", function(state)
-            Toggles.AntiAFK = state
-            if state then
-                Player.Idled:Connect(function()
-                    VirtualUser:CaptureController()
-                    VirtualUser:ClickButton2(Vector2.new())
-                end)
-            end
-        end)
-        
-        CreateToggle("Auto Click", function(state)
-            Toggles.AutoClick = state
-            if state then StartLoop("Click") else StopLoop("Click") end
-        end)
-        
-        CreateToggle("No Skill Check", function(state)
-            Toggles.NoSkillCheck = state
-            ToggleSkillCheck(state)
-        end)
+        CreateToggle("Anti AFK", "AntiAFK")
+        CreateToggle("Auto Click", "AutoClick")
+        CreateToggle("No Skill Check", "NoSkillCheck")
         
         CreateSection("GUI")
         CreateButton("Toggle Menu", function()
@@ -889,6 +848,21 @@ function UpdateTab(tab)
 end
 
 --==================================================
+-- TOGGLE HANDLERS
+--==================================================
+FloatBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    FloatBtn.Text = MainFrame.Visible and "🎮" or "🎯"
+end)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if not gp and input.KeyCode == Enum.KeyCode.F4 then
+        MainFrame.Visible = not MainFrame.Visible
+        FloatBtn.Text = MainFrame.Visible and "🎮" or "🎯"
+    end
+end)
+
+--==================================================
 -- CORE FUNCTIONS
 --==================================================
 
@@ -903,7 +877,7 @@ function StartLoop(name)
                 continue
             end
             
-            if name == "Present" and Toggles.AutoFarmPresent then
+            if name == "Present" and Toggles.AutoPresent then
                 local present = FindNearestPresent()
                 if present then
                     Player.Character.HumanoidRootPart.CFrame = present.CFrame + Vector3.new(0, 3, 0)
@@ -912,7 +886,7 @@ function StartLoop(name)
                     if prompt then fireproximityprompt(prompt) end
                 end
                 
-            elseif name == "Gift" and Toggles.AutoFarmGift then
+            elseif name == "Gift" and Toggles.AutoGift then
                 local gift = FindNearestGift()
                 if gift then
                     Player.Character.HumanoidRootPart.CFrame = gift.CFrame + Vector3.new(0, 3, 0)
@@ -930,7 +904,7 @@ function StartLoop(name)
                     end
                 end
                 
-            elseif name == "Coins" and Toggles.AutoCollectCoins then
+            elseif name == "Coins" and Toggles.AutoCoins then
                 for _, v in pairs(Workspace:GetDescendants()) do
                     if v.Name == "Coin" and v:IsA("BasePart") then
                         local dist = (Player.Character.HumanoidRootPart.Position - v.Position).Magnitude
@@ -968,7 +942,7 @@ function StartLoop(name)
                     end
                 end
                 
-            elseif name == "Generator" and Toggles.AutoFarmGenerator then
+            elseif name == "Generator" and Toggles.AutoGenerator then
                 local gen = FindNearestGenerator()
                 if gen and gen.PrimaryPart then
                     Player.Character.HumanoidRootPart.CFrame = gen.PrimaryPart.CFrame + Vector3.new(0, 3, 0)
@@ -982,7 +956,7 @@ function StartLoop(name)
                     end
                 end
                 
-            elseif name == "Complete" and Toggles.AutoCompleteGenerator then
+            elseif name == "Complete" and Toggles.AutoComplete then
                 local gen = FindNearestGenerator()
                 if gen then
                     local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent")
@@ -1108,6 +1082,90 @@ UserInputService.InputBegan:Connect(function(input)
         Player.Character.HumanoidRootPart.CFrame = CFrame.new(target.X, target.Y + 3, target.Z)
     end
 end)
+
+-- Dropdown untuk target teleport
+function CreateDropdown(text, varName, options)
+    local DropdownFrame = Instance.new("Frame")
+    DropdownFrame.Size = UDim2.new(1, -10, 0, 32)
+    DropdownFrame.Position = UDim2.new(0, 5, 0, 0)
+    DropdownFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    DropdownFrame.BorderSizePixel = 0
+    DropdownFrame.Parent = ScrollingFrame
+    
+    local DropdownCorner = Instance.new("UICorner")
+    DropdownCorner.CornerRadius = UDim.new(0, 4)
+    DropdownCorner.Parent = DropdownFrame
+    
+    local DropdownText = Instance.new("TextLabel")
+    DropdownText.Size = UDim2.new(0.5, -10, 1, 0)
+    DropdownText.Position = UDim2.new(0, 10, 0, 0)
+    DropdownText.BackgroundTransparency = 1
+    DropdownText.Text = text
+    DropdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownText.TextSize = 12
+    DropdownText.Font = Enum.Font.Gotham
+    DropdownText.TextXAlignment = Enum.TextXAlignment.Left
+    DropdownText.Parent = DropdownFrame
+    
+    local DropdownBtn = Instance.new("TextButton")
+    DropdownBtn.Size = UDim2.new(0, 100, 0, 24)
+    DropdownBtn.Position = UDim2.new(1, -110, 0.5, -12)
+    DropdownBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    DropdownBtn.Text = options[1] or "Select"
+    DropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownBtn.TextSize = 11
+    DropdownBtn.Font = Enum.Font.Gotham
+    DropdownBtn.BorderSizePixel = 0
+    DropdownBtn.Parent = DropdownFrame
+    
+    local BtnCorner = Instance.new("UICorner")
+    BtnCorner.CornerRadius = UDim.new(0, 4)
+    BtnCorner.Parent = DropdownBtn
+    
+    DropdownBtn.MouseButton1Click:Connect(function()
+        -- Hapus menu lama
+        local oldMenu = DropdownFrame:FindFirstChild("DropdownMenu")
+        if oldMenu then oldMenu:Destroy() end
+        
+        -- Buat menu baru
+        local menu = Instance.new("Frame")
+        menu.Name = "DropdownMenu"
+        menu.Size = UDim2.new(0, 120, 0, math.min(#options, 5) * 28)
+        menu.Position = UDim2.new(1, -110, 1, 5)
+        menu.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        menu.BorderSizePixel = 0
+        menu.Parent = DropdownFrame
+        menu.ZIndex = 10
+        
+        local menuCorner = Instance.new("UICorner")
+        menuCorner.CornerRadius = UDim.new(0, 4)
+        menuCorner.Parent = menu
+        
+        for i, option in ipairs(options) do
+            local optBtn = Instance.new("TextButton")
+            optBtn.Size = UDim2.new(1, -2, 0, 28)
+            optBtn.Position = UDim2.new(0, 1, 0, (i-1) * 28)
+            optBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+            optBtn.Text = option
+            optBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            optBtn.TextSize = 11
+            optBtn.Font = Enum.Font.Gotham
+            optBtn.BorderSizePixel = 0
+            optBtn.Parent = menu
+            optBtn.ZIndex = 11
+            
+            optBtn.MouseButton1Click:Connect(function()
+                DropdownBtn.Text = option
+                local target = Players:FindFirstChild(option)
+                if target and target.Character then
+                    Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+                    Notify("Teleported to " .. option)
+                end
+                menu:Destroy()
+            end)
+        end
+    end)
+end
 
 -- Find functions
 function FindNearestGenerator()
