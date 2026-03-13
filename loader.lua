@@ -1,7 +1,7 @@
 -- ==================== GAMES/VIOLENCE.LUA ====================
--- Script Premium Violence District dengan UI Ultra Modern
+-- Script Ultimate Violence District dengan UI Super Modern
 -- Author: LuckyBimZy
--- Version: 5.0 (Ultimate Pro)
+-- Version: 6.0 (Ultimate Deluxe)
 
 if _G.ViolenceLoaded then 
     print("⚠️ Script sudah diload, melewati...")
@@ -10,7 +10,7 @@ end
 
 _G.ViolenceLoaded = true
 
-print("🔰 Memuat Violence District Script Ultimate Pro...")
+print("🔰 Memuat Violence District Script Ultimate Deluxe...")
 task.wait(1)
 
 --==================================================
@@ -29,6 +29,7 @@ local VirtualUser = game:GetService("VirtualUser")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local TextService = game:GetService("TextService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Toggle variables
 local Toggles = {
@@ -37,44 +38,58 @@ local Toggles = {
     KillerESP = false,
     GeneratorESP = false,
     ItemESP = false,
+    ChestESP = false,
     UnlimitedZoom = false,
     FullBright = false,
     Wallhack = false,
     XRay = false,
     RainbowMode = false,
     NoFog = false,
+    ESPLines = false,
+    ESPTracers = false,
+    ESPBoxes = false,
+    ESPNames = true,
+    ESPDistance = true,
     
     -- Survivor
     AutoFarmPresent = false,
     AutoFarmGift = false,
+    AutoOpenPresents = false,
+    AutoCollectCoins = false,
+    AutoHeal = false,
     FlickerSpeed = false,
     SpeedBoost = false,
     JumpBoost = false,
     BodyLock = false,
-    AutoOpenPresents = false,
-    AutoCollectCoins = false,
-    AutoHeal = false,
+    AutoEscape = false,
+    AutoHide = false,
+    AutoRepair = false,
+    AutoComplete = false,
     
     -- Killer
     Aimbot = false,
+    SilentAim = false,
     KillAura = false,
     AutoAttack = false,
-    SilentAim = false,
-    WallhackKiller = false,
     InstantKill = false,
+    WallhackKiller = false,
+    AutoHunt = false,
+    TeleportToKill = false,
     
     -- Teleport
     NoClip = false,
     TeleportToTarget = false,
     TeleportToMouse = false,
     TeleportToCursor = false,
+    TeleportToWaypoint = false,
+    AutoTeleport = false,
     
     -- Farm
     AutoFarmGenerator = false,
     AutoCompleteGenerator = false,
-    AutoRepair = false,
-    AutoFarmAll = false,
     AutoCollectGens = false,
+    AutoFarmAll = false,
+    AutoCollectLoot = false,
     
     -- Misc
     AntiAFK = false,
@@ -84,138 +99,167 @@ local Toggles = {
     AntiStun = false,
     AntiFall = false,
     AntiVoid = false,
-    NoClipThrough = false
+    NoClipThrough = false,
+    AutoRespawn = false,
+    AutoClaim = false
 }
 
 -- Target variables
 local SelectedTarget = nil
 local TPTarget = nil
 local KillerTarget = nil
+local Waypoints = {}
 local GUIHidden = false
 local MenuKeybind = Enum.KeyCode.F4
 local GUIEnabled = true
 local Minimized = false
-local MinimizedSize = {Width = 300, Height = 50}
-local NormalSize = {Width = 900, Height = 650}
+local MinimizedSize = {Width = 350, Height = 60}
+local NormalSize = {Width = 1000, Height = 700}
+local UIScale = 1
+local Dragging = false
+local DragStart = nil
+local DragPosition = nil
 
 -- Loop connections
 local Loops = {}
 local ESPConnections = {}
-local UIScale = 1
+local ESPObjects = {}
 
 --==================================================
--- CREATE UI ULTRA MODERN
+-- CREATE ULTRA MODERN UI
 --==================================================
 
 -- Hapus GUI lama jika ada
-local oldGUI = game.CoreGui:FindFirstChild("ViolenceUltimatePro")
+local oldGUI = game.CoreGui:FindFirstChild("ViolenceUltimateDeluxe")
 if oldGUI then oldGUI:Destroy() end
 
 -- Buat ScreenGui utama
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ViolenceUltimatePro"
+ScreenGui.Name = "ViolenceUltimateDeluxe"
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.DisplayOrder = 999
+ScreenGui.IgnoreGuiInset = true
 
--- Frame utama dengan efek glass morphism yang lebih baik
+-- Frame utama dengan efek glass morphism premium
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, NormalSize.Width, 0, NormalSize.Height)
 MainFrame.Position = UDim2.new(0.5, -NormalSize.Width/2, 0.5, -NormalSize.Height/2)
-MainFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
-MainFrame.BackgroundTransparency = 0.15
+MainFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
+MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
--- Efek glass morphism yang lebih baik
+-- Efek glass morphism premium
 local GlassEffect = Instance.new("ImageLabel")
 GlassEffect.Size = UDim2.new(1, 0, 1, 0)
 GlassEffect.BackgroundTransparency = 1
 GlassEffect.Image = "rbxassetid://13110653408"
 GlassEffect.ImageColor3 = Color3.fromRGB(65, 105, 225)
-GlassEffect.ImageTransparency = 0.85
+GlassEffect.ImageTransparency = 0.9
 GlassEffect.ScaleType = Enum.ScaleType.Slice
 GlassEffect.SliceCenter = Rect.new(10, 10, 10, 10)
 GlassEffect.Parent = MainFrame
 
--- Shadow yang lebih dalam
+-- Shadow premium
 local Shadow = Instance.new("ImageLabel")
-Shadow.Size = UDim2.new(1, 40, 1, 40)
-Shadow.Position = UDim2.new(0, -20, 0, -20)
+Shadow.Size = UDim2.new(1, 50, 1, 50)
+Shadow.Position = UDim2.new(0, -25, 0, -25)
 Shadow.BackgroundTransparency = 1
 Shadow.Image = "rbxassetid://6015897843"
 Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-Shadow.ImageTransparency = 0.7
+Shadow.ImageTransparency = 0.6
 Shadow.ScaleType = Enum.ScaleType.Slice
 Shadow.SliceCenter = Rect.new(50, 50, 50, 50)
 Shadow.Parent = MainFrame
 
--- Rounded corners yang lebih halus
+-- Rounded corners premium
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 20)
+MainCorner.CornerRadius = UDim.new(0, 25)
 MainCorner.Parent = MainFrame
 
--- Border gradient yang lebih keren
+-- Border gradient premium
 local BorderGradient = Instance.new("UIGradient")
 BorderGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(65, 105, 225)),
     ColorSequenceKeypoint.new(0.3, Color3.fromRGB(147, 112, 219)),
-    ColorSequenceKeypoint.new(0.7, Color3.fromRGB(0, 255, 255)),
+    ColorSequenceKeypoint.new(0.7, Color3.fromRGB(0, 200, 255)),
     ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 105, 225))
 })
 BorderGradient.Rotation = 45
 BorderGradient.Parent = MainFrame
 
--- Efek glow di pinggir
+-- Efek glow
 local GlowFrame = Instance.new("Frame")
-GlowFrame.Size = UDim2.new(1, 4, 1, 4)
-GlowFrame.Position = UDim2.new(0, -2, 0, -2)
+GlowFrame.Size = UDim2.new(1, 6, 1, 6)
+GlowFrame.Position = UDim2.new(0, -3, 0, -3)
 GlowFrame.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-GlowFrame.BackgroundTransparency = 0.9
+GlowFrame.BackgroundTransparency = 0.85
 GlowFrame.BorderSizePixel = 0
 GlowFrame.Parent = MainFrame
 
 local GlowCorner = Instance.new("UICorner")
-GlowCorner.CornerRadius = UDim.new(0, 22)
+GlowCorner.CornerRadius = UDim.new(0, 28)
 GlowCorner.Parent = GlowFrame
 
 --==================================================
--- TITLE BAR SUPER MODERN
+-- TITLE BAR SUPER PREMIUM
 --==================================================
 local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 60)
-TitleBar.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+TitleBar.Size = UDim2.new(1, 0, 0, 70)
+TitleBar.BackgroundColor3 = Color3.fromRGB(8, 8, 15)
 TitleBar.BackgroundTransparency = 0.2
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = MainFrame
 
 local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 20)
+TitleCorner.CornerRadius = UDim.new(0, 25)
 TitleCorner.Parent = TitleBar
 
--- Garis bawah title bar
+-- Garis bawah title bar dengan efek glow
 local TitleLine = Instance.new("Frame")
-TitleLine.Size = UDim2.new(1, -40, 0, 2)
-TitleLine.Position = UDim2.new(0, 20, 1, -2)
+TitleLine.Size = UDim2.new(1, -40, 0, 3)
+TitleLine.Position = UDim2.new(0, 20, 1, -3)
 TitleLine.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
 TitleLine.BorderSizePixel = 0
 TitleLine.Parent = TitleBar
 
+local LineGradient = Instance.new("UIGradient")
+LineGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(65, 105, 225)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(147, 112, 219)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 105, 225))
+})
+LineGradient.Rotation = 90
+LineGradient.Parent = TitleLine
+
 -- Logo dengan efek glow
 local LogoContainer = Instance.new("Frame")
-LogoContainer.Size = UDim2.new(0, 40, 0, 40)
-LogoContainer.Position = UDim2.new(0, 15, 0.5, -20)
+LogoContainer.Size = UDim2.new(0, 50, 0, 50)
+LogoContainer.Position = UDim2.new(0, 15, 0.5, -25)
 LogoContainer.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
 LogoContainer.BackgroundTransparency = 0.3
 LogoContainer.Parent = TitleBar
 
 local LogoCorner = Instance.new("UICorner")
-LogoCorner.CornerRadius = UDim.new(0, 10)
+LogoCorner.CornerRadius = UDim.new(0, 15)
 LogoCorner.Parent = LogoContainer
+
+local LogoGlow = Instance.new("Frame")
+LogoGlow.Size = UDim2.new(1, 4, 1, 4)
+LogoGlow.Position = UDim2.new(0, -2, 0, -2)
+LogoGlow.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+LogoGlow.BackgroundTransparency = 0.7
+LogoGlow.BorderSizePixel = 0
+LogoGlow.Parent = LogoContainer
+
+local LogoGlowCorner = Instance.new("UICorner")
+LogoGlowCorner.CornerRadius = UDim.new(0, 17)
+LogoGlowCorner.Parent = LogoGlow
 
 local Logo = Instance.new("ImageLabel")
 Logo.Size = UDim2.new(1, -4, 1, -4)
@@ -227,12 +271,12 @@ Logo.Parent = LogoContainer
 
 -- Title dengan efek gradient
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(0, 300, 0, 30)
-Title.Position = UDim2.new(0, 65, 0.5, -15)
+Title.Size = UDim2.new(0, 350, 0, 35)
+Title.Position = UDim2.new(0, 75, 0.5, -17.5)
 Title.BackgroundTransparency = 1
 Title.Text = "VIOLENCE DISTRICT"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 20
+Title.TextSize = 24
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = TitleBar
@@ -246,66 +290,79 @@ TitleGradient.Rotation = 45
 TitleGradient.Parent = Title
 
 local Version = Instance.new("TextLabel")
-Version.Size = UDim2.new(0, 100, 0, 20)
-Version.Position = UDim2.new(0, 65, 0.5, 8)
+Version.Size = UDim2.new(0, 150, 0, 20)
+Version.Position = UDim2.new(0, 75, 0.5, 10)
 Version.BackgroundTransparency = 1
-Version.Text = "ULTIMATE PRO v5.0"
+Version.Text = "ULTIMATE DELUXE v6.0"
 Version.TextColor3 = Color3.fromRGB(65, 105, 225)
-Version.TextSize = 11
+Version.TextSize = 12
 Version.Font = Enum.Font.Gotham
 Version.TextXAlignment = Enum.TextXAlignment.Left
 Version.Parent = TitleBar
 
--- Window controls yang lebih modern
+-- Window controls premium
 local ControlFrame = Instance.new("Frame")
-ControlFrame.Size = UDim2.new(0, 120, 0, 40)
-ControlFrame.Position = UDim2.new(1, -130, 0.5, -20)
+ControlFrame.Size = UDim2.new(0, 160, 0, 45)
+ControlFrame.Position = UDim2.new(1, -170, 0.5, -22.5)
 ControlFrame.BackgroundTransparency = 1
 ControlFrame.Parent = TitleBar
 
 -- Minimize button
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 40, 0, 40)
+MinBtn.Size = UDim2.new(0, 45, 0, 45)
 MinBtn.Position = UDim2.new(0, 0, 0, 0)
 MinBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 MinBtn.Text = "−"
 MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.TextSize = 24
+MinBtn.TextSize = 28
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.Parent = ControlFrame
 
 local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 12)
+MinCorner.CornerRadius = UDim.new(0, 15)
 MinCorner.Parent = MinBtn
 
+-- Hover effect
 MinBtn.MouseEnter:Connect(function()
     TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}):Play()
 end)
 MinBtn.MouseLeave:Connect(function()
-    TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 50)}):Play()
+    if not Minimized then
+        TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 50)}):Play()
+    end
 end)
 
 MinBtn.MouseButton1Click:Connect(function()
     Minimized = true
+    
     -- Animasi minimize
-    TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Size = UDim2.new(0, MinimizedSize.Width, 0, MinimizedSize.Height),
         Position = UDim2.new(0.5, -MinimizedSize.Width/2, 0, 20)
     }):Play()
     
-    task.wait(0.15)
+    task.wait(0.2)
+    
+    -- Sembunyikan semua kecuali title bar
     for _, v in pairs(MainFrame:GetChildren()) do
         if v ~= TitleBar and v ~= Shadow and v ~= GlassEffect and v ~= GlowFrame then
             v.Visible = false
         end
     end
+    
+    -- Update button states
     MaxBtn.Visible = true
     MinBtn.Visible = false
+    MinBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    
+    -- Ubah title saat minimize
+    Title.Text = "VIOLENCE DISTRICT [MINIMIZED]"
+    Title.TextSize = 18
 end)
 
 -- Maximize button
 local MaxBtn = Instance.new("TextButton")
-MaxBtn.Size = UDim2.new(0, 40, 0, 40)
+MaxBtn.Size = UDim2.new(0, 45, 0, 45)
 MaxBtn.Position = UDim2.new(0, 0, 0, 0)
 MaxBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 MaxBtn.Text = "□"
@@ -316,77 +373,57 @@ MaxBtn.Visible = false
 MaxBtn.Parent = ControlFrame
 
 local MaxCorner = Instance.new("UICorner")
-MaxCorner.CornerRadius = UDim.new(0, 12)
+MaxCorner.CornerRadius = UDim.new(0, 15)
 MaxCorner.Parent = MaxBtn
 
 MaxBtn.MouseEnter:Connect(function()
     TweenService:Create(MaxBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 70)}):Play()
 end)
 MaxBtn.MouseLeave:Connect(function()
-    TweenService:Create(MaxBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 50)}):Play()
+    if Minimized then
+        TweenService:Create(MaxBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 50)}):Play()
+    end
 end)
 
 MaxBtn.MouseButton1Click:Connect(function()
     Minimized = false
-    -- Animasi maximize
+    
+    -- Tampilkan semua komponen
     for _, v in pairs(MainFrame:GetChildren()) do
         v.Visible = true
     end
     
-    TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    -- Animasi maximize
+    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Size = UDim2.new(0, NormalSize.Width, 0, NormalSize.Height),
         Position = UDim2.new(0.5, -NormalSize.Width/2, 0.5, -NormalSize.Height/2)
     }):Play()
     
+    -- Update button states
     MaxBtn.Visible = false
     MinBtn.Visible = true
-end)
-
--- Close button
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 40, 0, 40)
-CloseBtn.Position = UDim2.new(0, 45, 0, 0)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-CloseBtn.Text = "×"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 28
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Parent = ControlFrame
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 12)
-CloseCorner.Parent = CloseBtn
-
-CloseBtn.MouseEnter:Connect(function()
-    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 80, 80)}):Play()
-end)
-CloseBtn.MouseLeave:Connect(function()
-    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(220, 60, 60)}):Play()
-end)
-
-CloseBtn.MouseButton1Click:Connect(function()
-    -- Animasi close
-    TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0)
-    }):Play()
-    task.wait(0.3)
-    ScreenGui:Destroy()
+    
+    -- Kembalikan title
+    Title.Text = "VIOLENCE DISTRICT"
+    Title.TextSize = 24
+    
+    -- Refresh konten
+    UpdateTabContent(CurrentTab)
 end)
 
 -- Settings button
 local SettingsBtn = Instance.new("TextButton")
-SettingsBtn.Size = UDim2.new(0, 40, 0, 40)
-SettingsBtn.Position = UDim2.new(0, 90, 0, 0)
+SettingsBtn.Size = UDim2.new(0, 45, 0, 45)
+SettingsBtn.Position = UDim2.new(0, 50, 0, 0)
 SettingsBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 SettingsBtn.Text = "⚙️"
 SettingsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SettingsBtn.TextSize = 20
+SettingsBtn.TextSize = 22
 SettingsBtn.Font = Enum.Font.Gotham
 SettingsBtn.Parent = ControlFrame
 
 local SettingsCorner = Instance.new("UICorner")
-SettingsCorner.CornerRadius = UDim.new(0, 12)
+SettingsCorner.CornerRadius = UDim.new(0, 15)
 SettingsCorner.Parent = SettingsBtn
 
 SettingsBtn.MouseEnter:Connect(function()
@@ -400,95 +437,156 @@ SettingsBtn.MouseButton1Click:Connect(function()
     UpdateTabContent("SETTINGS")
 end)
 
+-- Close button
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 45, 0, 45)
+CloseBtn.Position = UDim2.new(0, 100, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+CloseBtn.Text = "×"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 32
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Parent = ControlFrame
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 15)
+CloseCorner.Parent = CloseBtn
+
+CloseBtn.MouseEnter:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 80, 80)}):Play()
+end)
+CloseBtn.MouseLeave:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(220, 60, 60)}):Play()
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    -- Animasi close
+    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundTransparency = 1
+    }):Play()
+    
+    task.wait(0.4)
+    ScreenGui:Destroy()
+end)
+
 --==================================================
--- SIDE BAR SUPER MODERN
+-- SIDE BAR ULTRA MODERN
 --==================================================
 local SideBar = Instance.new("Frame")
-SideBar.Size = UDim2.new(0, 200, 1, -70)
-SideBar.Position = UDim2.new(0, 0, 0, 65)
-SideBar.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+SideBar.Size = UDim2.new(0, 220, 1, -80)
+SideBar.Position = UDim2.new(0, 10, 0, 75)
+SideBar.BackgroundColor3 = Color3.fromRGB(8, 8, 15)
 SideBar.BackgroundTransparency = 0.1
 SideBar.BorderSizePixel = 0
 SideBar.Parent = MainFrame
 
 local SideCorner = Instance.new("UICorner")
-SideCorner.CornerRadius = UDim.new(0, 15)
+SideCorner.CornerRadius = UDim.new(0, 20)
 SideCorner.Parent = SideBar
 
 local SideGradient = Instance.new("UIGradient")
 SideGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 15, 22)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 8, 12))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(12, 12, 22)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(5, 5, 10))
 })
 SideGradient.Rotation = 180
 SideGradient.Parent = SideBar
 
--- Side bar title
+-- Side bar header
+local SideHeader = Instance.new("Frame")
+SideHeader.Size = UDim2.new(1, -20, 0, 50)
+SideHeader.Position = UDim2.new(0, 15, 0, 15)
+SideHeader.BackgroundTransparency = 1
+SideHeader.Parent = SideBar
+
 local SideTitle = Instance.new("TextLabel")
-SideTitle.Size = UDim2.new(1, -20, 0, 40)
-SideTitle.Position = UDim2.new(0, 15, 0, 15)
+SideTitle.Size = UDim2.new(1, 0, 0, 25)
 SideTitle.BackgroundTransparency = 1
 SideTitle.Text = "NAVIGATION"
 SideTitle.TextColor3 = Color3.fromRGB(65, 105, 225)
-SideTitle.TextSize = 14
+SideTitle.TextSize = 16
 SideTitle.Font = Enum.Font.GothamBold
 SideTitle.TextXAlignment = Enum.TextXAlignment.Left
-SideTitle.Parent = SideBar
+SideTitle.Parent = SideHeader
+
+local SideSub = Instance.new("TextLabel")
+SideSub.Size = UDim2.new(1, 0, 0, 20)
+SideSub.Position = UDim2.new(0, 0, 0, 25)
+SideSub.BackgroundTransparency = 1
+SideSub.Text = "Select a category"
+SideSub.TextColor3 = Color3.fromRGB(150, 150, 150)
+SideSub.TextSize = 11
+SideSub.Font = Enum.Font.Gotham
+SideSub.TextXAlignment = Enum.TextXAlignment.Left
+SideSub.Parent = SideHeader
 
 -- Separator line
 local SideLine = Instance.new("Frame")
 SideLine.Size = UDim2.new(1, -30, 0, 2)
-SideLine.Position = UDim2.new(0, 15, 0, 55)
+SideLine.Position = UDim2.new(0, 15, 0, 70)
 SideLine.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
 SideLine.BackgroundTransparency = 0.5
 SideLine.BorderSizePixel = 0
 SideLine.Parent = SideBar
 
+-- Tab list dengan ikon dan warna
 local TabList = {
-    {name = "DASHBOARD", icon = "🏠", color = Color3.fromRGB(65, 105, 225)},
-    {name = "VISUALS", icon = "👁️", color = Color3.fromRGB(147, 112, 219)},
-    {name = "SURVIVOR", icon = "🛡️", color = Color3.fromRGB(0, 200, 100)},
-    {name = "KILLER", icon = "⚔️", color = Color3.fromRGB(220, 60, 60)},
-    {name = "TELEPORT", icon = "🌀", color = Color3.fromRGB(255, 165, 0)},
-    {name = "FARM", icon = "⚡", color = Color3.fromRGB(255, 215, 0)},
-    {name = "PLAYERS", icon = "👥", color = Color3.fromRGB(100, 200, 255)},
-    {name = "MISC", icon = "⚙️", color = Color3.fromRGB(150, 150, 150)},
-    {name = "SETTINGS", icon = "🔧", color = Color3.fromRGB(180, 180, 180)}
+    {name = "DASHBOARD", icon = "🏠", color = Color3.fromRGB(65, 105, 225), desc = "Main overview"},
+    {name = "VISUALS", icon = "👁️", color = Color3.fromRGB(147, 112, 219), desc = "ESP & effects"},
+    {name = "SURVIVOR", icon = "🛡️", color = Color3.fromRGB(0, 200, 100), desc = "Survivor features"},
+    {name = "KILLER", icon = "⚔️", color = Color3.fromRGB(220, 60, 60), desc = "Killer features"},
+    {name = "TELEPORT", icon = "🌀", color = Color3.fromRGB(255, 165, 0), desc = "Movement & teleport"},
+    {name = "FARM", icon = "⚡", color = Color3.fromRGB(255, 215, 0), desc = "Auto farm"},
+    {name = "PLAYERS", icon = "👥", color = Color3.fromRGB(100, 200, 255), desc = "Player list"},
+    {name = "MISC", icon = "⚙️", color = Color3.fromRGB(150, 150, 150), desc = "Utility features"},
+    {name = "SETTINGS", icon = "🔧", color = Color3.fromRGB(180, 180, 180), desc = "Configuration"}
 }
 
 local TabButtons = {}
 local CurrentTab = "DASHBOARD"
 
--- Buat tab buttons di side bar dengan desain modern
+-- Buat tab buttons dengan desain premium
 for i, tabData in ipairs(TabList) do
     local TabBtn = Instance.new("TextButton")
     TabBtn.Name = tabData.name .. "Btn"
-    TabBtn.Size = UDim2.new(1, -20, 0, 50)
-    TabBtn.Position = UDim2.new(0, 10, 0, 70 + (i-1) * 55)
-    TabBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    TabBtn.BackgroundTransparency = 0.3
+    TabBtn.Size = UDim2.new(1, -20, 0, 55)
+    TabBtn.Position = UDim2.new(0, 10, 0, 85 + (i-1) * 60)
+    TabBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+    TabBtn.BackgroundTransparency = 0.2
     TabBtn.Text = ""
     TabBtn.Parent = SideBar
     
     local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 12)
+    BtnCorner.CornerRadius = UDim.new(0, 15)
     BtnCorner.Parent = TabBtn
     
-    -- Icon
+    -- Icon container
+    local IconContainer = Instance.new("Frame")
+    IconContainer.Size = UDim2.new(0, 35, 0, 35)
+    IconContainer.Position = UDim2.new(0, 10, 0.5, -17.5)
+    IconContainer.BackgroundColor3 = tabData.color
+    IconContainer.BackgroundTransparency = 0.3
+    IconContainer.Parent = TabBtn
+    
+    local IconCorner = Instance.new("UICorner")
+    IconCorner.CornerRadius = UDim.new(0, 10)
+    IconCorner.Parent = IconContainer
+    
     local Icon = Instance.new("TextLabel")
-    Icon.Size = UDim2.new(0, 40, 1, 0)
-    Icon.Position = UDim2.new(0, 5, 0, 0)
+    Icon.Size = UDim2.new(1, 0, 1, 0)
     Icon.BackgroundTransparency = 1
     Icon.Text = tabData.icon
-    Icon.TextColor3 = tabData.color
-    Icon.TextSize = 22
+    Icon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Icon.TextSize = 18
     Icon.Font = Enum.Font.Gotham
-    Icon.Parent = TabBtn
+    Icon.Parent = IconContainer
     
     -- Text
     local Text = Instance.new("TextLabel")
-    Text.Size = UDim2.new(1, -50, 1, 0)
-    Text.Position = UDim2.new(0, 45, 0, 0)
+    Text.Size = UDim2.new(1, -55, 0, 25)
+    Text.Position = UDim2.new(0, 50, 0.5, -12.5)
     Text.BackgroundTransparency = 1
     Text.Text = tabData.name
     Text.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -497,10 +595,22 @@ for i, tabData in ipairs(TabList) do
     Text.TextXAlignment = Enum.TextXAlignment.Left
     Text.Parent = TabBtn
     
-    -- Indicator (untuk tab aktif)
+    -- Description
+    local Desc = Instance.new("TextLabel")
+    Desc.Size = UDim2.new(1, -55, 0, 15)
+    Desc.Position = UDim2.new(0, 50, 0.5, 7)
+    Desc.BackgroundTransparency = 1
+    Desc.Text = tabData.desc
+    Desc.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Desc.TextSize = 9
+    Desc.Font = Enum.Font.Gotham
+    Desc.TextXAlignment = Enum.TextXAlignment.Left
+    Desc.Parent = TabBtn
+    
+    -- Active indicator
     local Indicator = Instance.new("Frame")
-    Indicator.Size = UDim2.new(0, 3, 1, -10)
-    Indicator.Position = UDim2.new(1, -3, 0.5, -20)
+    Indicator.Size = UDim2.new(0, 3, 1, -20)
+    Indicator.Position = UDim2.new(1, -3, 0.5, -17.5)
     Indicator.BackgroundColor3 = tabData.color
     Indicator.BorderSizePixel = 0
     Indicator.Visible = false
@@ -513,31 +623,36 @@ for i, tabData in ipairs(TabList) do
     -- Hover effect
     TabBtn.MouseEnter:Connect(function()
         if CurrentTab ~= tabData.name then
-            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 30, 38)}):Play()
+            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(25, 25, 35)}):Play()
             Text.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
     end)
     
     TabBtn.MouseLeave:Connect(function()
         if CurrentTab ~= tabData.name then
-            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(20, 20, 28)}):Play()
+            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(15, 15, 25)}):Play()
             Text.TextColor3 = Color3.fromRGB(200, 200, 200)
         end
     end)
     
     TabBtn.MouseButton1Click:Connect(function()
         CurrentTab = tabData.name
+        
         -- Update semua button
         for _, btn in pairs(TabButtons) do
-            btn.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+            TweenService:Create(btn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(15, 15, 25)}):Play()
             btn:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(200, 200, 200)
+            btn:FindFirstChild("Desc").TextColor3 = Color3.fromRGB(150, 150, 150)
             btn:FindFirstChild("Indicator").Visible = false
         end
-        TabBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+        
+        -- Highlight button aktif
+        TweenService:Create(TabBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(25, 25, 35)}):Play()
         Text.TextColor3 = tabData.color
+        Desc.TextColor3 = tabData.color
         Indicator.Visible = true
         
-        -- Update content dengan animasi
+        -- Update content
         UpdateTabContent(tabData.name)
     end)
     
@@ -547,70 +662,113 @@ end
 -- Set tab pertama aktif
 TabButtons[1].BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 TabButtons[1]:FindFirstChild("TextLabel").TextColor3 = TabList[1].color
+TabButtons[1]:FindFirstChild("Desc").TextColor3 = TabList[1].color
 TabButtons[1]:FindFirstChild("Indicator").Visible = true
 
 --==================================================
--- CONTENT AREA SUPER MODERN
+-- CONTENT AREA PREMIUM
 --==================================================
 local ContentBg = Instance.new("Frame")
-ContentBg.Size = UDim2.new(1, -220, 1, -80)
-ContentBg.Position = UDim2.new(0, 210, 0, 70)
-ContentBg.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+ContentBg.Size = UDim2.new(1, -250, 1, -90)
+ContentBg.Position = UDim2.new(0, 240, 0, 80)
+ContentBg.BackgroundColor3 = Color3.fromRGB(12, 12, 20)
 ContentBg.BackgroundTransparency = 0.1
 ContentBg.BorderSizePixel = 0
 ContentBg.ClipsDescendants = true
 ContentBg.Parent = MainFrame
 
 local ContentCorner = Instance.new("UICorner")
-ContentCorner.CornerRadius = UDim.new(0, 18)
+ContentCorner.CornerRadius = UDim.new(0, 22)
 ContentCorner.Parent = ContentBg
 
--- Content header
+-- Content header premium
 local ContentHeader = Instance.new("Frame")
-ContentHeader.Size = UDim2.new(1, -20, 0, 50)
+ContentHeader.Size = UDim2.new(1, -20, 0, 60)
 ContentHeader.Position = UDim2.new(0, 10, 0, 10)
-ContentHeader.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-ContentHeader.BackgroundTransparency = 0.2
+ContentHeader.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+ContentHeader.BackgroundTransparency = 0.1
 ContentHeader.Parent = ContentBg
 
 local HeaderCorner = Instance.new("UICorner")
-HeaderCorner.CornerRadius = UDim.new(0, 12)
+HeaderCorner.CornerRadius = UDim.new(0, 18)
 HeaderCorner.Parent = ContentHeader
 
+-- Icon header
+local HeaderIcon = Instance.new("Frame")
+HeaderIcon.Size = UDim2.new(0, 40, 0, 40)
+HeaderIcon.Position = UDim2.new(0, 15, 0.5, -20)
+HeaderIcon.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+HeaderIcon.BackgroundTransparency = 0.3
+HeaderIcon.Parent = ContentHeader
+
+local HeaderIconCorner = Instance.new("UICorner")
+HeaderIconCorner.CornerRadius = UDim.new(0, 12)
+HeaderIconCorner.Parent = HeaderIcon
+
+local HeaderIconLabel = Instance.new("TextLabel")
+HeaderIconLabel.Size = UDim2.new(1, 0, 1, 0)
+HeaderIconLabel.BackgroundTransparency = 1
+HeaderIconLabel.Text = "📊"
+HeaderIconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+HeaderIconLabel.TextSize = 22
+HeaderIconLabel.Font = Enum.Font.Gotham
+HeaderIconLabel.Parent = HeaderIcon
+
 local HeaderTitle = Instance.new("TextLabel")
-HeaderTitle.Size = UDim2.new(0.5, -15, 1, 0)
-HeaderTitle.Position = UDim2.new(0, 15, 0, 0)
+HeaderTitle.Size = UDim2.new(0.5, -70, 0, 25)
+HeaderTitle.Position = UDim2.new(0, 65, 0.5, -12.5)
 HeaderTitle.BackgroundTransparency = 1
 HeaderTitle.Text = "DASHBOARD"
-HeaderTitle.TextColor3 = Color3.fromRGB(65, 105, 225)
-HeaderTitle.TextSize = 18
+HeaderTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+HeaderTitle.TextSize = 20
 HeaderTitle.Font = Enum.Font.GothamBold
 HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
 HeaderTitle.Parent = ContentHeader
 
-local HeaderTime = Instance.new("TextLabel")
-HeaderTime.Size = UDim2.new(0.5, -15, 1, 0)
-HeaderTime.Position = UDim2.new(0.5, 5, 0, 0)
-HeaderTime.BackgroundTransparency = 1
-HeaderTime.Text = os.date("%H:%M:%S")
-HeaderTime.TextColor3 = Color3.fromRGB(150, 150, 150)
-HeaderTime.TextSize = 14
-HeaderTime.Font = Enum.Font.Gotham
-HeaderTime.TextXAlignment = Enum.TextXAlignment.Right
-HeaderTime.Parent = ContentHeader
+-- Timer real-time
+local TimeFrame = Instance.new("Frame")
+TimeFrame.Size = UDim2.new(0, 100, 0, 30)
+TimeFrame.Position = UDim2.new(1, -110, 0.5, -15)
+TimeFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+TimeFrame.BackgroundTransparency = 0.2
+TimeFrame.Parent = ContentHeader
 
--- Update time setiap detik
+local TimeCorner = Instance.new("UICorner")
+TimeCorner.CornerRadius = UDim.new(0, 10)
+TimeCorner.Parent = TimeFrame
+
+local TimeIcon = Instance.new("TextLabel")
+TimeIcon.Size = UDim2.new(0, 25, 1, 0)
+TimeIcon.Position = UDim2.new(0, 5, 0, 0)
+TimeIcon.BackgroundTransparency = 1
+TimeIcon.Text = "🕒"
+TimeIcon.TextColor3 = Color3.fromRGB(65, 105, 225)
+TimeIcon.TextSize = 14
+TimeIcon.Font = Enum.Font.Gotham
+TimeIcon.Parent = TimeFrame
+
+local TimeText = Instance.new("TextLabel")
+TimeText.Size = UDim2.new(0, 65, 1, 0)
+TimeText.Position = UDim2.new(0, 30, 0, 0)
+TimeText.BackgroundTransparency = 1
+TimeText.Text = os.date("%H:%M")
+TimeText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TimeText.TextSize = 14
+TimeText.Font = Enum.Font.GothamBold
+TimeText.Parent = TimeFrame
+
+-- Update time
 task.spawn(function()
-    while ContentHeader do
+    while TimeText do
         task.wait(1)
-        HeaderTime.Text = os.date("%H:%M:%S")
+        TimeText.Text = os.date("%H:%M")
     end
 end)
 
--- Scrolling frame untuk konten
+-- Scrolling frame premium
 local ScrollingFrame = Instance.new("ScrollingFrame")
 ScrollingFrame.Size = UDim2.new(1, -20, 1, -80)
-ScrollingFrame.Position = UDim2.new(0, 10, 0, 70)
+ScrollingFrame.Position = UDim2.new(0, 10, 0, 80)
 ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
 ScrollingFrame.ScrollBarThickness = 8
@@ -624,18 +782,18 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Parent = ScrollingFrame
 
 --==================================================
--- FUNCTION UNTUK MEMBUAT ELEMEN UI MODERN
+-- FUNGSI UNTUK MEMBUAT ELEMEN UI PREMIUM
 --==================================================
 
 function CreateSection(parent, title)
     local SectionFrame = Instance.new("Frame")
-    SectionFrame.Size = UDim2.new(1, 0, 0, 40)
-    SectionFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    SectionFrame.BackgroundTransparency = 0.2
+    SectionFrame.Size = UDim2.new(1, 0, 0, 45)
+    SectionFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+    SectionFrame.BackgroundTransparency = 0.1
     SectionFrame.Parent = parent
     
     local SectionCorner = Instance.new("UICorner")
-    SectionCorner.CornerRadius = UDim.new(0, 10)
+    SectionCorner.CornerRadius = UDim.new(0, 14)
     SectionCorner.Parent = SectionFrame
     
     local SectionTitle = Instance.new("TextLabel")
@@ -652,40 +810,40 @@ function CreateSection(parent, title)
     return SectionFrame
 end
 
-function CreateToggle(parent, text, desc, callback)
+function CreateToggle(parent, text, desc, icon, callback)
     local ToggleFrame = Instance.new("Frame")
-    ToggleFrame.Size = UDim2.new(1, 0, 0, 65)
-    ToggleFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    ToggleFrame.BackgroundTransparency = 0.2
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 70)
+    ToggleFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+    ToggleFrame.BackgroundTransparency = 0.1
     ToggleFrame.Parent = parent
     
     local ToggleCorner = Instance.new("UICorner")
-    ToggleCorner.CornerRadius = UDim.new(0, 12)
+    ToggleCorner.CornerRadius = UDim.new(0, 14)
     ToggleCorner.Parent = ToggleFrame
     
     -- Icon background
     local IconBg = Instance.new("Frame")
-    IconBg.Size = UDim2.new(0, 35, 0, 35)
-    IconBg.Position = UDim2.new(0, 12, 0.5, -17.5)
-    IconBg.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+    IconBg.Size = UDim2.new(0, 40, 0, 40)
+    IconBg.Position = UDim2.new(0, 15, 0.5, -20)
+    IconBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     IconBg.Parent = ToggleFrame
     
     local IconCorner = Instance.new("UICorner")
-    IconCorner.CornerRadius = UDim.new(0, 8)
+    IconCorner.CornerRadius = UDim.new(0, 12)
     IconCorner.Parent = IconBg
     
-    local Icon = Instance.new("TextLabel")
-    Icon.Size = UDim2.new(1, 0, 1, 0)
-    Icon.BackgroundTransparency = 1
-    Icon.Text = "⚡"
-    Icon.TextColor3 = Color3.fromRGB(65, 105, 225)
-    Icon.TextSize = 18
-    Icon.Font = Enum.Font.Gotham
-    Icon.Parent = IconBg
+    local IconLabel = Instance.new("TextLabel")
+    IconLabel.Size = UDim2.new(1, 0, 1, 0)
+    IconLabel.BackgroundTransparency = 1
+    IconLabel.Text = icon or "⚡"
+    IconLabel.TextColor3 = Color3.fromRGB(65, 105, 225)
+    IconLabel.TextSize = 20
+    IconLabel.Font = Enum.Font.Gotham
+    IconLabel.Parent = IconBg
     
     local ToggleText = Instance.new("TextLabel")
-    ToggleText.Size = UDim2.new(0.6, -55, 0, 25)
-    ToggleText.Position = UDim2.new(0, 55, 0, 10)
+    ToggleText.Size = UDim2.new(0.6, -70, 0, 25)
+    ToggleText.Position = UDim2.new(0, 65, 0.5, -12.5)
     ToggleText.BackgroundTransparency = 1
     ToggleText.Text = text
     ToggleText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -695,8 +853,8 @@ function CreateToggle(parent, text, desc, callback)
     ToggleText.Parent = ToggleFrame
     
     local ToggleDesc = Instance.new("TextLabel")
-    ToggleDesc.Size = UDim2.new(0.6, -55, 0, 20)
-    ToggleDesc.Position = UDim2.new(0, 55, 0, 33)
+    ToggleDesc.Size = UDim2.new(0.6, -70, 0, 20)
+    ToggleDesc.Position = UDim2.new(0, 65, 0.5, 7)
     ToggleDesc.BackgroundTransparency = 1
     ToggleDesc.Text = desc or ""
     ToggleDesc.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -706,17 +864,17 @@ function CreateToggle(parent, text, desc, callback)
     ToggleDesc.Parent = ToggleFrame
     
     local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(0, 70, 0, 35)
-    ToggleBtn.Position = UDim2.new(1, -85, 0.5, -17.5)
+    ToggleBtn.Size = UDim2.new(0, 80, 0, 40)
+    ToggleBtn.Position = UDim2.new(1, -95, 0.5, -20)
     ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
     ToggleBtn.Text = "OFF"
     ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    ToggleBtn.TextSize = 12
+    ToggleBtn.TextSize = 13
     ToggleBtn.Font = Enum.Font.GothamBold
     ToggleBtn.Parent = ToggleFrame
     
     local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 25)
+    BtnCorner.CornerRadius = UDim.new(0, 30)
     BtnCorner.Parent = ToggleBtn
     
     local enabled = false
@@ -728,14 +886,14 @@ function CreateToggle(parent, text, desc, callback)
                 TextColor3 = Color3.fromRGB(255, 255, 255)
             }):Play()
             ToggleBtn.Text = "ON"
-            Icon.TextColor3 = Color3.fromRGB(0, 255, 100)
+            TweenService:Create(IconLabel, TweenInfo.new(0.3), {TextColor3 = Color3.fromRGB(0, 255, 100)}):Play()
         else
             TweenService:Create(ToggleBtn, TweenInfo.new(0.3), {
                 BackgroundColor3 = Color3.fromRGB(50, 50, 60),
                 TextColor3 = Color3.fromRGB(255, 100, 100)
             }):Play()
             ToggleBtn.Text = "OFF"
-            Icon.TextColor3 = Color3.fromRGB(65, 105, 225)
+            TweenService:Create(IconLabel, TweenInfo.new(0.3), {TextColor3 = Color3.fromRGB(65, 105, 225)}):Play()
         end
         callback(enabled)
     end)
@@ -743,19 +901,39 @@ function CreateToggle(parent, text, desc, callback)
     return ToggleFrame
 end
 
-function CreateButton(parent, text, color, callback)
+function CreateButton(parent, text, color, icon, callback)
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1, 0, 0, 50)
+    Button.Size = UDim2.new(1, 0, 0, 55)
     Button.BackgroundColor3 = color or Color3.fromRGB(65, 105, 225)
-    Button.Text = text
-    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Button.TextSize = 14
-    Button.Font = Enum.Font.GothamBold
+    Button.Text = ""
     Button.Parent = parent
     
     local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 12)
+    BtnCorner.CornerRadius = UDim.new(0, 14)
     BtnCorner.Parent = Button
+    
+    -- Icon
+    local IconLabel = Instance.new("TextLabel")
+    IconLabel.Size = UDim2.new(0, 30, 1, 0)
+    IconLabel.Position = UDim2.new(0, 15, 0, 0)
+    IconLabel.BackgroundTransparency = 1
+    IconLabel.Text = icon or "🔘"
+    IconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    IconLabel.TextSize = 18
+    IconLabel.Font = Enum.Font.Gotham
+    IconLabel.Parent = Button
+    
+    -- Text
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(1, -60, 1, 0)
+    TextLabel.Position = UDim2.new(0, 50, 0, 0)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Text = text
+    TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TextLabel.TextSize = 14
+    TextLabel.Font = Enum.Font.GothamBold
+    TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TextLabel.Parent = Button
     
     -- Hover effect
     Button.MouseEnter:Connect(function()
@@ -777,37 +955,38 @@ end
 
 function CreateDropdown(parent, text, items, callback)
     local DropdownFrame = Instance.new("Frame")
-    DropdownFrame.Size = UDim2.new(1, 0, 0, 65)
-    DropdownFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    DropdownFrame.BackgroundTransparency = 0.2
+    DropdownFrame.Size = UDim2.new(1, 0, 0, 70)
+    DropdownFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+    DropdownFrame.BackgroundTransparency = 0.1
     DropdownFrame.Parent = parent
     
     local DropdownCorner = Instance.new("UICorner")
-    DropdownCorner.CornerRadius = UDim.new(0, 12)
+    DropdownCorner.CornerRadius = UDim.new(0, 14)
     DropdownCorner.Parent = DropdownFrame
     
+    -- Icon
     local IconBg = Instance.new("Frame")
-    IconBg.Size = UDim2.new(0, 35, 0, 35)
-    IconBg.Position = UDim2.new(0, 12, 0.5, -17.5)
-    IconBg.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+    IconBg.Size = UDim2.new(0, 40, 0, 40)
+    IconBg.Position = UDim2.new(0, 15, 0.5, -20)
+    IconBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     IconBg.Parent = DropdownFrame
     
     local IconCorner = Instance.new("UICorner")
-    IconCorner.CornerRadius = UDim.new(0, 8)
+    IconCorner.CornerRadius = UDim.new(0, 12)
     IconCorner.Parent = IconBg
     
-    local Icon = Instance.new("TextLabel")
-    Icon.Size = UDim2.new(1, 0, 1, 0)
-    Icon.BackgroundTransparency = 1
-    Icon.Text = "👤"
-    Icon.TextColor3 = Color3.fromRGB(65, 105, 225)
-    Icon.TextSize = 18
-    Icon.Font = Enum.Font.Gotham
-    Icon.Parent = IconBg
+    local IconLabel = Instance.new("TextLabel")
+    IconLabel.Size = UDim2.new(1, 0, 1, 0)
+    IconLabel.BackgroundTransparency = 1
+    IconLabel.Text = "👤"
+    IconLabel.TextColor3 = Color3.fromRGB(65, 105, 225)
+    IconLabel.TextSize = 20
+    IconLabel.Font = Enum.Font.Gotham
+    IconLabel.Parent = IconBg
     
     local DropdownText = Instance.new("TextLabel")
-    DropdownText.Size = UDim2.new(0.5, -55, 0, 25)
-    DropdownText.Position = UDim2.new(0, 55, 0, 10)
+    DropdownText.Size = UDim2.new(0.5, -70, 0, 25)
+    DropdownText.Position = UDim2.new(0, 65, 0.5, -12.5)
     DropdownText.BackgroundTransparency = 1
     DropdownText.Text = text
     DropdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -817,19 +996,18 @@ function CreateDropdown(parent, text, items, callback)
     DropdownText.Parent = DropdownFrame
     
     local DropdownDesc = Instance.new("TextLabel")
-    DropdownDesc.Size = UDim2.new(0.5, -55, 0, 20)
-    DropdownDesc.Position = UDim2.new(0, 55, 0, 33)
+    DropdownDesc.Size = UDim2.new(0.5, -70, 0, 20)
+    DropdownDesc.Position = UDim2.new(0, 65, 0.5, 7)
     DropdownDesc.BackgroundTransparency = 1
     DropdownDesc.Text = "Click to select"
     DropdownDesc.TextColor3 = Color3.fromRGB(150, 150, 150)
     DropdownDesc.TextSize = 11
     DropdownDesc.Font = Enum.Font.Gotham
-    DropdownDesc.TextXAlignment = Enum.TextXAlignment.Left
     DropdownDesc.Parent = DropdownFrame
     
     local DropdownBtn = Instance.new("TextButton")
-    DropdownBtn.Size = UDim2.new(0, 120, 0, 40)
-    DropdownBtn.Position = UDim2.new(1, -135, 0.5, -20)
+    DropdownBtn.Size = UDim2.new(0, 140, 0, 40)
+    DropdownBtn.Position = UDim2.new(1, -155, 0.5, -20)
     DropdownBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
     DropdownBtn.Text = items[1] or "Select"
     DropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -838,15 +1016,20 @@ function CreateDropdown(parent, text, items, callback)
     DropdownBtn.Parent = DropdownFrame
     
     local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 25)
+    BtnCorner.CornerRadius = UDim.new(0, 30)
     BtnCorner.Parent = DropdownBtn
     
-    -- Dropdown menu dengan animasi
+    -- Dropdown menu
     DropdownBtn.MouseButton1Click:Connect(function()
+        -- Hapus menu lama jika ada
+        local oldMenu = DropdownFrame:FindFirstChild("DropdownMenu")
+        if oldMenu then oldMenu:Destroy() end
+        
         local menu = Instance.new("Frame")
-        menu.Size = UDim2.new(0, 150, 0, math.min(#items, 6) * 40)
-        menu.Position = UDim2.new(1, -135, 1, 5)
-        menu.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+        menu.Name = "DropdownMenu"
+        menu.Size = UDim2.new(0, 180, 0, math.min(#items, 6) * 45)
+        menu.Position = UDim2.new(1, -155, 1, 5)
+        menu.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
         menu.BorderSizePixel = 0
         menu.Parent = DropdownFrame
         
@@ -859,26 +1042,26 @@ function CreateDropdown(parent, text, items, callback)
         menuList.Position = UDim2.new(0, 1, 0, 1)
         menuList.BackgroundTransparency = 1
         menuList.ScrollBarThickness = 4
-        menuList.CanvasSize = UDim2.new(0, 0, 0, #items * 40)
+        menuList.CanvasSize = UDim2.new(0, 0, 0, #items * 45)
         menuList.Parent = menu
         
         for i, item in ipairs(items) do
             local itemBtn = Instance.new("TextButton")
-            itemBtn.Size = UDim2.new(1, 0, 0, 40)
-            itemBtn.Position = UDim2.new(0, 0, 0, (i-1) * 40)
-            itemBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+            itemBtn.Size = UDim2.new(1, 0, 0, 45)
+            itemBtn.Position = UDim2.new(0, 0, 0, (i-1) * 45)
+            itemBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
             itemBtn.Text = item
             itemBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            itemBtn.TextSize = 12
+            itemBtn.TextSize = 13
             itemBtn.Font = Enum.Font.Gotham
             itemBtn.Parent = menuList
             
             itemBtn.MouseEnter:Connect(function()
-                itemBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+                TweenService:Create(itemBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 40, 50)}):Play()
             end)
             
             itemBtn.MouseLeave:Connect(function()
-                itemBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+                TweenService:Create(itemBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 30, 40)}):Play()
             end)
             
             itemBtn.MouseButton1Click:Connect(function()
@@ -894,18 +1077,38 @@ end
 
 function CreateSlider(parent, text, min, max, default, callback)
     local SliderFrame = Instance.new("Frame")
-    SliderFrame.Size = UDim2.new(1, 0, 0, 75)
-    SliderFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-    SliderFrame.BackgroundTransparency = 0.2
+    SliderFrame.Size = UDim2.new(1, 0, 0, 80)
+    SliderFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+    SliderFrame.BackgroundTransparency = 0.1
     SliderFrame.Parent = parent
     
     local SliderCorner = Instance.new("UICorner")
-    SliderCorner.CornerRadius = UDim.new(0, 12)
+    SliderCorner.CornerRadius = UDim.new(0, 14)
     SliderCorner.Parent = SliderFrame
     
+    -- Icon
+    local IconBg = Instance.new("Frame")
+    IconBg.Size = UDim2.new(0, 40, 0, 40)
+    IconBg.Position = UDim2.new(0, 15, 0.5, -20)
+    IconBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    IconBg.Parent = SliderFrame
+    
+    local IconCorner = Instance.new("UICorner")
+    IconCorner.CornerRadius = UDim.new(0, 12)
+    IconCorner.Parent = IconBg
+    
+    local IconLabel = Instance.new("TextLabel")
+    IconLabel.Size = UDim2.new(1, 0, 1, 0)
+    IconLabel.BackgroundTransparency = 1
+    IconLabel.Text = "🎚️"
+    IconLabel.TextColor3 = Color3.fromRGB(65, 105, 225)
+    IconLabel.TextSize = 20
+    IconLabel.Font = Enum.Font.Gotham
+    IconLabel.Parent = IconBg
+    
     local SliderText = Instance.new("TextLabel")
-    SliderText.Size = UDim2.new(0.7, -20, 0, 25)
-    SliderText.Position = UDim2.new(0, 15, 0, 10)
+    SliderText.Size = UDim2.new(0.6, -70, 0, 25)
+    SliderText.Position = UDim2.new(0, 65, 0.5, -12.5)
     SliderText.BackgroundTransparency = 1
     SliderText.Text = text
     SliderText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -916,7 +1119,7 @@ function CreateSlider(parent, text, min, max, default, callback)
     
     local ValueLabel = Instance.new("TextLabel")
     ValueLabel.Size = UDim2.new(0.2, -10, 0, 25)
-    ValueLabel.Position = UDim2.new(0.8, -10, 0, 10)
+    ValueLabel.Position = UDim2.new(0.8, -10, 0.5, -12.5)
     ValueLabel.BackgroundTransparency = 1
     ValueLabel.Text = tostring(default)
     ValueLabel.TextColor3 = Color3.fromRGB(65, 105, 225)
@@ -925,8 +1128,8 @@ function CreateSlider(parent, text, min, max, default, callback)
     ValueLabel.Parent = SliderFrame
     
     local SliderBg = Instance.new("Frame")
-    SliderBg.Size = UDim2.new(1, -30, 0, 8)
-    SliderBg.Position = UDim2.new(0, 15, 0, 45)
+    SliderBg.Size = UDim2.new(1, -30, 0, 6)
+    SliderBg.Position = UDim2.new(0, 15, 0, 60)
     SliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
     SliderBg.Parent = SliderFrame
     
@@ -976,11 +1179,11 @@ function CreateSlider(parent, text, min, max, default, callback)
     return SliderFrame
 end
 
-function CreateLabel(parent, text, color, size)
+function CreateLabel(parent, text, color, size, icon)
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, -20, 0, size or 25)
+    Label.Size = UDim2.new(1, -20, 0, size or 30)
     Label.BackgroundTransparency = 1
-    Label.Text = text
+    Label.Text = (icon or "•") .. " " .. text
     Label.TextColor3 = color or Color3.fromRGB(200, 200, 200)
     Label.TextSize = 13
     Label.TextXAlignment = Enum.TextXAlignment.Left
@@ -1004,39 +1207,54 @@ function UpdateTabContent(tabName)
     -- Update header
     HeaderTitle.Text = tabName
     
+    -- Update header icon berdasarkan tab
+    local headerIcons = {
+        DASHBOARD = "📊",
+        VISUALS = "👁️",
+        SURVIVOR = "🛡️",
+        KILLER = "⚔️",
+        TELEPORT = "🌀",
+        FARM = "⚡",
+        PLAYERS = "👥",
+        MISC = "⚙️",
+        SETTINGS = "🔧"
+    }
+    HeaderIconLabel.Text = headerIcons[tabName] or "📊"
+    
     if tabName == "DASHBOARD" then
         CreateSection(ScrollingFrame, "SYSTEM STATUS")
         
+        -- Status grid dengan 2 kolom
         local StatusGrid = Instance.new("Frame")
-        StatusGrid.Size = UDim2.new(1, 0, 0, 120)
+        StatusGrid.Size = UDim2.new(1, 0, 0, 250)
         StatusGrid.BackgroundTransparency = 1
         StatusGrid.Parent = ScrollingFrame
         
-        local function CreateStatusCard(icon, title, value, color, x, y)
+        local function CreateStatusCard(icon, title, value, color, x, y, width)
             local card = Instance.new("Frame")
-            card.Size = UDim2.new(0.48, 0, 0, 110)
+            card.Size = UDim2.new(width or 0.48, 0, 0, 110)
             card.Position = UDim2.new(x, 0, y, 0)
-            card.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-            card.BackgroundTransparency = 0.2
+            card.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
+            card.BackgroundTransparency = 0.1
             card.Parent = StatusGrid
             
             local cardCorner = Instance.new("UICorner")
-            cardCorner.CornerRadius = UDim.new(0, 12)
+            cardCorner.CornerRadius = UDim.new(0, 14)
             cardCorner.Parent = card
             
             local iconLabel = Instance.new("TextLabel")
-            iconLabel.Size = UDim2.new(1, 0, 0, 40)
+            iconLabel.Size = UDim2.new(1, 0, 0, 45)
             iconLabel.Position = UDim2.new(0, 0, 0, 10)
             iconLabel.BackgroundTransparency = 1
             iconLabel.Text = icon
             iconLabel.TextColor3 = color
-            iconLabel.TextSize = 30
+            iconLabel.TextSize = 32
             iconLabel.Font = Enum.Font.Gotham
             iconLabel.Parent = card
             
             local titleLabel = Instance.new("TextLabel")
             titleLabel.Size = UDim2.new(1, 0, 0, 20)
-            titleLabel.Position = UDim2.new(0, 0, 0, 55)
+            titleLabel.Position = UDim2.new(0, 0, 0, 60)
             titleLabel.BackgroundTransparency = 1
             titleLabel.Text = title
             titleLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -1046,7 +1264,7 @@ function UpdateTabContent(tabName)
             
             local valueLabel = Instance.new("TextLabel")
             valueLabel.Size = UDim2.new(1, 0, 0, 25)
-            valueLabel.Position = UDim2.new(0, 0, 0, 75)
+            valueLabel.Position = UDim2.new(0, 0, 0, 80)
             valueLabel.BackgroundTransparency = 1
             valueLabel.Text = value
             valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1057,31 +1275,32 @@ function UpdateTabContent(tabName)
         
         CreateStatusCard("🎮", "GAME", "Violence District", Color3.fromRGB(65, 105, 225), 0, 0)
         CreateStatusCard("👤", "PLAYER", Player.Name, Color3.fromRGB(0, 200, 100), 0.52, 0)
-        CreateStatusCard("📊", "PING", math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) .. "ms", Color3.fromRGB(255, 165, 0), 0, 120)
-        CreateStatusCard("👥", "PLAYERS", #Players:GetPlayers() .. " Online", Color3.fromRGB(100, 200, 255), 0.52, 120)
+        CreateStatusCard("📊", "PING", math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) .. " ms", Color3.fromRGB(255, 165, 0), 0, 130)
+        CreateStatusCard("👥", "PLAYERS", #Players:GetPlayers() .. " Online", Color3.fromRGB(100, 200, 255), 0.52, 130)
         
         CreateSection(ScrollingFrame, "QUICK ACTIONS")
         
+        -- Quick actions grid
         local QuickGrid = Instance.new("Frame")
-        QuickGrid.Size = UDim2.new(1, 0, 0, 110)
+        QuickGrid.Size = UDim2.new(1, 0, 0, 180)
         QuickGrid.BackgroundTransparency = 1
         QuickGrid.Parent = ScrollingFrame
         
         local function CreateQuickBtn(icon, text, color, x, y, callback)
             local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(0.23, 0, 0, 100)
+            btn.Size = UDim2.new(0.23, 0, 0, 80)
             btn.Position = UDim2.new(x, 0, y, 0)
             btn.BackgroundColor3 = color
             btn.Text = ""
             btn.Parent = QuickGrid
             
             local btnCorner = Instance.new("UICorner")
-            btnCorner.CornerRadius = UDim.new(0, 12)
+            btnCorner.CornerRadius = UDim.new(0, 14)
             btnCorner.Parent = btn
             
             local iconLabel = Instance.new("TextLabel")
-            iconLabel.Size = UDim2.new(1, 0, 0, 40)
-            iconLabel.Position = UDim2.new(0, 0, 0, 15)
+            iconLabel.Size = UDim2.new(1, 0, 0, 35)
+            iconLabel.Position = UDim2.new(0, 0, 0, 10)
             iconLabel.BackgroundTransparency = 1
             iconLabel.Text = icon
             iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1091,7 +1310,7 @@ function UpdateTabContent(tabName)
             
             local textLabel = Instance.new("TextLabel")
             textLabel.Size = UDim2.new(1, 0, 0, 20)
-            textLabel.Position = UDim2.new(0, 0, 0, 60)
+            textLabel.Position = UDim2.new(0, 0, 0, 50)
             textLabel.BackgroundTransparency = 1
             textLabel.Text = text
             textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1106,29 +1325,49 @@ function UpdateTabContent(tabName)
             UpdateTabContent("DASHBOARD")
         end)
         
-        CreateQuickBtn("🧹", "CLEAR", Color3.fromRGB(220, 60, 60), 0.26, 0, function()
+        CreateQuickBtn("🧹", "CLEAR ALL", Color3.fromRGB(220, 60, 60), 0.26, 0, function()
             StopAllLoops()
         end)
         
-        CreateQuickBtn("🎨", "THEME", Color3.fromRGB(147, 112, 219), 0.52, 0, function()
-            -- Theme changer
+        CreateQuickBtn("⬇️", "MINIMIZE", Color3.fromRGB(147, 112, 219), 0.52, 0, function()
+            if not Minimized then
+                MinBtn.MouseButton1Click:Fire()
+            end
         end)
         
-        CreateQuickBtn("🔧", "RESET", Color3.fromRGB(255, 165, 0), 0.78, 0, function()
-            -- Reset settings
+        CreateQuickBtn("⬆️", "MAXIMIZE", Color3.fromRGB(0, 200, 100), 0.78, 0, function()
+            if Minimized then
+                MaxBtn.MouseButton1Click:Fire()
+            end
+        end)
+        
+        CreateQuickBtn("⚙️", "SETTINGS", Color3.fromRGB(100, 100, 100), 0, 100, function()
+            UpdateTabContent("SETTINGS")
+        end)
+        
+        CreateQuickBtn("👁️", "VISUALS", Color3.fromRGB(147, 112, 219), 0.26, 100, function()
+            UpdateTabContent("VISUALS")
+        end)
+        
+        CreateQuickBtn("🛡️", "SURVIVOR", Color3.fromRGB(0, 200, 100), 0.52, 100, function()
+            UpdateTabContent("SURVIVOR")
+        end)
+        
+        CreateQuickBtn("⚔️", "KILLER", Color3.fromRGB(220, 60, 60), 0.78, 100, function()
+            UpdateTabContent("KILLER")
         end)
         
         CreateSection(ScrollingFrame, "SERVER INFORMATION")
         
-        CreateLabel(ScrollingFrame, "📍 Server ID: " .. game.JobId, nil, 25)
-        CreateLabel(ScrollingFrame, "🕒 Server Time: " .. os.date("%H:%M:%S"), nil, 25)
-        CreateLabel(ScrollingFrame, "📅 Date: " .. os.date("%d-%m-%Y"), nil, 25)
-        CreateLabel(ScrollingFrame, "⚡ Uptime: " .. math.floor(workspace.DistributedGameTime/60) .. " minutes", nil, 25)
+        CreateLabel(ScrollingFrame, "Server ID: " .. game.JobId, nil, 25, "📍")
+        CreateLabel(ScrollingFrame, "Time: " .. os.date("%H:%M:%S"), nil, 25, "🕒")
+        CreateLabel(ScrollingFrame, "Date: " .. os.date("%d-%m-%Y"), nil, 25, "📅")
+        CreateLabel(ScrollingFrame, "Uptime: " .. math.floor(workspace.DistributedGameTime/60) .. " minutes", nil, 25, "⚡")
         
     elseif tabName == "VISUALS" then
         CreateSection(ScrollingFrame, "ESP SETTINGS")
         
-        CreateToggle(ScrollingFrame, "Survivor ESP", "Highlight survivors with blue color", function(state)
+        CreateToggle(ScrollingFrame, "Survivor ESP", "Highlight survivors with blue", "👤", function(state)
             Toggles.SurvivorESP = state
             if state then
                 EnableESP("Survivor", Color3.fromRGB(0, 100, 255))
@@ -1137,7 +1376,7 @@ function UpdateTabContent(tabName)
             end
         end)
         
-        CreateToggle(ScrollingFrame, "Killer ESP", "Highlight killers with red color", function(state)
+        CreateToggle(ScrollingFrame, "Killer ESP", "Highlight killers with red", "🗡️", function(state)
             Toggles.KillerESP = state
             if state then
                 EnableESP("Killer", Color3.fromRGB(255, 0, 0))
@@ -1146,7 +1385,7 @@ function UpdateTabContent(tabName)
             end
         end)
         
-        CreateToggle(ScrollingFrame, "Generator ESP", "Highlight generators with green", function(state)
+        CreateToggle(ScrollingFrame, "Generator ESP", "Highlight generators with green", "⚡", function(state)
             Toggles.GeneratorESP = state
             if state then
                 EnableGeneratorESP()
@@ -1155,14 +1394,21 @@ function UpdateTabContent(tabName)
             end
         end)
         
-        CreateToggle(ScrollingFrame, "Item ESP", "Highlight items with yellow", function(state)
-            Toggles.ItemESP = state
-            -- Implement item ESP
+        CreateToggle(ScrollingFrame, "Chest ESP", "Highlight chests with gold", "📦", function(state)
+            Toggles.ChestESP = state
+        end)
+        
+        CreateToggle(ScrollingFrame, "ESP Tracers", "Draw lines to players", "📏", function(state)
+            Toggles.ESPTracers = state
+        end)
+        
+        CreateToggle(ScrollingFrame, "ESP Boxes", "Draw boxes around players", "🔲", function(state)
+            Toggles.ESPBoxes = state
         end)
         
         CreateSection(ScrollingFrame, "VISUAL EFFECTS")
         
-        CreateToggle(ScrollingFrame, "Unlimited Zoom", "Extend camera zoom distance", function(state)
+        CreateToggle(ScrollingFrame, "Unlimited Zoom", "Extend camera zoom distance", "🔍", function(state)
             Toggles.UnlimitedZoom = state
             if state then
                 Camera.FieldOfView = 120
@@ -1171,7 +1417,7 @@ function UpdateTabContent(tabName)
             end
         end)
         
-        CreateToggle(ScrollingFrame, "Full Bright", "Maximum brightness", function(state)
+        CreateToggle(ScrollingFrame, "Full Bright", "Maximum brightness", "☀️", function(state)
             Toggles.FullBright = state
             if state then
                 Lighting.Brightness = 2
@@ -1186,21 +1432,21 @@ function UpdateTabContent(tabName)
             end
         end)
         
-        CreateToggle(ScrollingFrame, "Wallhack", "See through walls", function(state)
+        CreateToggle(ScrollingFrame, "Wallhack", "See through walls", "🧱", function(state)
             Toggles.Wallhack = state
             UpdateWallhack()
         end)
         
-        CreateToggle(ScrollingFrame, "X-Ray Vision", "See all objects", function(state)
+        CreateToggle(ScrollingFrame, "X-Ray Vision", "See all objects", "🔬", function(state)
             Toggles.XRay = state
             UpdateWallhack()
         end)
         
-        CreateToggle(ScrollingFrame, "Rainbow Mode", "Rainbow colors", function(state)
+        CreateToggle(ScrollingFrame, "Rainbow Mode", "Rainbow colors", "🌈", function(state)
             Toggles.RainbowMode = state
         end)
         
-        CreateToggle(ScrollingFrame, "No Fog", "Remove fog", function(state)
+        CreateToggle(ScrollingFrame, "No Fog", "Remove fog", "🌫️", function(state)
             Toggles.NoFog = state
             if state then
                 Lighting.FogEnd = 1e9
@@ -1212,31 +1458,31 @@ function UpdateTabContent(tabName)
     elseif tabName == "SURVIVOR" then
         CreateSection(ScrollingFrame, "AUTO FARM")
         
-        CreateToggle(ScrollingFrame, "Auto-Farm Present", "Automatically collect presents", function(state)
+        CreateToggle(ScrollingFrame, "Auto-Farm Present", "Automatically collect presents", "🎁", function(state)
             Toggles.AutoFarmPresent = state
             if state then StartLoop("AutoFarmPresent") end
         end)
         
-        CreateToggle(ScrollingFrame, "Auto-Farm Gift", "Collect gifts and teleport to tree", function(state)
+        CreateToggle(ScrollingFrame, "Auto-Farm Gift", "Collect gifts and teleport to tree", "🎄", function(state)
             Toggles.AutoFarmGift = state
             if state then StartLoop("AutoFarmGift") end
         end)
         
-        CreateToggle(ScrollingFrame, "Auto Open Presents", "Automatically open presents", function(state)
+        CreateToggle(ScrollingFrame, "Auto Open Presents", "Automatically open presents", "📦", function(state)
             Toggles.AutoOpenPresents = state
         end)
         
-        CreateToggle(ScrollingFrame, "Auto Collect Coins", "Collect coins automatically", function(state)
+        CreateToggle(ScrollingFrame, "Auto Collect Coins", "Collect coins automatically", "💰", function(state)
             Toggles.AutoCollectCoins = state
         end)
         
-        CreateToggle(ScrollingFrame, "Auto Heal", "Auto heal when low health", function(state)
+        CreateToggle(ScrollingFrame, "Auto Heal", "Auto heal when low health", "💊", function(state)
             Toggles.AutoHeal = state
         end)
         
         CreateSection(ScrollingFrame, "MOVEMENT")
         
-        CreateToggle(ScrollingFrame, "Flicker Speed", "Fast movement with blink effect", function(state)
+        CreateToggle(ScrollingFrame, "Flicker Speed", "Fast movement with blink effect", "⚡", function(state)
             Toggles.FlickerSpeed = state
             if state then
                 Humanoid.WalkSpeed = 100
@@ -1251,7 +1497,7 @@ function UpdateTabContent(tabName)
             end
         end)
         
-        CreateToggle(ScrollingFrame, "Jump Boost", "Higher jumps", function(state)
+        CreateToggle(ScrollingFrame, "Jump Boost", "Higher jumps", "🦘", function(state)
             Toggles.JumpBoost = state
             if state then
                 Humanoid.JumpPower = 100
@@ -1260,7 +1506,7 @@ function UpdateTabContent(tabName)
             end
         end)
         
-        CreateToggle(ScrollingFrame, "Infinite Stamina", "Never run out of stamina", function(state)
+        CreateToggle(ScrollingFrame, "Infinite Stamina", "Never run out of stamina", "💪", function(state)
             Toggles.InfiniteStamina = state
         end)
         
@@ -1270,11 +1516,11 @@ function UpdateTabContent(tabName)
             SelectedTarget = Players:FindFirstChild(playerName)
         end)
         
-        CreateButton(ScrollingFrame, "🔄 Refresh List", Color3.fromRGB(80, 80, 90), function()
+        CreateButton(ScrollingFrame, "🔄 Refresh List", Color3.fromRGB(80, 80, 90), "🔄", function()
             UpdateTabContent("SURVIVOR")
         end)
         
-        CreateToggle(ScrollingFrame, "Body Lock", "Follow selected player", function(state)
+        CreateToggle(ScrollingFrame, "Body Lock", "Follow selected player", "🔒", function(state)
             Toggles.BodyLock = state
             if state then StartLoop("BodyLock") end
         end)
@@ -1282,16 +1528,16 @@ function UpdateTabContent(tabName)
     elseif tabName == "KILLER" then
         CreateSection(ScrollingFrame, "COMBAT")
         
-        CreateToggle(ScrollingFrame, "Aimbot", "Auto aim at nearest player", function(state)
+        CreateToggle(ScrollingFrame, "Aimbot", "Auto aim at nearest player", "🎯", function(state)
             Toggles.Aimbot = state
             if state then StartLoop("Aimbot") end
         end)
         
-        CreateToggle(ScrollingFrame, "Silent Aim", "Aim without moving camera", function(state)
+        CreateToggle(ScrollingFrame, "Silent Aim", "Aim without moving camera", "🤫", function(state)
             Toggles.SilentAim = state
         end)
         
-        CreateToggle(ScrollingFrame, "Kill Aura", "Auto kill nearby players", function(state)
+        CreateToggle(ScrollingFrame, "Kill Aura", "Auto kill nearby players", "💀", function(state)
             Toggles.KillAura = state
             if state then StartLoop("KillAura") end
         end)
@@ -1300,12 +1546,12 @@ function UpdateTabContent(tabName)
             _G.KillAuraRange = value
         end)
         
-        CreateToggle(ScrollingFrame, "Auto Attack", "Automatically attack", function(state)
+        CreateToggle(ScrollingFrame, "Auto Attack", "Automatically attack", "⚔️", function(state)
             Toggles.AutoAttack = state
             if state then StartLoop("AutoAttack") end
         end)
         
-        CreateToggle(ScrollingFrame, "Instant Kill", "One hit kill", function(state)
+        CreateToggle(ScrollingFrame, "Instant Kill", "One hit kill", "💥", function(state)
             Toggles.InstantKill = state
         end)
         
@@ -1315,19 +1561,23 @@ function UpdateTabContent(tabName)
             KillerTarget = Players:FindFirstChild(playerName)
         end)
         
-        CreateButton(ScrollingFrame, "🔄 Refresh List", Color3.fromRGB(80, 80, 90), function()
+        CreateButton(ScrollingFrame, "🔄 Refresh List", Color3.fromRGB(80, 80, 90), "🔄", function()
             UpdateTabContent("KILLER")
+        end)
+        
+        CreateToggle(ScrollingFrame, "Auto Hunt", "Automatically hunt target", "🎯", function(state)
+            Toggles.AutoHunt = state
         end)
         
     elseif tabName == "TELEPORT" then
         CreateSection(ScrollingFrame, "MOVEMENT")
         
-        CreateToggle(ScrollingFrame, "NoClip", "Walk through walls", function(state)
+        CreateToggle(ScrollingFrame, "NoClip", "Walk through walls", "🚪", function(state)
             Toggles.NoClip = state
             UpdateNoClip()
         end)
         
-        CreateToggle(ScrollingFrame, "NoClip Through", "NoClip through everything", function(state)
+        CreateToggle(ScrollingFrame, "NoClip Through", "NoClip through everything", "🌀", function(state)
             Toggles.NoClipThrough = state
         end)
         
@@ -1337,77 +1587,91 @@ function UpdateTabContent(tabName)
             TPTarget = Players:FindFirstChild(playerName)
         end)
         
-        CreateButton(ScrollingFrame, "📌 Teleport to Target", Color3.fromRGB(65, 105, 225), function()
+        CreateButton(ScrollingFrame, "📌 Teleport to Target", Color3.fromRGB(65, 105, 225), "📌", function()
             if TPTarget and TPTarget.Character then
                 RootPart.CFrame = TPTarget.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
             end
         end)
         
-        CreateToggle(ScrollingFrame, "Teleport to Mouse", "Teleport to mouse position (Right Click)", function(state)
+        CreateToggle(ScrollingFrame, "Teleport to Mouse", "Teleport to mouse position (Right Click)", "🖱️", function(state)
             Toggles.TeleportToMouse = state
         end)
         
-        CreateToggle(ScrollingFrame, "Teleport to Cursor", "Teleport to cursor position", function(state)
+        CreateToggle(ScrollingFrame, "Teleport to Cursor", "Teleport to cursor position", "📍", function(state)
             Toggles.TeleportToCursor = state
+        end)
+        
+        CreateButton(ScrollingFrame, "➕ Save Waypoint", Color3.fromRGB(0, 200, 100), "💾", function()
+            table.insert(Waypoints, {Name = "Waypoint " .. #Waypoints+1, Position = RootPart.Position})
         end)
         
     elseif tabName == "FARM" then
         CreateSection(ScrollingFrame, "GENERATOR FARM")
         
-        CreateToggle(ScrollingFrame, "Auto-Farm Generator", "Auto repair generators", function(state)
+        CreateToggle(ScrollingFrame, "Auto-Farm Generator", "Auto repair generators", "⚡", function(state)
             Toggles.AutoFarmGenerator = state
             if state then StartLoop("AutoFarmGenerator") end
         end)
         
-        CreateToggle(ScrollingFrame, "Auto Complete", "Auto complete generators", function(state)
+        CreateToggle(ScrollingFrame, "Auto Complete", "Auto complete generators", "✅", function(state)
             Toggles.AutoCompleteGenerator = state
             if state then StartLoop("AutoCompleteGenerator") end
         end)
         
-        CreateToggle(ScrollingFrame, "Auto Repair", "Auto repair when damaged", function(state)
+        CreateToggle(ScrollingFrame, "Auto Repair", "Auto repair when damaged", "🔧", function(state)
             Toggles.AutoRepair = state
         end)
         
-        CreateToggle(ScrollingFrame, "Auto Collect Gens", "Auto collect from generators", function(state)
+        CreateToggle(ScrollingFrame, "Auto Collect Gens", "Auto collect from generators", "📦", function(state)
             Toggles.AutoCollectGens = state
         end)
         
-        CreateButton(ScrollingFrame, "🔍 Find Nearest Generator", Color3.fromRGB(80, 80, 90), function()
+        CreateButton(ScrollingFrame, "🔍 Find Nearest Generator", Color3.fromRGB(80, 80, 90), "🔍", function()
             local gen = FindNearestGenerator()
             if gen then
                 RootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
             end
         end)
         
+        CreateToggle(ScrollingFrame, "Auto Farm All", "Farm all resources", "⚡", function(state)
+            Toggles.AutoFarmAll = state
+        end)
+        
+        CreateToggle(ScrollingFrame, "Auto Collect Loot", "Auto collect all loot", "💰", function(state)
+            Toggles.AutoCollectLoot = state
+        end)
+        
     elseif tabName == "PLAYERS" then
-        CreateSection(ScrollingFrame, "PLAYER LIST")
+        CreateSection(ScrollingFrame, "PLAYER LIST (" .. #Players:GetPlayers()-1 .. " others)")
         
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= Player then
                 local PlayerFrame = Instance.new("Frame")
-                PlayerFrame.Size = UDim2.new(1, 0, 0, 60)
-                PlayerFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-                PlayerFrame.BackgroundTransparency = 0.2
+                PlayerFrame.Size = UDim2.new(1, 0, 0, 70)
+                PlayerFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+                PlayerFrame.BackgroundTransparency = 0.1
                 PlayerFrame.Parent = ScrollingFrame
                 
                 local PlayerCorner = Instance.new("UICorner")
-                PlayerCorner.CornerRadius = UDim.new(0, 12)
+                PlayerCorner.CornerRadius = UDim.new(0, 14)
                 PlayerCorner.Parent = PlayerFrame
                 
+                -- Avatar
                 local Avatar = Instance.new("ImageLabel")
-                Avatar.Size = UDim2.new(0, 40, 0, 40)
-                Avatar.Position = UDim2.new(0, 10, 0.5, -20)
-                Avatar.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+                Avatar.Size = UDim2.new(0, 50, 0, 50)
+                Avatar.Position = UDim2.new(0, 15, 0.5, -25)
+                Avatar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
                 Avatar.Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size420x420)
                 Avatar.Parent = PlayerFrame
                 
                 local AvatarCorner = Instance.new("UICorner")
-                AvatarCorner.CornerRadius = UDim.new(0, 8)
+                AvatarCorner.CornerRadius = UDim.new(0, 12)
                 AvatarCorner.Parent = Avatar
                 
+                -- Player info
                 local PlayerName = Instance.new("TextLabel")
-                PlayerName.Size = UDim2.new(0.5, -60, 0, 25)
-                PlayerName.Position = UDim2.new(0, 60, 0.5, -12.5)
+                PlayerName.Size = UDim2.new(0.4, -80, 0, 25)
+                PlayerName.Position = UDim2.new(0, 75, 0.5, -12.5)
                 PlayerName.BackgroundTransparency = 1
                 PlayerName.Text = player.Name
                 PlayerName.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1416,9 +1680,24 @@ function UpdateTabContent(tabName)
                 PlayerName.Font = Enum.Font.GothamBold
                 PlayerName.Parent = PlayerFrame
                 
+                -- Distance
+                local distance = player.Character and player.Character:FindFirstChild("HumanoidRootPart") and 
+                    math.floor((player.Character.HumanoidRootPart.Position - RootPart.Position).Magnitude) or "?"
+                
+                local DistanceLabel = Instance.new("TextLabel")
+                DistanceLabel.Size = UDim2.new(0.2, -40, 0, 20)
+                DistanceLabel.Position = UDim2.new(0.4, -40, 0.5, -10)
+                DistanceLabel.BackgroundTransparency = 1
+                DistanceLabel.Text = distance .. "m"
+                DistanceLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+                DistanceLabel.TextSize = 12
+                DistanceLabel.Font = Enum.Font.Gotham
+                DistanceLabel.Parent = PlayerFrame
+                
+                -- Teleport button
                 local TeleportBtn = Instance.new("TextButton")
                 TeleportBtn.Size = UDim2.new(0, 40, 0, 40)
-                TeleportBtn.Position = UDim2.new(1, -50, 0.5, -20)
+                TeleportBtn.Position = UDim2.new(1, -55, 0.5, -20)
                 TeleportBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
                 TeleportBtn.Text = "📌"
                 TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1427,12 +1706,42 @@ function UpdateTabContent(tabName)
                 TeleportBtn.Parent = PlayerFrame
                 
                 local BtnCorner = Instance.new("UICorner")
-                BtnCorner.CornerRadius = UDim.new(0, 8)
+                BtnCorner.CornerRadius = UDim.new(0, 12)
                 BtnCorner.Parent = TeleportBtn
                 
                 TeleportBtn.MouseButton1Click:Connect(function()
                     if player.Character then
                         RootPart.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+                    end
+                end)
+                
+                -- ESP toggle button
+                local ESPBtn = Instance.new("TextButton")
+                ESPBtn.Size = UDim2.new(0, 40, 0, 40)
+                ESPBtn.Position = UDim2.new(1, -100, 0.5, -20)
+                ESPBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+                ESPBtn.Text = "👁️"
+                ESPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                ESPBtn.TextSize = 18
+                ESPBtn.Font = Enum.Font.Gotham
+                ESPBtn.Parent = PlayerFrame
+                
+                local ESPCorner = Instance.new("UICorner")
+                ESPCorner.CornerRadius = UDim.new(0, 12)
+                ESPCorner.Parent = ESPBtn
+                
+                local espEnabled = false
+                ESPBtn.MouseButton1Click:Connect(function()
+                    espEnabled = not espEnabled
+                    if espEnabled then
+                        ESPBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+                        AddESP(player, Color3.fromRGB(65, 105, 225))
+                    else
+                        ESPBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+                        if player.Character then
+                            local highlight = player.Character:FindFirstChild("ESP_Highlight")
+                            if highlight then highlight:Destroy() end
+                        end
                     end
                 end)
             end
@@ -1441,7 +1750,7 @@ function UpdateTabContent(tabName)
     elseif tabName == "MISC" then
         CreateSection(ScrollingFrame, "UTILITY")
         
-        CreateToggle(ScrollingFrame, "Anti AFK", "Prevent being kicked", function(state)
+        CreateToggle(ScrollingFrame, "Anti AFK", "Prevent being kicked", "💤", function(state)
             Toggles.AntiAFK = state
             if state then
                 Player.Idled:Connect(function()
@@ -1451,56 +1760,72 @@ function UpdateTabContent(tabName)
             end
         end)
         
-        CreateToggle(ScrollingFrame, "Auto Click", "Automatically click", function(state)
+        CreateToggle(ScrollingFrame, "Auto Click", "Automatically click", "🖱️", function(state)
             Toggles.AutoClick = state
             if state then StartLoop("AutoClick") end
         end)
         
-        CreateToggle(ScrollingFrame, "Anti Stun", "Prevent stun effects", function(state)
+        CreateToggle(ScrollingFrame, "No Skill Check", "Remove all skill checks", "🎯", function(state)
+            Toggles.NoSkillCheck = state
+            ToggleSkillCheck(state)
+        end)
+        
+        CreateToggle(ScrollingFrame, "Anti Stun", "Prevent stun effects", "⚡", function(state)
             Toggles.AntiStun = state
         end)
         
-        CreateToggle(ScrollingFrame, "Anti Fall", "Prevent falling damage", function(state)
+        CreateToggle(ScrollingFrame, "Anti Fall", "Prevent falling damage", "🛡️", function(state)
             Toggles.AntiFall = state
         end)
         
-        CreateToggle(ScrollingFrame, "Anti Void", "Prevent falling into void", function(state)
+        CreateToggle(ScrollingFrame, "Anti Void", "Prevent falling into void", "🌌", function(state)
             Toggles.AntiVoid = state
+        end)
+        
+        CreateToggle(ScrollingFrame, "Auto Respawn", "Auto respawn when dead", "🔄", function(state)
+            Toggles.AutoRespawn = state
         end)
         
     elseif tabName == "SETTINGS" then
         CreateSection(ScrollingFrame, "SKILL CHECK")
         
-        CreateToggle(ScrollingFrame, "No Skill Check", "Remove all skill checks", function(state)
+        CreateToggle(ScrollingFrame, "No Skill Check", "Remove all skill checks", "🎯", function(state)
             Toggles.NoSkillCheck = state
             ToggleSkillCheck(state)
         end)
         
         CreateSection(ScrollingFrame, "GUI SETTINGS")
         
-        CreateButton(ScrollingFrame, "🎨 Toggle GUI (F4)", Color3.fromRGB(65, 105, 225), function()
+        CreateButton(ScrollingFrame, "🎨 Toggle GUI (F4)", Color3.fromRGB(65, 105, 225), "🔘", function()
             ScreenGui.Enabled = not ScreenGui.Enabled
         end)
         
-        CreateButton(ScrollingFrame, "🔄 Refresh UI", Color3.fromRGB(80, 80, 90), function()
+        CreateButton(ScrollingFrame, "🔄 Refresh UI", Color3.fromRGB(80, 80, 90), "🔄", function()
             UpdateTabContent(CurrentTab)
         end)
         
-        CreateButton(ScrollingFrame, "⬇️ Minimize", Color3.fromRGB(100, 100, 100), function()
+        CreateButton(ScrollingFrame, "⬇️ Minimize", Color3.fromRGB(100, 100, 100), "⬇️", function()
             if not Minimized then
                 MinBtn.MouseButton1Click:Fire()
             end
         end)
         
-        CreateButton(ScrollingFrame, "⬆️ Maximize", Color3.fromRGB(100, 100, 100), function()
+        CreateButton(ScrollingFrame, "⬆️ Maximize", Color3.fromRGB(100, 100, 100), "⬆️", function()
             if Minimized then
                 MaxBtn.MouseButton1Click:Fire()
             end
         end)
         
-        CreateLabel(ScrollingFrame, "📌 Keybind: F4 to toggle menu", Color3.fromRGB(150, 150, 150), 25)
-        CreateLabel(ScrollingFrame, "📌 Version: 5.0 Ultimate Pro", Color3.fromRGB(150, 150, 150), 25)
-        CreateLabel(ScrollingFrame, "📌 Author: LuckyBimZy", Color3.fromRGB(150, 150, 150), 25)
+        CreateButton(ScrollingFrame, "❌ Close GUI", Color3.fromRGB(220, 60, 60), "❌", function()
+            CloseBtn.MouseButton1Click:Fire()
+        end)
+        
+        CreateSection(ScrollingFrame, "INFORMATION")
+        
+        CreateLabel(ScrollingFrame, "Keybind: F4 to toggle menu", Color3.fromRGB(150, 150, 150), 25, "⌨️")
+        CreateLabel(ScrollingFrame, "Version: 6.0 Ultimate Deluxe", Color3.fromRGB(150, 150, 150), 25, "📌")
+        CreateLabel(ScrollingFrame, "Author: LuckyBimZy", Color3.fromRGB(150, 150, 150), 25, "👤")
+        CreateLabel(ScrollingFrame, "GitHub: Machadepanmu", Color3.fromRGB(150, 150, 150), 25, "🔗")
     end
     
     -- Update canvas size
@@ -1678,6 +2003,7 @@ function AddESP(player, color)
     highlight.OutlineColor = Color3.new(1, 1, 1)
     highlight.FillTransparency = 0.5
     
+    -- Name tag with distance
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "ESP_Name"
     billboard.Parent = player.Character
@@ -1695,6 +2021,7 @@ function AddESP(player, color)
     nameLabel.TextScaled = true
     nameLabel.Font = Enum.Font.GothamBold
     
+    -- Update distance
     task.spawn(function()
         while billboard and billboard.Parent do
             task.wait(0.5)
@@ -1913,7 +2240,7 @@ end)
 UpdateTabContent("DASHBOARD")
 
 print("========================================")
-print("✅ VIOLENCE DISTRICT ULTIMATE PRO LOADED!")
+print("✅ VIOLENCE DISTRICT ULTIMATE DELUXE LOADED!")
 print("📁 GitHub: LuckyBimZy/Machadepanmu")
 print("🕒 " .. os.date("%Y-%m-%d %H:%M:%S"))
 print("========================================")
