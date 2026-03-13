@@ -50,10 +50,16 @@ _G.KillAura = false
 local Library
 local Window
 
--- Try loading Kavo UI
-local success, lib = pcall(function()
+local success, loader = pcall(function()
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/LuckyBimZy/Machadepanmu/main/loader.lua"))()
 end)
+
+if success and loader then
+    -- Loader berhasil di-load, sekarang jalankan fungsi loader-nya
+    loader()
+else
+    warn("Gagal memuat loader:", loader)
+end
 
 -- Fungsi untuk membuat custom GUI jika semua library gagal
 function CreateCustomGUI()
