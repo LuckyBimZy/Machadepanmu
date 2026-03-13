@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - PROFESSIONAL EDITION ====================
--- UI Premium dengan Toggle State yang Tersimpan
+-- UI Premium dengan ESP Enhanced
 -- Author: LuckyBimZy
--- Version: 7.0 (Final)
+-- Version: 8.0 (ESP Enhanced)
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -32,7 +32,16 @@ local Camera = Workspace.CurrentCamera
 local Toggles = {
     -- Visuals
     ESP = false,
-    ESPType = "Highlight",
+    ESPMode = "Highlight", -- Highlight, Box, Tracer, Name, Distance, Health, Full
+    ESPShowName = true,
+    ESPShowDistance = true,
+    ESPShowHealth = false,
+    ESPShowBox = false,
+    ESPShowTracer = false,
+    ESPShowHighlight = true,
+    ESPColor = Color3.fromRGB(255, 255, 255),
+    ESPEnemyColor = Color3.fromRGB(255, 50, 50),
+    ESPTeamColor = Color3.fromRGB(50, 255, 50),
     Wallhack = false,
     FullBright = false,
     NoFog = false,
@@ -70,6 +79,7 @@ local Toggles = {
 local Loops = {}
 local SavedPosition = nil
 local ESPObjects = {}
+local ESPUpdateConnection = nil
 
 --==================================================
 -- NOTIFICATION
@@ -149,8 +159,8 @@ end)
 --==================================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 400, 0, 500)
-MainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+MainFrame.Size = UDim2.new(0, 420, 0, 550)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -275)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -235,7 +245,7 @@ local VersionText = Instance.new("TextLabel")
 VersionText.Size = UDim2.new(0, 50, 0, 20)
 VersionText.Position = UDim2.new(0, 55, 0.5, 8)
 VersionText.BackgroundTransparency = 1
-VersionText.Text = "v7.0"
+VersionText.Text = "v8.0"
 VersionText.TextColor3 = Color3.fromRGB(150, 150, 150)
 VersionText.TextSize = 10
 VersionText.Font = Enum.Font.Gotham
@@ -307,8 +317,8 @@ local CurrentTab = "Main"
 
 for i = 1, #Tabs do
     local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0, 50, 0, 40)
-    TabBtn.Position = UDim2.new(0, (i-1) * 52, 0, 0)
+    TabBtn.Size = UDim2.new(0, 52, 0, 40)
+    TabBtn.Position = UDim2.new(0, (i-1) * 54, 0, 0)
     TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     TabBtn.Text = TabIcons[i]
     TabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -524,8 +534,8 @@ function CreateDropdown(text, options, current, callback)
     DropdownText.ZIndex = 5
     
     local DropdownBtn = Instance.new("TextButton")
-    DropdownBtn.Size = UDim2.new(0, 120, 0, 28)
-    DropdownBtn.Position = UDim2.new(1, -135, 0.5, -14)
+    DropdownBtn.Size = UDim2.new(0, 140, 0, 28)
+    DropdownBtn.Position = UDim2.new(1, -155, 0.5, -14)
     DropdownBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
     DropdownBtn.Text = current
     DropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -547,8 +557,8 @@ function CreateDropdown(text, options, current, callback)
         -- Buat menu baru dengan ZIndex tinggi
         local menu = Instance.new("Frame")
         menu.Name = "DropdownMenu"
-        menu.Size = UDim2.new(0, 140, 0, math.min(#options, 5) * 35)
-        menu.Position = UDim2.new(1, -135, 1, 5)
+        menu.Size = UDim2.new(0, 160, 0, math.min(#options, 5) * 35)
+        menu.Position = UDim2.new(1, -155, 1, 5)
         menu.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
         menu.BorderSizePixel = 0
         menu.Parent = DropdownFrame
@@ -720,6 +730,154 @@ UserInputService.InputBegan:Connect(function(input, gp)
 end)
 
 --==================================================
+-- ENHANCED ESP FUNCTIONS
+--==================================================
+
+function UpdateESP()
+    if not Toggles.ESP then
+        if ESPUpdateConnection then
+            ESPUpdateConnection:Disconnect()
+            ESPUpdateConnection = nil
+        end
+        DisableESP()
+        return
+    end
+    
+    -- Start ESP update loop if not running
+    if not ESPUpdateConnection then
+        ESPUpdateConnection = RunService.RenderStepped:Connect(function()
+            if not Toggles.ESP then return end
+            UpdateESPObjects()
+        end)
+    end
+end
+
+function UpdateESPObjects()
+    -- Clear old ESP
+    DisableESP()
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
+            local rootPart = player.Character.HumanoidRootPart
+            local humanoid = player.Character.Humanoid
+            local distance = math.floor((Player.Character.HumanoidRootPart.Position - rootPart.Position).Magnitude)
+            
+            -- Determine color based on health or team
+            local espColor = Toggles.ESPColor
+            if Toggles.ESPShowHealth then
+                -- Red (low health) to Green (full health)
+                local healthPercent = humanoid.Health / humanoid.MaxHealth
+                espColor = Color3.new(1 - healthPercent, healthPercent, 0)
+            end
+            
+            -- Highlight
+            if Toggles.ESPShowHighlight or Toggles.ESPMode == "Highlight" or Toggles.ESPMode == "Full" then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "VD_ESP_Highlight"
+                highlight.Parent = player.Character
+                highlight.FillColor = espColor
+                highlight.OutlineColor = Color3.new(1, 1, 1)
+                highlight.FillTransparency = 0.5
+                highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            end
+            
+            -- Box (using BillboardGui as simple box)
+            if Toggles.ESPShowBox or Toggles.ESPMode == "Box" or Toggles.ESPMode == "Full" then
+                local box = Instance.new("BillboardGui")
+                box.Name = "VD_ESP_Box"
+                box.Parent = player.Character
+                box.Size = UDim2.new(0, 40, 0, 60)
+                box.StudsOffset = Vector3.new(0, 3, 0)
+                box.AlwaysOnTop = true
+                
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, 0, 1, 0)
+                frame.BackgroundColor3 = espColor
+                frame.BackgroundTransparency = 0.7
+                frame.BorderSizePixel = 2
+                frame.BorderColor3 = Color3.new(1, 1, 1)
+                frame.Parent = box
+            end
+            
+            -- Name tag
+            if Toggles.ESPShowName or Toggles.ESPMode == "Name" or Toggles.ESPMode == "Full" or Toggles.ESPMode == "Distance" then
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = "VD_ESP_Name"
+                billboard.Parent = player.Character
+                billboard.Size = UDim2.new(0, 150, 0, 30)
+                billboard.StudsOffset = Vector3.new(0, 3, 0)
+                billboard.AlwaysOnTop = true
+                
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Parent = billboard
+                nameLabel.Size = UDim2.new(1, 0, 1, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = player.Name
+                nameLabel.TextColor3 = espColor
+                nameLabel.TextStrokeTransparency = 0.3
+                nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+                nameLabel.TextScaled = true
+                nameLabel.Font = Enum.Font.GothamBold
+                
+                -- Add distance
+                if Toggles.ESPShowDistance or Toggles.ESPMode == "Distance" or Toggles.ESPMode == "Full" then
+                    local distLabel = Instance.new("TextLabel")
+                    distLabel.Parent = billboard
+                    distLabel.Size = UDim2.new(1, 0, 0, 15)
+                    distLabel.Position = UDim2.new(0, 0, 1, 0)
+                    distLabel.BackgroundTransparency = 1
+                    distLabel.Text = distance .. "m"
+                    distLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    distLabel.TextStrokeTransparency = 0.3
+                    distLabel.TextScaled = true
+                    distLabel.Font = Enum.Font.Gotham
+                end
+            end
+            
+            -- Tracer (line from player to target)
+            if Toggles.ESPShowTracer or Toggles.ESPMode == "Tracer" or Toggles.ESPMode == "Full" then
+                -- For tracer, we'd need a drawing library, but we'll use a simple BillboardGui as indicator
+                local tracer = Instance.new("BillboardGui")
+                tracer.Name = "VD_ESP_Tracer"
+                tracer.Parent = player.Character
+                tracer.Size = UDim2.new(0, 10, 0, 10)
+                tracer.StudsOffset = Vector3.new(0, 2, 0)
+                tracer.AlwaysOnTop = true
+                
+                local dot = Instance.new("Frame")
+                dot.Size = UDim2.new(1, 0, 1, 0)
+                dot.BackgroundColor3 = espColor
+                dot.BorderSizePixel = 0
+                dot.Parent = tracer
+                
+                local dotCorner = Instance.new("UICorner")
+                dotCorner.CornerRadius = UDim.new(1, 0)
+                dotCorner.Parent = dot
+            end
+        end
+    end
+end
+
+function DisableESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            -- Remove all ESP objects
+            local highlight = player.Character:FindFirstChild("VD_ESP_Highlight")
+            if highlight then highlight:Destroy() end
+            
+            local box = player.Character:FindFirstChild("VD_ESP_Box")
+            if box then box:Destroy() end
+            
+            local nameTag = player.Character:FindFirstChild("VD_ESP_Name")
+            if nameTag then nameTag:Destroy() end
+            
+            local tracer = player.Character:FindFirstChild("VD_ESP_Tracer")
+            if tracer then tracer:Destroy() end
+        end
+    end
+end
+
+--==================================================
 -- UPDATE TAB CONTENT - MENGGUNAKAN STATE TERSIMPAN
 --==================================================
 function UpdateTab(tab)
@@ -745,21 +903,61 @@ function UpdateTab(tab)
         CreateButton("Rejoin", function() game:GetService("TeleportService"):Teleport(game.PlaceId, Player) end)
         
         CreateSection("CREDITS")
-        CreateLabel("Violence District v7.0")
-        CreateLabel("Professional Edition")
+        CreateLabel("Violence District v8.0")
+        CreateLabel("ESP Enhanced Edition")
         
     elseif tab == "Visuals" then
-        CreateSection("ESP SETTINGS")
+        CreateSection("ESP MASTER CONTROL")
         CreateToggle("Enable ESP", Toggles.ESP, function(state)
             Toggles.ESP = state
-            if state then EnableESP() else DisableESP() end
+            UpdateESP()
         end)
         
-        CreateDropdown("ESP Type", {"Highlight", "Box", "Name"}, Toggles.ESPType, function(opt)
-            Toggles.ESPType = opt
-            if Toggles.ESP then DisableESP() EnableESP() end
+        CreateSection("ESP MODE")
+        CreateDropdown("ESP Mode", {"Full", "Highlight", "Box", "Tracer", "Name", "Distance", "Health"}, Toggles.ESPMode, function(opt)
+            Toggles.ESPMode = opt
+            -- Update individual toggles based on mode
+            Toggles.ESPShowHighlight = (opt == "Highlight" or opt == "Full")
+            Toggles.ESPShowBox = (opt == "Box" or opt == "Full")
+            Toggles.ESPShowTracer = (opt == "Tracer" or opt == "Full")
+            Toggles.ESPShowName = (opt == "Name" or opt == "Full" or opt == "Distance")
+            Toggles.ESPShowDistance = (opt == "Distance" or opt == "Full")
+            Toggles.ESPShowHealth = (opt == "Health" or opt == "Full")
+            if Toggles.ESP then UpdateESP() end
         end)
         
+        CreateSection("ESP CUSTOMIZATION")
+        CreateToggle("Show Name", Toggles.ESPShowName, function(state)
+            Toggles.ESPShowName = state
+            if Toggles.ESP then UpdateESP() end
+        end)
+        
+        CreateToggle("Show Distance", Toggles.ESPShowDistance, function(state)
+            Toggles.ESPShowDistance = state
+            if Toggles.ESP then UpdateESP() end
+        end)
+        
+        CreateToggle("Show Health", Toggles.ESPShowHealth, function(state)
+            Toggles.ESPShowHealth = state
+            if Toggles.ESP then UpdateESP() end
+        end)
+        
+        CreateToggle("Show Box", Toggles.ESPShowBox, function(state)
+            Toggles.ESPShowBox = state
+            if Toggles.ESP then UpdateESP() end
+        end)
+        
+        CreateToggle("Show Tracer", Toggles.ESPShowTracer, function(state)
+            Toggles.ESPShowTracer = state
+            if Toggles.ESP then UpdateESP() end
+        end)
+        
+        CreateToggle("Show Highlight", Toggles.ESPShowHighlight, function(state)
+            Toggles.ESPShowHighlight = state
+            if Toggles.ESP then UpdateESP() end
+        end)
+        
+        CreateSection("WALLHACK")
         CreateToggle("Wallhack", Toggles.Wallhack, function(state)
             Toggles.Wallhack = state
             UpdateWallhack()
@@ -1081,49 +1279,6 @@ function StopLoop(name)
     Loops[name] = false
 end
 
-function EnableESP()
-    DisableESP()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= Player and player.Character then
-            local highlight = Instance.new("Highlight")
-            highlight.Name = "VD_ESP"
-            highlight.Parent = player.Character
-            highlight.FillColor = Color3.fromRGB(255, 255, 255)
-            highlight.OutlineColor = Color3.new(1, 1, 1)
-            highlight.FillTransparency = 0.5
-            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-            
-            local billboard = Instance.new("BillboardGui")
-            billboard.Name = "VD_Name"
-            billboard.Parent = player.Character
-            billboard.Size = UDim2.new(0, 100, 0, 20)
-            billboard.StudsOffset = Vector3.new(0, 3, 0)
-            billboard.AlwaysOnTop = true
-            
-            local nameLabel = Instance.new("TextLabel")
-            nameLabel.Parent = billboard
-            nameLabel.Size = UDim2.new(1, 0, 1, 0)
-            nameLabel.BackgroundTransparency = 1
-            nameLabel.Text = player.Name
-            nameLabel.TextColor3 = Color3.new(1, 1, 1)
-            nameLabel.TextStrokeTransparency = 0.5
-            nameLabel.TextScaled = true
-            nameLabel.Font = Enum.Font.GothamBold
-        end
-    end
-end
-
-function DisableESP()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player.Character then
-            local highlight = player.Character:FindFirstChild("VD_ESP")
-            if highlight then highlight:Destroy() end
-            local nameTag = player.Character:FindFirstChild("VD_Name")
-            if nameTag then nameTag:Destroy() end
-        end
-    end
-end
-
 function UpdateWallhack()
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
@@ -1314,6 +1469,6 @@ end)
 UpdateTab("Main")
 Notify("Press F4 or click floating button")
 
-print("=== Violence District Professional v7.0 ===")
+print("=== Violence District Professional v8.0 ===")
 print("Press F4 to toggle menu")
-print("Toggle states are now saved!")
+print("ESP Enhanced with Distance, Health, Box, Tracer, Highlight, Name")
