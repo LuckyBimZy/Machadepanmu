@@ -1,12 +1,12 @@
--- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
--- UI Modern dengan Floating Button dan Kontrol Lengkap
+-- ==================== VIOLENCE DISTRICT - NEBULA EDITION ====================
+-- UI Modern Premium dengan Animasi Halus
 -- Author: LuckyBimZy
--- Version: 5.0
+-- Version: 6.0 (Nebula)
 
 --==================================================
 -- CEK APAKAH SUDAH DILOAD
 --==================================================
-if _G.VD_Loaded then 
+if _G.VD_Nebula then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Violence District",
         Text = "Script sudah diload!",
@@ -15,7 +15,7 @@ if _G.VD_Loaded then
     return 
 end
 
-_G.VD_Loaded = true
+_G.VD_Nebula = true
 
 --==================================================
 -- VARIABLES GLOBAL
@@ -36,10 +36,11 @@ local Toggles = {
     -- Visuals
     ESP = false,
     ESPType = "Highlight",
-    ESPColor = Color3.fromRGB(255, 255, 255),
+    ESPColor = Color3.fromRGB(0, 255, 255),
     Wallhack = false,
     FullBright = false,
     NoFog = false,
+    RainbowESP = false,
     
     -- Survivor
     AutoFarmPresent = false,
@@ -66,7 +67,6 @@ local Toggles = {
     AutoFarmGenerator = false,
     AutoCompleteGenerator = false,
     AutoRepair = false,
-    AutoCollectGens = false,
     
     -- Misc
     AntiAFK = false,
@@ -75,14 +75,23 @@ local Toggles = {
     AntiStun = false
 }
 
--- Loop control - PASTIKAN LOOPS BERJALAN TERUS
+-- Loop control
 local Loops = {}
 local ESPObjects = {}
 local GUIState = "open"
 local SavedPosition = nil
+local NebulaColors = {
+    primary = Color3.fromRGB(0, 255, 255),    -- Cyan
+    secondary = Color3.fromRGB(255, 0, 255),   -- Magenta
+    accent = Color3.fromRGB(128, 0, 255),      -- Purple
+    background = Color3.fromRGB(5, 5, 15),      -- Dark blue
+    surface = Color3.fromRGB(15, 15, 25),       -- Slightly lighter
+    text = Color3.fromRGB(255, 255, 255),
+    textDim = Color3.fromRGB(150, 150, 150)
+}
 
 --==================================================
--- NOTIFIKASI
+-- NOTIFIKASI PREMIUM
 --==================================================
 local function Notify(title, text, duration)
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -92,10 +101,10 @@ local function Notify(title, text, duration)
     })
 end
 
-Notify("Violence District", "Script loaded successfully!", 2)
+Notify("Violence District", "Nebula Edition Loaded!", 2)
 
 --==================================================
--- MEMBUAT UI MODERN
+-- MEMBUAT UI NEBULA
 --==================================================
 
 -- Hapus GUI lama
@@ -107,305 +116,428 @@ end
 
 -- ScreenGui utama
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "VD_Ultimate"
+ScreenGui.Name = "VD_Nebula"
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999
 
 --==================================================
--- FLOATING BUTTON (TOMBOL MENGAMBANG)
+-- NEBULA ORB (FLOATING BUTTON)
 --==================================================
-local FloatingBtn = Instance.new("ImageButton")
-FloatingBtn.Name = "FloatingButton"
-FloatingBtn.Size = UDim2.new(0, 50, 0, 50)
-FloatingBtn.Position = UDim2.new(0, 20, 0.5, -25)
-FloatingBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-FloatingBtn.BackgroundTransparency = 0.2
-FloatingBtn.Image = "rbxassetid://3926305904"
-FloatingBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
-FloatingBtn.ScaleType = Enum.ScaleType.Fit
-FloatingBtn.BorderSizePixel = 0
-FloatingBtn.Active = true
-FloatingBtn.Draggable = true
-FloatingBtn.Visible = true
-FloatingBtn.Parent = ScreenGui
-FloatingBtn.ZIndex = 1000
+local NebulaOrb = Instance.new("ImageButton")
+NebulaOrb.Name = "NebulaOrb"
+NebulaOrb.Size = UDim2.new(0, 60, 0, 60)
+NebulaOrb.Position = UDim2.new(0, 20, 0.5, -30)
+NebulaOrb.BackgroundColor3 = NebulaColors.primary
+NebulaOrb.BackgroundTransparency = 0.2
+NebulaOrb.Image = "rbxassetid://3926305904"
+NebulaOrb.ImageColor3 = Color3.fromRGB(255, 255, 255)
+NebulaOrb.ScaleType = Enum.ScaleType.Fit
+NebulaOrb.BorderSizePixel = 0
+NebulaOrb.Active = true
+NebulaOrb.Draggable = true
+NebulaOrb.Visible = true
+NebulaOrb.Parent = ScreenGui
+NebulaOrb.ZIndex = 1000
 
 -- Shadow
-local FloatShadow = Instance.new("ImageLabel")
-FloatShadow.Name = "Shadow"
-FloatShadow.Size = UDim2.new(1, 10, 1, 10)
-FloatShadow.Position = UDim2.new(0, -5, 0, -5)
-FloatShadow.BackgroundTransparency = 1
-FloatShadow.Image = "rbxassetid://6015897843"
-FloatShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-FloatShadow.ImageTransparency = 0.5
-FloatShadow.ScaleType = Enum.ScaleType.Slice
-FloatShadow.SliceCenter = Rect.new(50, 50, 50, 50)
-FloatShadow.Parent = FloatingBtn
-FloatShadow.ZIndex = 999
+local OrbShadow = Instance.new("ImageLabel")
+OrbShadow.Name = "Shadow"
+OrbShadow.Size = UDim2.new(1, 10, 1, 10)
+OrbShadow.Position = UDim2.new(0, -5, 0, -5)
+OrbShadow.BackgroundTransparency = 1
+OrbShadow.Image = "rbxassetid://6015897843"
+OrbShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+OrbShadow.ImageTransparency = 0.5
+OrbShadow.ScaleType = Enum.ScaleType.Slice
+OrbShadow.SliceCenter = Rect.new(50, 50, 50, 50)
+OrbShadow.Parent = NebulaOrb
+OrbShadow.ZIndex = 999
 
 -- Rounded corners
-local FloatCorner = Instance.new("UICorner")
-FloatCorner.CornerRadius = UDim.new(0, 25)
-FloatCorner.Parent = FloatingBtn
+local OrbCorner = Instance.new("UICorner")
+OrbCorner.CornerRadius = UDim.new(1, 0)
+OrbCorner.Parent = NebulaOrb
+
+-- Glow effect
+local OrbGlow = Instance.new("ImageLabel")
+OrbGlow.Name = "Glow"
+OrbGlow.Size = UDim2.new(1, 10, 1, 10)
+OrbGlow.Position = UDim2.new(0, -5, 0, -5)
+OrbGlow.BackgroundTransparency = 1
+OrbGlow.Image = "rbxassetid://5028857648"
+OrbGlow.ImageColor3 = NebulaColors.primary
+OrbGlow.ImageTransparency = 0.3
+OrbGlow.ScaleType = Enum.ScaleType.Slice
+OrbGlow.SliceCenter = Rect.new(10, 10, 10, 10)
+OrbGlow.Parent = NebulaOrb
+OrbGlow.ZIndex = 998
 
 -- Icon
-local FloatIcon = Instance.new("TextLabel")
-FloatIcon.Name = "Icon"
-FloatIcon.Size = UDim2.new(1, 0, 1, 0)
-FloatIcon.BackgroundTransparency = 1
-FloatIcon.Text = "🎮"
-FloatIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatIcon.TextSize = 30
-FloatIcon.Font = Enum.Font.Gotham
-FloatIcon.Parent = FloatingBtn
-FloatIcon.ZIndex = 1001
+local OrbIcon = Instance.new("TextLabel")
+OrbIcon.Name = "Icon"
+OrbIcon.Size = UDim2.new(1, 0, 1, 0)
+OrbIcon.BackgroundTransparency = 1
+OrbIcon.Text = "🌌"
+OrbIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+OrbIcon.TextSize = 30
+OrbIcon.Font = Enum.Font.Gotham
+OrbIcon.Parent = NebulaOrb
+OrbIcon.ZIndex = 1001
 
 -- Tooltip
-local FloatTooltip = Instance.new("Frame")
-FloatTooltip.Name = "Tooltip"
-FloatTooltip.Size = UDim2.new(0, 140, 0, 30)
-FloatTooltip.Position = UDim2.new(1, 10, 0.5, -15)
-FloatTooltip.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-FloatTooltip.BackgroundTransparency = 0.1
-FloatTooltip.Visible = false
-FloatTooltip.Parent = FloatingBtn
-FloatTooltip.ZIndex = 1002
+local OrbTooltip = Instance.new("Frame")
+OrbTooltip.Name = "Tooltip"
+OrbTooltip.Size = UDim2.new(0, 140, 0, 35)
+OrbTooltip.Position = UDim2.new(1, 10, 0.5, -17.5)
+OrbTooltip.BackgroundColor3 = NebulaColors.surface
+OrbTooltip.BackgroundTransparency = 0.1
+OrbTooltip.Visible = false
+OrbTooltip.Parent = NebulaOrb
+OrbTooltip.ZIndex = 1002
 
 local TooltipCorner = Instance.new("UICorner")
-TooltipCorner.CornerRadius = UDim.new(0, 6)
-TooltipCorner.Parent = FloatTooltip
+TooltipCorner.CornerRadius = UDim.new(0, 8)
+TooltipCorner.Parent = OrbTooltip
 
 local TooltipText = Instance.new("TextLabel")
 TooltipText.Size = UDim2.new(1, 0, 1, 0)
 TooltipText.BackgroundTransparency = 1
 TooltipText.Text = "Toggle Menu (F4)"
-TooltipText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TooltipText.TextColor3 = NebulaColors.text
 TooltipText.TextSize = 12
 TooltipText.Font = Enum.Font.Gotham
-TooltipText.Parent = FloatTooltip
+TooltipText.Parent = OrbTooltip
 
--- Hover effect
-FloatingBtn.MouseEnter:Connect(function()
-    TweenService:Create(FloatingBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 55, 0, 55)}):Play()
-    FloatTooltip.Visible = true
+-- Animasi hover
+NebulaOrb.MouseEnter:Connect(function()
+    TweenService:Create(NebulaOrb, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 65, 0, 65)
+    }):Play()
+    TweenService:Create(OrbGlow, TweenInfo.new(0.3), {
+        ImageTransparency = 0.1
+    }):Play()
+    OrbTooltip.Visible = true
 end)
 
-FloatingBtn.MouseLeave:Connect(function()
-    TweenService:Create(FloatingBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 50, 0, 50)}):Play()
-    FloatTooltip.Visible = false
+NebulaOrb.MouseLeave:Connect(function()
+    TweenService:Create(NebulaOrb, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 60, 0, 60)
+    }):Play()
+    TweenService:Create(OrbGlow, TweenInfo.new(0.3), {
+        ImageTransparency = 0.3
+    }):Play()
+    OrbTooltip.Visible = false
 end)
 
 --==================================================
--- MAIN MENU FRAME
+-- MAIN NEBULA FRAME
 --==================================================
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 400, 0, 580)
-MainFrame.Position = UDim2.new(0.5, -200, 0.5, -290)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-MainFrame.BackgroundTransparency = 0.05
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.ClipsDescendants = true
-MainFrame.Visible = true
-MainFrame.Parent = ScreenGui
-MainFrame.ZIndex = 10
+local NebulaFrame = Instance.new("Frame")
+NebulaFrame.Name = "NebulaFrame"
+NebulaFrame.Size = UDim2.new(0, 420, 0, 600)
+NebulaFrame.Position = UDim2.new(0.5, -210, 0.5, -300)
+NebulaFrame.BackgroundColor3 = NebulaColors.background
+NebulaFrame.BackgroundTransparency = 0.1
+NebulaFrame.BorderSizePixel = 0
+NebulaFrame.Active = true
+NebulaFrame.Draggable = true
+NebulaFrame.ClipsDescendants = true
+NebulaFrame.Visible = true
+NebulaFrame.Parent = ScreenGui
+NebulaFrame.ZIndex = 10
 
 -- Shadow
-local MainShadow = Instance.new("ImageLabel")
-MainShadow.Name = "Shadow"
-MainShadow.Size = UDim2.new(1, 20, 1, 20)
-MainShadow.Position = UDim2.new(0, -10, 0, -10)
-MainShadow.BackgroundTransparency = 1
-MainShadow.Image = "rbxassetid://6015897843"
-MainShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-MainShadow.ImageTransparency = 0.6
-MainShadow.ScaleType = Enum.ScaleType.Slice
-MainShadow.SliceCenter = Rect.new(50, 50, 50, 50)
-MainShadow.Parent = MainFrame
-MainShadow.ZIndex = 9
+local NebulaShadow = Instance.new("ImageLabel")
+NebulaShadow.Name = "Shadow"
+NebulaShadow.Size = UDim2.new(1, 30, 1, 30)
+NebulaShadow.Position = UDim2.new(0, -15, 0, -15)
+NebulaShadow.BackgroundTransparency = 1
+NebulaShadow.Image = "rbxassetid://6015897843"
+NebulaShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+NebulaShadow.ImageTransparency = 0.6
+NebulaShadow.ScaleType = Enum.ScaleType.Slice
+NebulaShadow.SliceCenter = Rect.new(50, 50, 50, 50)
+NebulaShadow.Parent = NebulaFrame
+NebulaShadow.ZIndex = 9
 
 -- Rounded corners
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 15)
-MainCorner.Parent = MainFrame
+local NebulaCorner = Instance.new("UICorner")
+NebulaCorner.CornerRadius = UDim.new(0, 20)
+NebulaCorner.Parent = NebulaFrame
 
--- Gradient background
-local MainGradient = Instance.new("UIGradient")
-MainGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 25, 30)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 20))
+-- Nebula gradient background
+local NebulaGradient = Instance.new("UIGradient")
+NebulaGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, NebulaColors.background),
+    ColorSequenceKeypoint.new(0.5, NebulaColors.surface),
+    ColorSequenceKeypoint.new(1, NebulaColors.background)
 })
-MainGradient.Rotation = 90
-MainGradient.Parent = MainFrame
+NebulaGradient.Rotation = 45
+NebulaGradient.Parent = NebulaFrame
+
+-- Animated border
+local NebulaBorder = Instance.new("Frame")
+NebulaBorder.Size = UDim2.new(1, 4, 1, 4)
+NebulaBorder.Position = UDim2.new(0, -2, 0, -2)
+NebulaBorder.BackgroundColor3 = NebulaColors.primary
+NebulaBorder.BackgroundTransparency = 0.7
+NebulaBorder.BorderSizePixel = 0
+NebulaBorder.Parent = NebulaFrame
+NebulaBorder.ZIndex = 11
+
+local BorderCorner = Instance.new("UICorner")
+BorderCorner.CornerRadius = UDim.new(0, 22)
+BorderCorner.Parent = NebulaBorder
+
+-- Animasi border berubah warna
+task.spawn(function()
+    local hue = 0
+    while NebulaBorder do
+        hue = (hue + 0.01) % 1
+        NebulaBorder.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+        task.wait(0.05)
+    end
+end)
 
 --==================================================
--- TITLE BAR
+-- NEBULA HEADER
 --==================================================
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 50)
-TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-TitleBar.BackgroundTransparency = 0.1
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = MainFrame
-TitleBar.ZIndex = 11
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 70)
+Header.BackgroundColor3 = NebulaColors.surface
+Header.BackgroundTransparency = 0.2
+Header.BorderSizePixel = 0
+Header.Parent = NebulaFrame
+Header.ZIndex = 12
 
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 15)
-TitleCorner.Parent = TitleBar
+local HeaderCorner = Instance.new("UICorner")
+HeaderCorner.CornerRadius = UDim.new(0, 20)
+HeaderCorner.Parent = Header
 
--- Icon
-local TitleIcon = Instance.new("Frame")
-TitleIcon.Size = UDim2.new(0, 30, 0, 30)
-TitleIcon.Position = UDim2.new(0, 15, 0.5, -15)
-TitleIcon.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-TitleIcon.BackgroundTransparency = 0.2
-TitleIcon.Parent = TitleBar
-TitleIcon.ZIndex = 12
+-- Header glow
+local HeaderGlow = Instance.new("ImageLabel")
+HeaderGlow.Size = UDim2.new(1, 0, 0, 20)
+HeaderGlow.Position = UDim2.new(0, 0, 1, -10)
+HeaderGlow.BackgroundTransparency = 1
+HeaderGlow.Image = "rbxassetid://5028857648"
+HeaderGlow.ImageColor3 = NebulaColors.primary
+HeaderGlow.ImageTransparency = 0.5
+HeaderGlow.ScaleType = Enum.ScaleType.Slice
+HeaderGlow.SliceCenter = Rect.new(10, 10, 10, 10)
+HeaderGlow.Parent = Header
+HeaderGlow.ZIndex = 13
 
-local IconCorner = Instance.new("UICorner")
-IconCorner.CornerRadius = UDim.new(0, 8)
-IconCorner.Parent = TitleIcon
+-- Nebula logo
+local LogoContainer = Instance.new("Frame")
+LogoContainer.Size = UDim2.new(0, 45, 0, 45)
+LogoContainer.Position = UDim2.new(0, 15, 0.5, -22.5)
+LogoContainer.BackgroundColor3 = NebulaColors.primary
+LogoContainer.BackgroundTransparency = 0.3
+LogoContainer.Parent = Header
+LogoContainer.ZIndex = 14
 
-local IconLabel = Instance.new("TextLabel")
-IconLabel.Size = UDim2.new(1, 0, 1, 0)
-IconLabel.BackgroundTransparency = 1
-IconLabel.Text = "🎮"
-IconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-IconLabel.TextSize = 18
-IconLabel.Font = Enum.Font.Gotham
-IconLabel.Parent = TitleIcon
-IconLabel.ZIndex = 13
+local LogoCorner = Instance.new("UICorner")
+LogoCorner.CornerRadius = UDim.new(0, 12)
+LogoCorner.Parent = LogoContainer
 
--- Title text
-local TitleText = Instance.new("TextLabel")
-TitleText.Size = UDim2.new(0, 200, 0, 25)
-TitleText.Position = UDim2.new(0, 55, 0.5, -12.5)
-TitleText.BackgroundTransparency = 1
-TitleText.Text = "VIOLENCE DISTRICT"
-TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleText.TextSize = 16
-TitleText.Font = Enum.Font.GothamBold
-TitleText.TextXAlignment = Enum.TextXAlignment.Left
-TitleText.Parent = TitleBar
-TitleText.ZIndex = 12
+local LogoGlow = Instance.new("Frame")
+LogoGlow.Size = UDim2.new(1, 4, 1, 4)
+LogoGlow.Position = UDim2.new(0, -2, 0, -2)
+LogoGlow.BackgroundColor3 = NebulaColors.secondary
+LogoGlow.BackgroundTransparency = 0.5
+LogoGlow.BorderSizePixel = 0
+LogoGlow.Parent = LogoContainer
+LogoGlow.ZIndex = 13
 
-local VersionText = Instance.new("TextLabel")
-VersionText.Size = UDim2.new(0, 50, 0, 20)
-VersionText.Position = UDim2.new(0, 55, 0.5, 7)
-VersionText.BackgroundTransparency = 1
-VersionText.Text = "v5.0"
-VersionText.TextColor3 = Color3.fromRGB(150, 150, 150)
-VersionText.TextSize = 10
-VersionText.Font = Enum.Font.Gotham
-VersionText.TextXAlignment = Enum.TextXAlignment.Left
-VersionText.Parent = TitleBar
-VersionText.ZIndex = 12
+local LogoGlowCorner = Instance.new("UICorner")
+LogoGlowCorner.CornerRadius = UDim.new(0, 14)
+LogoGlowCorner.Parent = LogoGlow
+
+local Logo = Instance.new("TextLabel")
+Logo.Size = UDim2.new(1, 0, 1, 0)
+Logo.BackgroundTransparency = 1
+Logo.Text = "🌌"
+Logo.TextColor3 = NebulaColors.text
+Logo.TextSize = 25
+Logo.Font = Enum.Font.Gotham
+Logo.Parent = LogoContainer
+Logo.ZIndex = 15
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0, 250, 0, 30)
+Title.Position = UDim2.new(0, 70, 0.5, -15)
+Title.BackgroundTransparency = 1
+Title.Text = "VIOLENCE DISTRICT"
+Title.TextColor3 = NebulaColors.text
+Title.TextSize = 18
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
+Title.ZIndex = 14
+
+local TitleGlow = Instance.new("TextLabel")
+TitleGlow.Size = UDim2.new(0, 250, 0, 30)
+TitleGlow.Position = UDim2.new(0, 70, 0.5, -15)
+TitleGlow.BackgroundTransparency = 1
+TitleGlow.Text = "VIOLENCE DISTRICT"
+TitleGlow.TextColor3 = NebulaColors.primary
+TitleGlow.TextSize = 18
+TitleGlow.Font = Enum.Font.GothamBold
+TitleGlow.TextXAlignment = Enum.TextXAlignment.Left
+TitleGlow.TextTransparency = 0.7
+TitleGlow.Parent = Header
+TitleGlow.ZIndex = 13
+
+-- Version
+local Version = Instance.new("TextLabel")
+Version.Size = UDim2.new(0, 100, 0, 20)
+Version.Position = UDim2.new(0, 70, 0.5, 8)
+Version.BackgroundTransparency = 1
+Version.Text = "NEBULA v6.0"
+Version.TextColor3 = NebulaColors.primary
+Version.TextSize = 11
+Version.Font = Enum.Font.Gotham
+Version.TextXAlignment = Enum.TextXAlignment.Left
+Version.Parent = Header
+Version.ZIndex = 14
 
 -- Control buttons
 local ControlFrame = Instance.new("Frame")
-ControlFrame.Size = UDim2.new(0, 95, 0, 30)
-ControlFrame.Position = UDim2.new(1, -105, 0.5, -15)
+ControlFrame.Size = UDim2.new(0, 100, 0, 35)
+ControlFrame.Position = UDim2.new(1, -110, 0.5, -17.5)
 ControlFrame.BackgroundTransparency = 1
-ControlFrame.Parent = TitleBar
-ControlFrame.ZIndex = 12
+ControlFrame.Parent = Header
+ControlFrame.ZIndex = 14
 
 -- Minimize button
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 30, 0, 30)
+MinBtn.Size = UDim2.new(0, 35, 0, 35)
 MinBtn.Position = UDim2.new(0, 0, 0, 0)
-MinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+MinBtn.BackgroundColor3 = NebulaColors.surface
 MinBtn.Text = "−"
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.TextColor3 = NebulaColors.text
 MinBtn.TextSize = 20
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.Parent = ControlFrame
-MinBtn.ZIndex = 13
+MinBtn.ZIndex = 15
 
 local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 8)
+MinCorner.CornerRadius = UDim.new(0, 10)
 MinCorner.Parent = MinBtn
 
+MinBtn.MouseEnter:Connect(function()
+    TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundColor3 = NebulaColors.primary}):Play()
+end)
+
+MinBtn.MouseLeave:Connect(function()
+    TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundColor3 = NebulaColors.surface}):Play()
+end)
+
 MinBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-    FloatIcon.Text = "🎯"
-    FloatTooltip.Text = "Tampilkan menu"
+    NebulaFrame.Visible = false
+    OrbIcon.Text = "🌠"
+    OrbTooltip.Text = "Tampilkan menu"
 end)
 
 -- Settings button
 local SettingsBtn = Instance.new("TextButton")
-SettingsBtn.Size = UDim2.new(0, 30, 0, 30)
-SettingsBtn.Position = UDim2.new(0, 35, 0, 0)
-SettingsBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+SettingsBtn.Size = UDim2.new(0, 35, 0, 35)
+SettingsBtn.Position = UDim2.new(0, 40, 0, 0)
+SettingsBtn.BackgroundColor3 = NebulaColors.surface
 SettingsBtn.Text = "⚙️"
-SettingsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SettingsBtn.TextSize = 16
+SettingsBtn.TextColor3 = NebulaColors.text
+SettingsBtn.TextSize = 18
 SettingsBtn.Font = Enum.Font.Gotham
 SettingsBtn.Parent = ControlFrame
-SettingsBtn.ZIndex = 13
+SettingsBtn.ZIndex = 15
 
 local SettingsCorner = Instance.new("UICorner")
-SettingsCorner.CornerRadius = UDim.new(0, 8)
+SettingsCorner.CornerRadius = UDim.new(0, 10)
 SettingsCorner.Parent = SettingsBtn
+
+SettingsBtn.MouseEnter:Connect(function()
+    TweenService:Create(SettingsBtn, TweenInfo.new(0.2), {BackgroundColor3 = NebulaColors.accent}):Play()
+end)
+
+SettingsBtn.MouseLeave:Connect(function()
+    TweenService:Create(SettingsBtn, TweenInfo.new(0.2), {BackgroundColor3 = NebulaColors.surface}):Play()
+end)
 
 SettingsBtn.MouseButton1Click:Connect(function()
     CurrentTab = "Misc"
     UpdateTab("Misc")
-    -- Update tab button colors
+    -- Update tab buttons
     for i, btn in ipairs(TabButtons) do
         if i == 7 then
-            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(65, 105, 225)}):Play()
-            btn:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(255, 255, 255)
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = NebulaColors.primary}):Play()
+            btn:FindFirstChild("Icon").TextColor3 = NebulaColors.text
         else
-            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
-            btn:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(200, 200, 200)
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = NebulaColors.surface}):Play()
+            btn:FindFirstChild("Icon").TextColor3 = NebulaColors.textDim
         end
     end
 end)
 
 -- Close button
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(0, 70, 0, 0)
+CloseBtn.Size = UDim2.new(0, 35, 0, 35)
+CloseBtn.Position = UDim2.new(0, 80, 0, 0)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
 CloseBtn.Text = "×"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 20
+CloseBtn.TextColor3 = NebulaColors.text
+CloseBtn.TextSize = 22
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.Parent = ControlFrame
-CloseBtn.ZIndex = 13
+CloseBtn.ZIndex = 15
 
 local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.CornerRadius = UDim.new(0, 10)
 CloseCorner.Parent = CloseBtn
 
+CloseBtn.MouseEnter:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 80, 80)}):Play()
+end)
+
+CloseBtn.MouseLeave:Connect(function()
+    TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(220, 60, 60)}):Play()
+end)
+
 CloseBtn.MouseButton1Click:Connect(function()
+    -- Animasi close
+    TweenService:Create(NebulaFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundTransparency = 1
+    }):Play()
+    TweenService:Create(NebulaOrb, TweenInfo.new(0.3), {
+        Size = UDim2.new(0, 0, 0, 0)
+    }):Play()
+    task.wait(0.3)
     ScreenGui:Destroy()
-    _G.VD_Loaded = false
+    _G.VD_Nebula = false
 end)
 
 --==================================================
--- TAB BUTTONS
+-- NEBULA TABS
 --==================================================
-local TabFrame = Instance.new("Frame")
-TabFrame.Size = UDim2.new(1, -20, 0, 45)
-TabFrame.Position = UDim2.new(0, 10, 0, 55)
-TabFrame.BackgroundTransparency = 1
-TabFrame.Parent = MainFrame
-TabFrame.ZIndex = 11
+local TabContainer = Instance.new("Frame")
+TabContainer.Size = UDim2.new(1, -20, 0, 50)
+TabContainer.Position = UDim2.new(0, 10, 0, 75)
+TabContainer.BackgroundTransparency = 1
+TabContainer.Parent = NebulaFrame
+TabContainer.ZIndex = 12
 
 local Tabs = {
-    {name = "Main", icon = "🏠"},
-    {name = "Visuals", icon = "👁️"},
-    {name = "Survivor", icon = "🛡️"},
-    {name = "Killer", icon = "⚔️"},
-    {name = "Teleport", icon = "🌀"},
-    {name = "Farm", icon = "⚡"},
-    {name = "Misc", icon = "⚙️"}
+    {name = "Main", icon = "🌌", color = NebulaColors.primary},
+    {name = "Visuals", icon = "👁️", color = NebulaColors.primary},
+    {name = "Survivor", icon = "🛡️", color = NebulaColors.primary},
+    {name = "Killer", icon = "⚔️", color = NebulaColors.primary},
+    {name = "Teleport", icon = "🌀", color = NebulaColors.primary},
+    {name = "Farm", icon = "⚡", color = NebulaColors.primary},
+    {name = "Misc", icon = "⚙️", color = NebulaColors.primary}
 }
 
 local TabButtons = {}
@@ -413,48 +545,58 @@ local CurrentTab = "Main"
 
 for i, tabData in ipairs(Tabs) do
     local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0, 50, 0, 45)
-    TabBtn.Position = UDim2.new(0, (i-1) * 52, 0, 0)
-    TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    TabBtn.Size = UDim2.new(0, 52, 0, 50)
+    TabBtn.Position = UDim2.new(0, (i-1) * 54, 0, 0)
+    TabBtn.BackgroundColor3 = NebulaColors.surface
+    TabBtn.BackgroundTransparency = 0.2
     TabBtn.Text = ""
-    TabBtn.Parent = TabFrame
-    TabBtn.ZIndex = 12
+    TabBtn.Parent = TabContainer
+    TabBtn.ZIndex = 13
     
     local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 10)
+    BtnCorner.CornerRadius = UDim.new(0, 12)
     BtnCorner.Parent = TabBtn
     
     local Icon = Instance.new("TextLabel")
+    Icon.Name = "Icon"
     Icon.Size = UDim2.new(1, 0, 1, 0)
     Icon.BackgroundTransparency = 1
     Icon.Text = tabData.icon
-    Icon.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Icon.TextSize = 20
+    Icon.TextColor3 = NebulaColors.textDim
+    Icon.TextSize = 22
     Icon.Font = Enum.Font.Gotham
     Icon.Parent = TabBtn
-    Icon.ZIndex = 13
+    Icon.ZIndex = 14
     
     -- Hover effect
     TabBtn.MouseEnter:Connect(function()
         if CurrentTab ~= tabData.name then
-            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 50)}):Play()
+            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = NebulaColors.surface:lerp(NebulaColors.primary, 0.3)}):Play()
+            TweenService:Create(Icon, TweenInfo.new(0.2), {TextColor3 = NebulaColors.text}):Play()
         end
     end)
     
     TabBtn.MouseLeave:Connect(function()
         if CurrentTab ~= tabData.name then
-            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
+            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = NebulaColors.surface}):Play()
+            TweenService:Create(Icon, TweenInfo.new(0.2), {TextColor3 = NebulaColors.textDim}):Play()
         end
     end)
     
     TabBtn.MouseButton1Click:Connect(function()
         CurrentTab = tabData.name
         for _, btn in pairs(TabButtons) do
-            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
-            btn:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(200, 200, 200)
+            TweenService:Create(btn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                BackgroundColor3 = NebulaColors.surface,
+                Size = UDim2.new(0, 52, 0, 50)
+            }):Play()
+            btn:FindFirstChild("Icon").TextColor3 = NebulaColors.textDim
         end
-        TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(65, 105, 225)}):Play()
-        Icon.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TweenService:Create(TabBtn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            BackgroundColor3 = NebulaColors.primary,
+            Size = UDim2.new(0, 54, 0, 52)
+        }):Play()
+        Icon.TextColor3 = NebulaColors.text
         UpdateTab(tabData.name)
     end)
     
@@ -462,68 +604,99 @@ for i, tabData in ipairs(Tabs) do
 end
 
 --==================================================
--- CONTENT AREA
+-- NEBULA CONTENT
 --==================================================
-local ContentBg = Instance.new("Frame")
-ContentBg.Size = UDim2.new(1, -20, 1, -120)
-ContentBg.Position = UDim2.new(0, 10, 0, 105)
-ContentBg.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-ContentBg.BackgroundTransparency = 0.1
-ContentBg.ClipsDescendants = true
-ContentBg.Parent = MainFrame
-ContentBg.ZIndex = 11
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Size = UDim2.new(1, -20, 1, -140)
+ContentFrame.Position = UDim2.new(0, 10, 0, 130)
+ContentFrame.BackgroundColor3 = NebulaColors.surface
+ContentFrame.BackgroundTransparency = 0.1
+ContentFrame.ClipsDescendants = true
+ContentFrame.Parent = NebulaFrame
+ContentFrame.ZIndex = 12
 
 local ContentCorner = Instance.new("UICorner")
-ContentCorner.CornerRadius = UDim.new(0, 12)
-ContentCorner.Parent = ContentBg
+ContentCorner.CornerRadius = UDim.new(0, 16)
+ContentCorner.Parent = ContentFrame
 
--- Header content
+-- Content header
 local ContentHeader = Instance.new("Frame")
-ContentHeader.Size = UDim2.new(1, -20, 0, 35)
+ContentHeader.Size = UDim2.new(1, -20, 0, 45)
 ContentHeader.Position = UDim2.new(0, 10, 0, 10)
-ContentHeader.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-ContentHeader.BackgroundTransparency = 0.1
-ContentHeader.Parent = ContentBg
-ContentHeader.ZIndex = 12
+ContentHeader.BackgroundColor3 = NebulaColors.background
+ContentHeader.BackgroundTransparency = 0.2
+ContentHeader.Parent = ContentFrame
+ContentHeader.ZIndex = 13
 
 local HeaderCorner = Instance.new("UICorner")
-HeaderCorner.CornerRadius = UDim.new(0, 8)
+HeaderCorner.CornerRadius = UDim.new(0, 12)
 HeaderCorner.Parent = ContentHeader
 
 local HeaderIcon = Instance.new("TextLabel")
-HeaderIcon.Size = UDim2.new(0, 30, 1, 0)
-HeaderIcon.Position = UDim2.new(0, 5, 0, 0)
+HeaderIcon.Size = UDim2.new(0, 35, 1, 0)
+HeaderIcon.Position = UDim2.new(0, 10, 0, 0)
 HeaderIcon.BackgroundTransparency = 1
-HeaderIcon.Text = "🏠"
-HeaderIcon.TextColor3 = Color3.fromRGB(65, 105, 225)
-HeaderIcon.TextSize = 18
+HeaderIcon.Text = "🌌"
+HeaderIcon.TextColor3 = NebulaColors.primary
+HeaderIcon.TextSize = 20
 HeaderIcon.Font = Enum.Font.Gotham
 HeaderIcon.Parent = ContentHeader
-HeaderIcon.ZIndex = 13
+HeaderIcon.ZIndex = 14
 
 local HeaderTitle = Instance.new("TextLabel")
-HeaderTitle.Size = UDim2.new(1, -40, 1, 0)
-HeaderTitle.Position = UDim2.new(0, 35, 0, 0)
+HeaderTitle.Size = UDim2.new(1, -60, 1, 0)
+HeaderTitle.Position = UDim2.new(0, 45, 0, 0)
 HeaderTitle.BackgroundTransparency = 1
 HeaderTitle.Text = "MAIN"
-HeaderTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-HeaderTitle.TextSize = 13
+HeaderTitle.TextColor3 = NebulaColors.text
+HeaderTitle.TextSize = 15
 HeaderTitle.Font = Enum.Font.GothamBold
 HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
 HeaderTitle.Parent = ContentHeader
-HeaderTitle.ZIndex = 13
+HeaderTitle.ZIndex = 14
+
+-- Time display
+local TimeFrame = Instance.new("Frame")
+TimeFrame.Size = UDim2.new(0, 70, 0, 30)
+TimeFrame.Position = UDim2.new(1, -80, 0.5, -15)
+TimeFrame.BackgroundColor3 = NebulaColors.background
+TimeFrame.BackgroundTransparency = 0.2
+TimeFrame.Parent = ContentHeader
+TimeFrame.ZIndex = 14
+
+local TimeCorner = Instance.new("UICorner")
+TimeCorner.CornerRadius = UDim.new(0, 8)
+TimeCorner.Parent = TimeFrame
+
+local TimeText = Instance.new("TextLabel")
+TimeText.Size = UDim2.new(1, 0, 1, 0)
+TimeText.BackgroundTransparency = 1
+TimeText.Text = os.date("%H:%M")
+TimeText.TextColor3 = NebulaColors.primary
+TimeText.TextSize = 13
+TimeText.Font = Enum.Font.GothamBold
+TimeText.Parent = TimeFrame
+TimeText.ZIndex = 15
+
+-- Update time
+task.spawn(function()
+    while TimeText do
+        task.wait(1)
+        TimeText.Text = os.date("%H:%M")
+    end
+end)
 
 -- Scrolling frame
 local ScrollingFrame = Instance.new("ScrollingFrame")
-ScrollingFrame.Size = UDim2.new(1, -20, 1, -60)
-ScrollingFrame.Position = UDim2.new(0, 10, 0, 50)
+ScrollingFrame.Size = UDim2.new(1, -20, 1, -70)
+ScrollingFrame.Position = UDim2.new(0, 10, 0, 60)
 ScrollingFrame.BackgroundTransparency = 1
 ScrollingFrame.BorderSizePixel = 0
 ScrollingFrame.ScrollBarThickness = 6
-ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(65, 105, 225)
+ScrollingFrame.ScrollBarImageColor3 = NebulaColors.primary
 ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-ScrollingFrame.Parent = ContentBg
-ScrollingFrame.ZIndex = 12
+ScrollingFrame.Parent = ContentFrame
+ScrollingFrame.ZIndex = 13
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Padding = UDim.new(0, 8)
@@ -531,79 +704,100 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Parent = ScrollingFrame
 
 --==================================================
--- FUNGSI UNTUK MEMBUAT ELEMEN UI
+-- FUNGSI UI NEBULA
 --==================================================
 
 function CreateSection(text)
     local Section = Instance.new("TextLabel")
-    Section.Size = UDim2.new(1, 0, 0, 30)
+    Section.Size = UDim2.new(1, 0, 0, 35)
     Section.BackgroundTransparency = 1
     Section.Text = "  " .. text
-    Section.TextColor3 = Color3.fromRGB(65, 105, 225)
-    Section.TextSize = 14
+    Section.TextColor3 = NebulaColors.primary
+    Section.TextSize = 15
     Section.Font = Enum.Font.GothamBold
     Section.TextXAlignment = Enum.TextXAlignment.Left
     Section.Parent = ScrollingFrame
-    Section.ZIndex = 13
+    Section.ZIndex = 14
     
     local Line = Instance.new("Frame")
-    Line.Size = UDim2.new(1, -10, 0, 1)
-    Line.Position = UDim2.new(0, 5, 0, 28)
-    Line.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+    Line.Size = UDim2.new(1, -10, 0, 2)
+    Line.Position = UDim2.new(0, 5, 0, 32)
+    Line.BackgroundColor3 = NebulaColors.primary
     Line.BackgroundTransparency = 0.5
     Line.BorderSizePixel = 0
     Line.Parent = Section
-    Line.ZIndex = 12
+    Line.ZIndex = 13
     
     return Section
 end
 
 function CreateToggle(text, desc, callback)
     local ToggleFrame = Instance.new("Frame")
-    ToggleFrame.Size = UDim2.new(1, 0, 0, 55)
-    ToggleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    ToggleFrame.BackgroundTransparency = 0.1
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 60)
+    ToggleFrame.BackgroundColor3 = NebulaColors.background
+    ToggleFrame.BackgroundTransparency = 0.2
     ToggleFrame.Parent = ScrollingFrame
-    ToggleFrame.ZIndex = 13
+    ToggleFrame.ZIndex = 14
     
     local ToggleCorner = Instance.new("UICorner")
-    ToggleCorner.CornerRadius = UDim.new(0, 8)
+    ToggleCorner.CornerRadius = UDim.new(0, 12)
     ToggleCorner.Parent = ToggleFrame
     
+    local IconContainer = Instance.new("Frame")
+    IconContainer.Size = UDim2.new(0, 35, 0, 35)
+    IconContainer.Position = UDim2.new(0, 12, 0.5, -17.5)
+    IconContainer.BackgroundColor3 = NebulaColors.surface
+    IconContainer.Parent = ToggleFrame
+    IconContainer.ZIndex = 15
+    
+    local IconCorner = Instance.new("UICorner")
+    IconCorner.CornerRadius = UDim.new(0, 8)
+    IconCorner.Parent = IconContainer
+    
+    local Icon = Instance.new("TextLabel")
+    Icon.Size = UDim2.new(1, 0, 1, 0)
+    Icon.BackgroundTransparency = 1
+    Icon.Text = "⚡"
+    Icon.TextColor3 = NebulaColors.primary
+    Icon.TextSize = 18
+    Icon.Font = Enum.Font.Gotham
+    Icon.Parent = IconContainer
+    Icon.ZIndex = 16
+    
     local ToggleText = Instance.new("TextLabel")
-    ToggleText.Size = UDim2.new(0.7, -20, 0, 22)
-    ToggleText.Position = UDim2.new(0, 15, 0, 8)
+    ToggleText.Size = UDim2.new(0.6, -60, 0, 22)
+    ToggleText.Position = UDim2.new(0, 55, 0, 10)
     ToggleText.BackgroundTransparency = 1
     ToggleText.Text = text
-    ToggleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleText.TextColor3 = NebulaColors.text
     ToggleText.TextSize = 14
     ToggleText.Font = Enum.Font.GothamBold
     ToggleText.TextXAlignment = Enum.TextXAlignment.Left
     ToggleText.Parent = ToggleFrame
-    ToggleText.ZIndex = 14
+    ToggleText.ZIndex = 15
     
     local ToggleDesc = Instance.new("TextLabel")
-    ToggleDesc.Size = UDim2.new(0.7, -20, 0, 16)
-    ToggleDesc.Position = UDim2.new(0, 15, 0, 30)
+    ToggleDesc.Size = UDim2.new(0.6, -60, 0, 16)
+    ToggleDesc.Position = UDim2.new(0, 55, 0, 32)
     ToggleDesc.BackgroundTransparency = 1
     ToggleDesc.Text = desc or ""
-    ToggleDesc.TextColor3 = Color3.fromRGB(150, 150, 150)
-    ToggleDesc.TextSize = 10
+    ToggleDesc.TextColor3 = NebulaColors.textDim
+    ToggleDesc.TextSize = 11
     ToggleDesc.Font = Enum.Font.Gotham
     ToggleDesc.TextXAlignment = Enum.TextXAlignment.Left
     ToggleDesc.Parent = ToggleFrame
-    ToggleDesc.ZIndex = 14
+    ToggleDesc.ZIndex = 15
     
     local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(0, 70, 0, 30)
-    ToggleBtn.Position = UDim2.new(1, -85, 0.5, -15)
-    ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    ToggleBtn.Size = UDim2.new(0, 75, 0, 35)
+    ToggleBtn.Position = UDim2.new(1, -90, 0.5, -17.5)
+    ToggleBtn.BackgroundColor3 = NebulaColors.surface
     ToggleBtn.Text = "OFF"
     ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
     ToggleBtn.TextSize = 12
     ToggleBtn.Font = Enum.Font.GothamBold
     ToggleBtn.Parent = ToggleFrame
-    ToggleBtn.ZIndex = 15
+    ToggleBtn.ZIndex = 16
     
     local BtnCorner = Instance.new("UICorner")
     BtnCorner.CornerRadius = UDim.new(0, 20)
@@ -613,17 +807,19 @@ function CreateToggle(text, desc, callback)
     ToggleBtn.MouseButton1Click:Connect(function()
         enabled = not enabled
         if enabled then
-            TweenService:Create(ToggleBtn, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(65, 105, 225),
-                TextColor3 = Color3.fromRGB(255, 255, 255)
+            TweenService:Create(ToggleBtn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                BackgroundColor3 = NebulaColors.primary,
+                TextColor3 = NebulaColors.text
             }):Play()
             ToggleBtn.Text = "ON"
+            TweenService:Create(Icon, TweenInfo.new(0.3), {TextColor3 = Color3.fromRGB(0, 255, 100)}):Play()
         else
-            TweenService:Create(ToggleBtn, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(50, 50, 55),
+            TweenService:Create(ToggleBtn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+                BackgroundColor3 = NebulaColors.surface,
                 TextColor3 = Color3.fromRGB(255, 100, 100)
             }):Play()
             ToggleBtn.Text = "OFF"
+            TweenService:Create(Icon, TweenInfo.new(0.3), {TextColor3 = NebulaColors.primary}):Play()
         end
         callback(enabled)
     end)
@@ -633,29 +829,44 @@ end
 
 function CreateButton(text, color, callback)
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1, 0, 0, 45)
-    Button.BackgroundColor3 = color or Color3.fromRGB(65, 105, 225)
-    Button.Text = text
-    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Button.TextSize = 13
-    Button.Font = Enum.Font.GothamBold
+    Button.Size = UDim2.new(1, 0, 0, 50)
+    Button.BackgroundColor3 = color or NebulaColors.primary
+    Button.Text = ""
     Button.Parent = ScrollingFrame
     Button.ZIndex = 14
     
     local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 8)
+    BtnCorner.CornerRadius = UDim.new(0, 12)
     BtnCorner.Parent = Button
+    
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Size = UDim2.new(1, -20, 1, 0)
+    TextLabel.Position = UDim2.new(0, 10, 0, 0)
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Text = text
+    TextLabel.TextColor3 = NebulaColors.text
+    TextLabel.TextSize = 14
+    TextLabel.Font = Enum.Font.GothamBold
+    TextLabel.TextXAlignment = Enum.TextXAlignment.Center
+    TextLabel.Parent = Button
+    TextLabel.ZIndex = 15
     
     -- Hover effect
     Button.MouseEnter:Connect(function()
         TweenService:Create(Button, TweenInfo.new(0.2), {
-            BackgroundColor3 = color and color:Lerp(Color3.fromRGB(255, 255, 255), 0.2) or Color3.fromRGB(85, 125, 245)
+            BackgroundColor3 = (color or NebulaColors.primary):lerp(NebulaColors.text, 0.2)
+        }):Play()
+        TweenService:Create(Button, TweenInfo.new(0.2), {
+            Size = UDim2.new(1, 0, 0, 52)
         }):Play()
     end)
     
     Button.MouseLeave:Connect(function()
         TweenService:Create(Button, TweenInfo.new(0.2), {
-            BackgroundColor3 = color or Color3.fromRGB(65, 105, 225)
+            BackgroundColor3 = color or NebulaColors.primary
+        }):Play()
+        TweenService:Create(Button, TweenInfo.new(0.2), {
+            Size = UDim2.new(1, 0, 0, 50)
         }):Play()
     end)
     
@@ -666,50 +877,71 @@ end
 
 function CreateDropdown(text, options, callback)
     local DropdownFrame = Instance.new("Frame")
-    DropdownFrame.Size = UDim2.new(1, 0, 0, 55)
-    DropdownFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    DropdownFrame.BackgroundTransparency = 0.1
+    DropdownFrame.Size = UDim2.new(1, 0, 0, 60)
+    DropdownFrame.BackgroundColor3 = NebulaColors.background
+    DropdownFrame.BackgroundTransparency = 0.2
     DropdownFrame.Parent = ScrollingFrame
-    DropdownFrame.ZIndex = 13
+    DropdownFrame.ZIndex = 14
     
     local DropdownCorner = Instance.new("UICorner")
-    DropdownCorner.CornerRadius = UDim.new(0, 8)
+    DropdownCorner.CornerRadius = UDim.new(0, 12)
     DropdownCorner.Parent = DropdownFrame
     
+    local IconContainer = Instance.new("Frame")
+    IconContainer.Size = UDim2.new(0, 35, 0, 35)
+    IconContainer.Position = UDim2.new(0, 12, 0.5, -17.5)
+    IconContainer.BackgroundColor3 = NebulaColors.surface
+    IconContainer.Parent = DropdownFrame
+    IconContainer.ZIndex = 15
+    
+    local IconCorner = Instance.new("UICorner")
+    IconCorner.CornerRadius = UDim.new(0, 8)
+    IconCorner.Parent = IconContainer
+    
+    local Icon = Instance.new("TextLabel")
+    Icon.Size = UDim2.new(1, 0, 1, 0)
+    Icon.BackgroundTransparency = 1
+    Icon.Text = "📋"
+    Icon.TextColor3 = NebulaColors.primary
+    Icon.TextSize = 18
+    Icon.Font = Enum.Font.Gotham
+    Icon.Parent = IconContainer
+    Icon.ZIndex = 16
+    
     local DropdownText = Instance.new("TextLabel")
-    DropdownText.Size = UDim2.new(0.6, -20, 0, 22)
-    DropdownText.Position = UDim2.new(0, 15, 0, 8)
+    DropdownText.Size = UDim2.new(0.5, -60, 0, 22)
+    DropdownText.Position = UDim2.new(0, 55, 0, 10)
     DropdownText.BackgroundTransparency = 1
     DropdownText.Text = text
-    DropdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownText.TextColor3 = NebulaColors.text
     DropdownText.TextSize = 14
     DropdownText.Font = Enum.Font.GothamBold
     DropdownText.TextXAlignment = Enum.TextXAlignment.Left
     DropdownText.Parent = DropdownFrame
-    DropdownText.ZIndex = 14
+    DropdownText.ZIndex = 15
     
     local DropdownDesc = Instance.new("TextLabel")
-    DropdownDesc.Size = UDim2.new(0.6, -20, 0, 16)
-    DropdownDesc.Position = UDim2.new(0, 15, 0, 30)
+    DropdownDesc.Size = UDim2.new(0.5, -60, 0, 16)
+    DropdownDesc.Position = UDim2.new(0, 55, 0, 32)
     DropdownDesc.BackgroundTransparency = 1
     DropdownDesc.Text = "Click to select"
-    DropdownDesc.TextColor3 = Color3.fromRGB(150, 150, 150)
-    DropdownDesc.TextSize = 10
+    DropdownDesc.TextColor3 = NebulaColors.textDim
+    DropdownDesc.TextSize = 11
     DropdownDesc.Font = Enum.Font.Gotham
     DropdownDesc.TextXAlignment = Enum.TextXAlignment.Left
     DropdownDesc.Parent = DropdownFrame
-    DropdownDesc.ZIndex = 14
+    DropdownDesc.ZIndex = 15
     
     local DropdownBtn = Instance.new("TextButton")
-    DropdownBtn.Size = UDim2.new(0, 110, 0, 30)
-    DropdownBtn.Position = UDim2.new(1, -125, 0.5, -15)
-    DropdownBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    DropdownBtn.Size = UDim2.new(0, 120, 0, 35)
+    DropdownBtn.Position = UDim2.new(1, -135, 0.5, -17.5)
+    DropdownBtn.BackgroundColor3 = NebulaColors.surface
     DropdownBtn.Text = options[1] or "Select"
-    DropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DropdownBtn.TextSize = 11
+    DropdownBtn.TextColor3 = NebulaColors.text
+    DropdownBtn.TextSize = 12
     DropdownBtn.Font = Enum.Font.Gotham
     DropdownBtn.Parent = DropdownFrame
-    DropdownBtn.ZIndex = 15
+    DropdownBtn.ZIndex = 16
     
     local BtnCorner = Instance.new("UICorner")
     BtnCorner.CornerRadius = UDim.new(0, 20)
@@ -720,18 +952,18 @@ function CreateDropdown(text, options, callback)
         local oldMenu = DropdownFrame:FindFirstChild("DropdownMenu")
         if oldMenu then oldMenu:Destroy() end
         
-        -- Buat menu baru dengan ZIndex sangat tinggi
+        -- Buat menu baru dengan ZIndex tinggi
         local menu = Instance.new("Frame")
         menu.Name = "DropdownMenu"
-        menu.Size = UDim2.new(0, 140, 0, math.min(#options, 5) * 35)
-        menu.Position = UDim2.new(1, -125, 1, 5)
-        menu.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        menu.Size = UDim2.new(0, 140, 0, math.min(#options, 5) * 40)
+        menu.Position = UDim2.new(1, -135, 1, 5)
+        menu.BackgroundColor3 = NebulaColors.surface
         menu.BorderSizePixel = 0
         menu.Parent = DropdownFrame
-        menu.ZIndex = 999 -- ZIndex sangat tinggi agar muncul di depan
+        menu.ZIndex = 999
         
         local menuCorner = Instance.new("UICorner")
-        menuCorner.CornerRadius = UDim.new(0, 8)
+        menuCorner.CornerRadius = UDim.new(0, 12)
         menuCorner.Parent = menu
         
         local menuList = Instance.new("ScrollingFrame")
@@ -739,34 +971,47 @@ function CreateDropdown(text, options, callback)
         menuList.Position = UDim2.new(0, 1, 0, 1)
         menuList.BackgroundTransparency = 1
         menuList.ScrollBarThickness = 4
-        menuList.CanvasSize = UDim2.new(0, 0, 0, #options * 35)
+        menuList.CanvasSize = UDim2.new(0, 0, 0, #options * 40)
         menuList.Parent = menu
         menuList.ZIndex = 1000
         
         for i, option in ipairs(options) do
             local optionBtn = Instance.new("TextButton")
-            optionBtn.Size = UDim2.new(1, 0, 0, 35)
-            optionBtn.Position = UDim2.new(0, 0, 0, (i-1) * 35)
-            optionBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+            optionBtn.Size = UDim2.new(1, 0, 0, 40)
+            optionBtn.Position = UDim2.new(0, 0, 0, (i-1) * 40)
+            optionBtn.BackgroundColor3 = NebulaColors.background
             optionBtn.Text = option
-            optionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            optionBtn.TextSize = 12
+            optionBtn.TextColor3 = NebulaColors.text
+            optionBtn.TextSize = 13
             optionBtn.Font = Enum.Font.Gotham
             optionBtn.Parent = menuList
             optionBtn.ZIndex = 1001
             optionBtn.BorderSizePixel = 0
             
+            local optionCorner = Instance.new("UICorner")
+            optionCorner.CornerRadius = UDim.new(0, 8)
+            optionCorner.Parent = optionBtn
+            
             optionBtn.MouseEnter:Connect(function()
-                optionBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 60)
+                TweenService:Create(optionBtn, TweenInfo.new(0.2), {
+                    BackgroundColor3 = NebulaColors.primary
+                }):Play()
             end)
             
             optionBtn.MouseLeave:Connect(function()
-                optionBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+                TweenService:Create(optionBtn, TweenInfo.new(0.2), {
+                    BackgroundColor3 = NebulaColors.background
+                }):Play()
             end)
             
             optionBtn.MouseButton1Click:Connect(function()
                 DropdownBtn.Text = option
                 callback(option)
+                TweenService:Create(menu, TweenInfo.new(0.2), {
+                    Size = UDim2.new(0, 0, 0, 0),
+                    BackgroundTransparency = 1
+                }):Play()
+                task.wait(0.2)
                 menu:Destroy()
             end)
         end
@@ -777,135 +1022,157 @@ end
 
 function CreateLabel(text)
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 0, 25)
+    Label.Size = UDim2.new(1, 0, 0, 28)
     Label.BackgroundTransparency = 1
     Label.Text = "• " .. text
-    Label.TextColor3 = Color3.fromRGB(180, 180, 180)
-    Label.TextSize = 12
+    Label.TextColor3 = NebulaColors.textDim
+    Label.TextSize = 13
     Label.Font = Enum.Font.Gotham
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = ScrollingFrame
-    Label.ZIndex = 13
+    Label.ZIndex = 14
     
     return Label
 end
 
 function CreateSlider(text, min, max, default, callback)
     local SliderFrame = Instance.new("Frame")
-    SliderFrame.Size = UDim2.new(1, 0, 0, 85)
-    SliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    SliderFrame.BackgroundTransparency = 0.1
+    SliderFrame.Size = UDim2.new(1, 0, 0, 95)
+    SliderFrame.BackgroundColor3 = NebulaColors.background
+    SliderFrame.BackgroundTransparency = 0.2
     SliderFrame.Parent = ScrollingFrame
-    SliderFrame.ZIndex = 13
+    SliderFrame.ZIndex = 14
     
     local SliderCorner = Instance.new("UICorner")
-    SliderCorner.CornerRadius = UDim.new(0, 8)
+    SliderCorner.CornerRadius = UDim.new(0, 12)
     SliderCorner.Parent = SliderFrame
     
+    local IconContainer = Instance.new("Frame")
+    IconContainer.Size = UDim2.new(0, 35, 0, 35)
+    IconContainer.Position = UDim2.new(0, 12, 0.5, -17.5)
+    IconContainer.BackgroundColor3 = NebulaColors.surface
+    IconContainer.Parent = SliderFrame
+    IconContainer.ZIndex = 15
+    
+    local IconCorner = Instance.new("UICorner")
+    IconCorner.CornerRadius = UDim.new(0, 8)
+    IconCorner.Parent = IconContainer
+    
+    local Icon = Instance.new("TextLabel")
+    Icon.Size = UDim2.new(1, 0, 1, 0)
+    Icon.BackgroundTransparency = 1
+    Icon.Text = "🎚️"
+    Icon.TextColor3 = NebulaColors.primary
+    Icon.TextSize = 18
+    Icon.Font = Enum.Font.Gotham
+    Icon.Parent = IconContainer
+    Icon.ZIndex = 16
+    
     local SliderText = Instance.new("TextLabel")
-    SliderText.Size = UDim2.new(0.5, -20, 0, 22)
-    SliderText.Position = UDim2.new(0, 15, 0, 8)
+    SliderText.Size = UDim2.new(0.5, -60, 0, 22)
+    SliderText.Position = UDim2.new(0, 55, 0, 10)
     SliderText.BackgroundTransparency = 1
     SliderText.Text = text
-    SliderText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SliderText.TextColor3 = NebulaColors.text
     SliderText.TextSize = 14
     SliderText.Font = Enum.Font.GothamBold
     SliderText.TextXAlignment = Enum.TextXAlignment.Left
     SliderText.Parent = SliderFrame
-    SliderText.ZIndex = 14
+    SliderText.ZIndex = 15
     
-    -- Frame untuk value dan input
-    local ValueFrame = Instance.new("Frame")
-    ValueFrame.Size = UDim2.new(0, 120, 0, 25)
-    ValueFrame.Position = UDim2.new(1, -135, 0, 7)
-    ValueFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-    ValueFrame.Parent = SliderFrame
-    ValueFrame.ZIndex = 14
+    -- Control panel untuk nilai
+    local ControlPanel = Instance.new("Frame")
+    ControlPanel.Size = UDim2.new(0, 140, 0, 30)
+    ControlPanel.Position = UDim2.new(1, -155, 0, 10)
+    ControlPanel.BackgroundColor3 = NebulaColors.surface
+    ControlPanel.Parent = SliderFrame
+    ControlPanel.ZIndex = 15
     
-    local ValueCorner = Instance.new("UICorner")
-    ValueCorner.CornerRadius = UDim.new(0, 6)
-    ValueCorner.Parent = ValueFrame
+    local PanelCorner = Instance.new("UICorner")
+    PanelCorner.CornerRadius = UDim.new(0, 8)
+    PanelCorner.Parent = ControlPanel
     
     -- Nilai slider
     local ValueLabel = Instance.new("TextLabel")
-    ValueLabel.Size = UDim2.new(0, 50, 1, 0)
+    ValueLabel.Size = UDim2.new(0, 45, 1, 0)
     ValueLabel.Position = UDim2.new(0, 5, 0, 0)
     ValueLabel.BackgroundTransparency = 1
     ValueLabel.Text = tostring(default)
-    ValueLabel.TextColor3 = Color3.fromRGB(65, 105, 225)
+    ValueLabel.TextColor3 = NebulaColors.primary
     ValueLabel.TextSize = 14
     ValueLabel.Font = Enum.Font.GothamBold
-    ValueLabel.Parent = ValueFrame
-    ValueLabel.ZIndex = 15
+    ValueLabel.Parent = ControlPanel
+    ValueLabel.ZIndex = 16
     
     -- Tombol decrease
     local DecBtn = Instance.new("TextButton")
-    DecBtn.Size = UDim2.new(0, 20, 0, 20)
-    DecBtn.Position = UDim2.new(0, 60, 0.5, -10)
-    DecBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    DecBtn.Size = UDim2.new(0, 25, 0, 25)
+    DecBtn.Position = UDim2.new(0, 55, 0.5, -12.5)
+    DecBtn.BackgroundColor3 = NebulaColors.background
     DecBtn.Text = "−"
-    DecBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DecBtn.TextSize = 14
+    DecBtn.TextColor3 = NebulaColors.text
+    DecBtn.TextSize = 16
     DecBtn.Font = Enum.Font.GothamBold
-    DecBtn.Parent = ValueFrame
-    DecBtn.ZIndex = 16
+    DecBtn.Parent = ControlPanel
+    DecBtn.ZIndex = 17
     
     local DecCorner = Instance.new("UICorner")
-    DecCorner.CornerRadius = UDim.new(0, 4)
+    DecCorner.CornerRadius = UDim.new(0, 6)
     DecCorner.Parent = DecBtn
     
     -- Input box
     local InputBox = Instance.new("TextBox")
-    InputBox.Size = UDim2.new(0, 30, 0, 20)
-    InputBox.Position = UDim2.new(0, 85, 0.5, -10)
-    InputBox.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+    InputBox.Size = UDim2.new(0, 35, 0, 25)
+    InputBox.Position = UDim2.new(0, 85, 0.5, -12.5)
+    InputBox.BackgroundColor3 = NebulaColors.background
     InputBox.Text = tostring(default)
-    InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InputBox.TextColor3 = NebulaColors.text
     InputBox.TextSize = 12
     InputBox.Font = Enum.Font.GothamBold
     InputBox.ClearTextOnFocus = true
-    InputBox.Parent = ValueFrame
-    InputBox.ZIndex = 16
+    InputBox.Parent = ControlPanel
+    InputBox.ZIndex = 17
     
     local InputCorner = Instance.new("UICorner")
-    InputCorner.CornerRadius = UDim.new(0, 4)
+    InputCorner.CornerRadius = UDim.new(0, 6)
     InputCorner.Parent = InputBox
     
     -- Tombol increase
     local IncBtn = Instance.new("TextButton")
-    IncBtn.Size = UDim2.new(0, 20, 0, 20)
-    IncBtn.Position = UDim2.new(0, 120, 0.5, -10)
-    IncBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    IncBtn.Size = UDim2.new(0, 25, 0, 25)
+    IncBtn.Position = UDim2.new(0, 125, 0.5, -12.5)
+    IncBtn.BackgroundColor3 = NebulaColors.background
     IncBtn.Text = "+"
-    IncBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    IncBtn.TextSize = 14
+    IncBtn.TextColor3 = NebulaColors.text
+    IncBtn.TextSize = 16
     IncBtn.Font = Enum.Font.GothamBold
-    IncBtn.Parent = ValueFrame
-    IncBtn.ZIndex = 16
+    IncBtn.Parent = ControlPanel
+    IncBtn.ZIndex = 17
     
     local IncCorner = Instance.new("UICorner")
-    IncCorner.CornerRadius = UDim.new(0, 4)
+    IncCorner.CornerRadius = UDim.new(0, 6)
     IncCorner.Parent = IncBtn
     
+    -- Slider
     local SliderBg = Instance.new("Frame")
     SliderBg.Size = UDim2.new(1, -30, 0, 8)
-    SliderBg.Position = UDim2.new(0, 15, 0, 60)
-    SliderBg.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    SliderBg.Position = UDim2.new(0, 15, 0, 65)
+    SliderBg.BackgroundColor3 = NebulaColors.surface
     SliderBg.Parent = SliderFrame
-    SliderBg.ZIndex = 14
+    SliderBg.ZIndex = 15
     
     local SliderFill = Instance.new("Frame")
     SliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    SliderFill.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+    SliderFill.BackgroundColor3 = NebulaColors.primary
     SliderFill.Parent = SliderBg
-    SliderFill.ZIndex = 15
+    SliderFill.ZIndex = 16
     
     local SliderButton = Instance.new("Frame")
     SliderButton.Size = UDim2.new(0, 20, 0, 20)
     SliderButton.Position = UDim2.new((default - min) / (max - min), -10, 0.5, -10)
-    SliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    SliderButton.BackgroundColor3 = NebulaColors.text
     SliderButton.Parent = SliderFill
-    SliderButton.ZIndex = 16
+    SliderButton.ZIndex = 17
     
     local ButtonCorner = Instance.new("UICorner")
     ButtonCorner.CornerRadius = UDim.new(1, 0)
@@ -926,12 +1193,19 @@ function CreateSlider(text, min, max, default, callback)
     DecBtn.MouseButton1Click:Connect(function()
         local current = tonumber(ValueLabel.Text) or default
         updateValue(current - 1)
+        -- Animasi button
+        TweenService:Create(DecBtn, TweenInfo.new(0.1), {Size = UDim2.new(0, 23, 0, 23)}):Play()
+        task.wait(0.1)
+        TweenService:Create(DecBtn, TweenInfo.new(0.1), {Size = UDim2.new(0, 25, 0, 25)}):Play()
     end)
     
     -- Increase button
     IncBtn.MouseButton1Click:Connect(function()
         local current = tonumber(ValueLabel.Text) or default
         updateValue(current + 1)
+        TweenService:Create(IncBtn, TweenInfo.new(0.1), {Size = UDim2.new(0, 23, 0, 23)}):Play()
+        task.wait(0.1)
+        TweenService:Create(IncBtn, TweenInfo.new(0.1), {Size = UDim2.new(0, 25, 0, 25)}):Play()
     end)
     
     -- Input box
@@ -973,16 +1247,20 @@ function CreateSlider(text, min, max, default, callback)
 end
 
 --==================================================
--- FLOATING BUTTON CLICK HANDLER
+-- FLOATING BUTTON CLICK
 --==================================================
-FloatingBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-    if MainFrame.Visible then
-        FloatIcon.Text = "🎮"
-        FloatTooltip.Text = "Sembunyikan menu"
+NebulaOrb.MouseButton1Click:Connect(function()
+    NebulaFrame.Visible = not NebulaFrame.Visible
+    if NebulaFrame.Visible then
+        OrbIcon.Text = "🌌"
+        OrbTooltip.Text = "Sembunyikan menu"
+        TweenService:Create(NebulaFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 420, 0, 600),
+            Position = UDim2.new(0.5, -210, 0.5, -300)
+        }):Play()
     else
-        FloatIcon.Text = "🎯"
-        FloatTooltip.Text = "Tampilkan menu"
+        OrbIcon.Text = "🌠"
+        OrbTooltip.Text = "Tampilkan menu"
     end
 end)
 
@@ -991,13 +1269,13 @@ end)
 --==================================================
 UserInputService.InputBegan:Connect(function(input, gp)
     if not gp and input.KeyCode == Enum.KeyCode.F4 then
-        MainFrame.Visible = not MainFrame.Visible
-        if MainFrame.Visible then
-            FloatIcon.Text = "🎮"
-            FloatTooltip.Text = "Sembunyikan menu"
+        NebulaFrame.Visible = not NebulaFrame.Visible
+        if NebulaFrame.Visible then
+            OrbIcon.Text = "🌌"
+            OrbTooltip.Text = "Sembunyikan menu"
         else
-            FloatIcon.Text = "🎯"
-            FloatTooltip.Text = "Tampilkan menu"
+            OrbIcon.Text = "🌠"
+            OrbTooltip.Text = "Tampilkan menu"
         end
     end
 end)
@@ -1015,7 +1293,7 @@ function UpdateTab(tab)
     
     -- Update header
     local icons = {
-        Main = "🏠",
+        Main = "🌌",
         Visuals = "👁️",
         Survivor = "🛡️",
         Killer = "⚔️",
@@ -1040,7 +1318,7 @@ function UpdateTab(tab)
         CreateLabel("Game Time: " .. math.floor(workspace.DistributedGameTime/60) .. " minutes")
         
         CreateSection("QUICK ACTIONS")
-        CreateButton("Refresh Info", Color3.fromRGB(65, 105, 225), function()
+        CreateButton("Refresh Info", NebulaColors.primary, function()
             UpdateTab("Main")
         end)
         
@@ -1049,9 +1327,10 @@ function UpdateTab(tab)
         end)
         
         CreateSection("CREDITS")
-        CreateLabel("Violence District Ultimate")
-        CreateLabel("Version 5.0")
+        CreateLabel("Violence District - Nebula Edition")
+        CreateLabel("Version 6.0")
         CreateLabel("Made by LuckyBimZy")
+        CreateLabel("UI Design: Nebula")
         
     elseif tab == "Visuals" then
         CreateSection("ESP SETTINGS")
@@ -1100,6 +1379,10 @@ function UpdateTab(tab)
             else
                 Lighting.FogEnd = 100000
             end
+        end)
+        
+        CreateToggle("Rainbow ESP", "ESP changes colors", function(state)
+            Toggles.RainbowESP = state
         end)
         
     elseif tab == "Survivor" then
@@ -1211,7 +1494,7 @@ function UpdateTab(tab)
             end
         end)
         
-        CreateButton("Refresh List", Color3.fromRGB(100, 100, 100), function()
+        CreateButton("Refresh List", NebulaColors.surface, function()
             UpdateTab("Teleport")
         end)
         
@@ -1221,7 +1504,7 @@ function UpdateTab(tab)
             Notify("Waypoint", "Position saved!", 1)
         end)
         
-        CreateButton("Teleport to Saved", Color3.fromRGB(65, 105, 225), function()
+        CreateButton("Teleport to Saved", NebulaColors.primary, function()
             if SavedPosition then
                 Player.Character.HumanoidRootPart.CFrame = SavedPosition
                 Notify("Teleport", "Teleported to saved position", 1)
@@ -1247,7 +1530,7 @@ function UpdateTab(tab)
         end)
         
         CreateSection("GENERATOR INFO")
-        CreateButton("Find Nearest Generator", Color3.fromRGB(65, 105, 225), function()
+        CreateButton("Find Nearest Generator", NebulaColors.primary, function()
             local gen = FindNearestGenerator()
             if gen then
                 Player.Character.HumanoidRootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
@@ -1292,26 +1575,35 @@ function UpdateTab(tab)
         end)
         
         CreateSection("GUI CONTROLS")
-        CreateButton("Toggle Menu (F4)", Color3.fromRGB(65, 105, 225), function()
-            MainFrame.Visible = not MainFrame.Visible
-            if MainFrame.Visible then
-                FloatIcon.Text = "🎮"
-                FloatTooltip.Text = "Sembunyikan menu"
+        CreateButton("Toggle Menu (F4)", NebulaColors.primary, function()
+            NebulaFrame.Visible = not NebulaFrame.Visible
+            if NebulaFrame.Visible then
+                OrbIcon.Text = "🌌"
+                OrbTooltip.Text = "Sembunyikan menu"
             else
-                FloatIcon.Text = "🎯"
-                FloatTooltip.Text = "Tampilkan menu"
+                OrbIcon.Text = "🌠"
+                OrbTooltip.Text = "Tampilkan menu"
             end
         end)
         
-        CreateButton("Minimize", Color3.fromRGB(100, 100, 100), function()
-            MainFrame.Visible = false
-            FloatIcon.Text = "🎯"
-            FloatTooltip.Text = "Tampilkan menu"
+        CreateButton("Minimize", NebulaColors.surface, function()
+            NebulaFrame.Visible = false
+            OrbIcon.Text = "🌠"
+            OrbTooltip.Text = "Tampilkan menu"
         end)
         
         CreateButton("Close GUI", Color3.fromRGB(220, 60, 60), function()
+            TweenService:Create(NebulaFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Size = UDim2.new(0, 0, 0, 0),
+                Position = UDim2.new(0.5, 0, 0.5, 0),
+                BackgroundTransparency = 1
+            }):Play()
+            TweenService:Create(NebulaOrb, TweenInfo.new(0.3), {
+                Size = UDim2.new(0, 0, 0, 0)
+            }):Play()
+            task.wait(0.3)
             ScreenGui:Destroy()
-            _G.VD_Loaded = false
+            _G.VD_Nebula = false
         end)
         
         CreateSection("STATUS")
@@ -1326,16 +1618,14 @@ function UpdateTab(tab)
 end
 
 --==================================================
--- CORE FUNCTIONS - PASTIKAN LOOPS BERJALAN TERUS
+-- CORE FUNCTIONS (Sama seperti sebelumnya)
 --==================================================
-
 function StartLoop(name)
     if Loops[name] then return end
     Loops[name] = true
     
     task.spawn(function()
         while Loops[name] do
-            -- Cek karakter setiap loop
             if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
                 task.wait(0.5)
                 continue
@@ -1344,16 +1634,12 @@ function StartLoop(name)
             if name == "AutoFarmPresent" then
                 local present = FindNearestPresent()
                 if present then
-                    -- Teleport ke present
                     Player.Character.HumanoidRootPart.CFrame = present.CFrame + Vector3.new(0, 3, 0)
                     task.wait(0.05)
-                    
-                    -- Coba proximity prompt
                     local prompt = present:FindFirstChildWhichIsA("ProximityPrompt")
                     if prompt then 
                         fireproximityprompt(prompt)
                     else
-                        -- Coba remote event
                         local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent") or
                                       game:GetService("ReplicatedStorage"):FindFirstChild("PresentEvent")
                         if remote then
@@ -1367,15 +1653,11 @@ function StartLoop(name)
             elseif name == "AutoFarmGift" then
                 local gift = FindNearestGift()
                 if gift then
-                    -- Teleport ke gift
                     Player.Character.HumanoidRootPart.CFrame = gift.CFrame + Vector3.new(0, 3, 0)
                     task.wait(0.05)
-                    
                     local prompt = gift:FindFirstChildWhichIsA("ProximityPrompt")
                     if prompt then 
                         fireproximityprompt(prompt)
-                        
-                        -- Teleport ke tree setelah mengumpulkan
                         local tree = FindChristmasTree()
                         if tree then
                             task.wait(0.3)
@@ -1395,7 +1677,6 @@ function StartLoop(name)
                         if dist < 30 then
                             Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 3, 0)
                             task.wait(0.1)
-                            
                             local prompt = v:FindFirstChildWhichIsA("ProximityPrompt")
                             if prompt then fireproximityprompt(prompt) end
                             break
@@ -1406,7 +1687,6 @@ function StartLoop(name)
             elseif name == "AutoHeal" then
                 if Player.Character and Player.Character:FindFirstChild("Humanoid") then
                     if Player.Character.Humanoid.Health < 50 then
-                        -- Coba heal
                         local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent") or
                                       game:GetService("ReplicatedStorage"):FindFirstChild("HealEvent")
                         if remote then
@@ -1441,18 +1721,14 @@ function StartLoop(name)
             elseif name == "AutoFarmGenerator" then
                 local gen = FindNearestGenerator()
                 if gen then
-                    -- Teleport ke generator
                     if gen.PrimaryPart then
                         Player.Character.HumanoidRootPart.CFrame = gen.PrimaryPart.CFrame + Vector3.new(0, 3, 0)
                         task.wait(0.05)
                     end
-                    
-                    -- Coba proximity prompt
                     local prompt = gen:FindFirstChildWhichIsA("ProximityPrompt")
                     if prompt then 
                         fireproximityprompt(prompt)
                     else
-                        -- Coba remote event dengan berbagai kemungkinan nama
                         local remote = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvent") or
                                       game:GetService("ReplicatedStorage"):FindFirstChild("GeneratorEvent") or
                                       game:GetService("ReplicatedStorage"):FindFirstChild("RepairEvent")
@@ -1460,7 +1736,6 @@ function StartLoop(name)
                             pcall(function()
                                 remote:FireServer("RepairGenerator", gen)
                                 remote:FireServer("Repair", gen)
-                                remote:FireServer("Generator", gen)
                             end)
                         end
                     end
@@ -1483,7 +1758,7 @@ function StartLoop(name)
                 mouse1click()
             end
             
-            task.wait(0.1) -- Loop setiap 0.1 detik
+            task.wait(0.1)
         end
     end)
 end
@@ -1494,7 +1769,6 @@ end
 
 function EnableESP()
     DisableESP()
-    
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= Player and player.Character then
             AddESP(player)
@@ -1506,24 +1780,21 @@ function AddESP(player)
     if not player.Character then return end
     
     if Toggles.ESPType == "Highlight" or Toggles.ESPType == "Box" then
-        -- Highlight
         local highlight = Instance.new("Highlight")
         highlight.Name = "VD_ESP"
         highlight.Parent = player.Character
-        highlight.FillColor = Toggles.ESPColor
+        highlight.FillColor = Toggles.RainbowESP and Color3.fromHSV(tick() % 5 / 5, 1, 1) or Toggles.ESPColor
         highlight.OutlineColor = Color3.new(1, 1, 1)
         highlight.FillTransparency = 0.5
         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     end
     
-    -- Name tag with distance
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "VD_Name"
     billboard.Parent = player.Character
     billboard.Size = UDim2.new(0, 150, 0, 30)
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.AlwaysOnTop = true
-    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Parent = billboard
@@ -1534,15 +1805,19 @@ function AddESP(player)
     nameLabel.TextStrokeTransparency = 0.5
     nameLabel.TextScaled = true
     nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.ZIndex = 10
     
-    -- Update distance secara berkala
     task.spawn(function()
         while billboard and billboard.Parent do
             task.wait(0.5)
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
                 local dist = math.floor((player.Character.HumanoidRootPart.Position - Player.Character.HumanoidRootPart.Position).Magnitude)
                 nameLabel.Text = player.Name .. " [" .. dist .. "m]"
+            end
+            if Toggles.RainbowESP and Toggles.ESP then
+                local highlight = player.Character:FindFirstChild("VD_ESP")
+                if highlight then
+                    highlight.FillColor = Color3.fromHSV(tick() % 5 / 5, 1, 1)
+                end
             end
         end
     end)
@@ -1763,22 +2038,25 @@ end)
 -- Set tab pertama
 UpdateTab("Main")
 
--- Set tab pertama aktif di UI
+-- Set tab pertama aktif
 for i, btn in ipairs(TabButtons) do
     if i == 1 then
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(65, 105, 225)}):Play()
-        btn:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(255, 255, 255)
+        TweenService:Create(btn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            BackgroundColor3 = NebulaColors.primary,
+            Size = UDim2.new(0, 54, 0, 52)
+        }):Play()
+        btn:FindFirstChild("Icon").TextColor3 = NebulaColors.text
     else
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
-        btn:FindFirstChild("TextLabel").TextColor3 = Color3.fromRGB(200, 200, 200)
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = NebulaColors.surface}):Play()
+        btn:FindFirstChild("Icon").TextColor3 = NebulaColors.textDim
     end
 end
 
 -- Notifikasi
-Notify("Violence District", "Tekan F4 atau klik floating button untuk toggle menu", 3)
+Notify("Violence District", "Nebula Edition Loaded! Press F4 to toggle menu", 3)
 
 print("========================================")
-print("✅ VIOLENCE DISTRICT ULTIMATE LOADED!")
+print("✅ VIOLENCE DISTRICT - NEBULA EDITION LOADED!")
 print("Tekan F4 untuk toggle menu")
-print("Floating button selalu tersedia")
+print("Floating orb selalu tersedia")
 print("========================================")
