@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - PROFESSIONAL EDITION ====================
 -- UI Premium dengan ESP + Distance + Fixed Features
 -- Author: LuckyBimZy
--- Version: 7.2 (Final)
+-- Version: 1.0
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
