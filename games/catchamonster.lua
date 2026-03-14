@@ -1,7 +1,7 @@
 -- ==================== CATCH A MONSTER [98664161516921] ====================
--- Script Khusus dengan Auto Farm by Name & Pet Auto Update
+-- Script Lengkap dengan Semua Fitur Remote
 -- Author: LuckyBimZy
--- Version: 2.0 (Game Specific)
+-- Version: 3.0 (Ultimate)
 
 if _G.CAM_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -28,41 +28,39 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local Camera = Workspace.CurrentCamera
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
+
+-- Remote Function Utama
+local DataPullFunc = ReplicatedStorage:WaitForChild("CommonLibrary"):WaitForChild("Tool"):WaitForChild("RemoteManager"):WaitForChild("Funcs"):WaitForChild("DataPullFunc")
 
 --==================================================
--- DATABASE MONSTER & PET (AUTO UPDATE)
+-- DATABASE MONSTER
 --==================================================
 local MonsterDatabase = {}
-local PetDatabase = {}
-local PlayerPets = {}
+local MonsterIds = {} -- Untuk menyimpan ID monster
 
 -- Fungsi untuk update monster database
 local function UpdateMonsterDatabase()
     local newMonsters = {}
+    local newIds = {}
     
     -- Cari monster di workspace
     for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("Model") then
-            -- Deteksi monster berdasarkan karakteristik game
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") then
+            -- Cek apakah ini monster (bisa dengan atribut atau nama)
             local isMonster = false
-            local monsterData = {}
+            local monsterId = nil
             
-            -- Cek berbagai indikator monster
-            if v:FindFirstChild("Humanoid") or v:FindFirstChild("Monster") then
+            -- Coba dapatkan ID monster (mungkin dari attribute atau nilai)
+            if v:GetAttribute("MonsterId") then
+                monsterId = v:GetAttribute("MonsterId")
                 isMonster = true
-            end
-            
-            -- Cek nama yang umum untuk monster
-            local name = v.Name
-            if name:find("Monster") or name:find("Enemy") or name:find("Creature") or 
-               name:find("Boss") or name:find("Mob") or name:find("Pet") then
+            elseif v:FindFirstChild("MonsterId") and v.MonsterId:IsA("NumberValue") then
+                monsterId = v.MonsterId.Value
                 isMonster = true
-            end
-            
-            -- Cek tag atau attribute
-            if v:GetAttribute("Monster") or v:GetAttribute("Enemy") then
+            elseif v.Name:find("Monster") or v.Name:find("Enemy") or v.Name:find("Creature") then
                 isMonster = true
+                -- Generate ID sementara dari name hash
+                monsterId = math.abs(v.Name:gsub(".", function(c) return string.byte(c) end):gsub("..", function(b) return tonumber(b,16) or 0 end) % 1000)
             end
             
             if isMonster then
@@ -73,9 +71,10 @@ local function UpdateMonsterDatabase()
                 
                 if hrp then
                     local humanoid = v:FindFirstChild("Humanoid")
-                    monsterData = {
-                        Name = name,
+                    local data = {
+                        Name = v.Name,
                         Instance = v,
+                        Id = monsterId or math.random(1, 1000),
                         Position = hrp.Position,
                         HumanoidRootPart = hrp,
                         Humanoid = humanoid,
@@ -84,8 +83,9 @@ local function UpdateMonsterDatabase()
                         IsAlive = humanoid and humanoid.Health > 0 or false
                     }
                     
-                    if not newMonsters[name] then
-                        newMonsters[name] = monsterData
+                    table.insert(newMonsters, data)
+                    if monsterId then
+                        newIds[monsterId] = data
                     end
                 end
             end
@@ -93,58 +93,15 @@ local function UpdateMonsterDatabase()
     end
     
     MonsterDatabase = newMonsters
+    MonsterIds = newIds
     return newMonsters
 end
 
--- Fungsi untuk update pet database (dari inventory player)
-local function UpdatePetDatabase()
-    local newPets = {}
-    
-    -- Cari pet di player (biasanya di folder tertentu)
-    local playerFolder = Player:FindFirstChild("PlayerGui") or 
-                        Player:FindFirstChild("Backpack") or 
-                        Player:FindFirstChild("StarterGear")
-    
-    if playerFolder then
-        for _, v in pairs(playerFolder:GetDescendants()) do
-            if v:IsA("Tool") or v:IsA("Model") then
-                if v.Name:find("Pet") or v:FindFirstChild("Pet") then
-                    table.insert(newPets, {
-                        Name = v.Name,
-                        Instance = v,
-                        Level = v:GetAttribute("Level") or 1,
-                        Rarity = v:GetAttribute("Rarity") or "Common"
-                    })
-                end
-            end
-        end
-    end
-    
-    -- Cek juga di workspace (pet yang sedang aktif)
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") then
-            if v:GetAttribute("Pet") or v.Name:find("Pet") then
-                table.insert(newPets, {
-                    Name = v.Name,
-                    Instance = v,
-                    Level = v:GetAttribute("Level") or 1,
-                    Rarity = v:GetAttribute("Rarity") or "Common",
-                    IsActive = true
-                })
-            end
-        end
-    end
-    
-    PetDatabase = newPets
-    return newPets
-end
-
--- Auto update setiap 5 detik
+-- Auto update setiap 3 detik
 task.spawn(function()
     while _G.CAM_Loaded do
         UpdateMonsterDatabase()
-        UpdatePetDatabase()
-        task.wait(5)
+        task.wait(3)
     end
 end)
 
@@ -159,7 +116,216 @@ local function Notify(msg, duration)
     })
 end
 
-Notify("Script loaded! Scanning monsters...", 3)
+Notify("Script loaded! Remote functions ready", 3)
+
+--==================================================
+-- REMOTE FUNCTIONS (DARI HASIL RSPY)
+--==================================================
+
+-- Fungsi untuk toggle auto attack
+local function SetAutoAttack(state)
+    local args = {
+        "SettingSetOnOffChannel",
+        "AutoAttack",
+        state
+    }
+    DataPullFunc:InvokeServer(unpack(args))
+    return true
+end
+
+-- Fungsi untuk equip pet terbaik
+local function EquipBestPet()
+    local args = {
+        "PetEquipBestChannel"
+    }
+    DataPullFunc:InvokeServer(unpack(args))
+    Notify("Equipped best pet", 1)
+end
+
+-- Fungsi untuk toggle auto sell
+local function SetAutoSell(state, tier)
+    tier = tier or 1
+    local args = {
+        "PetAutoSellChannel",
+        tier,
+        state
+    }
+    DataPullFunc:InvokeServer(unpack(args))
+    return true
+end
+
+-- Fungsi untuk menjual pet tertentu
+local function SellPets(petIds)
+    -- petIds bisa berupa table {1,2,3} atau single id
+    if type(petIds) ~= "table" then
+        petIds = {petIds}
+    end
+    
+    local args = {
+        "PetSellChannel",
+        petIds
+    }
+    DataPullFunc:InvokeServer(unpack(args))
+    Notify("Sold " .. #petIds .. " pet(s)", 1)
+end
+
+-- Fungsi untuk menyerang monster
+local function AttackMonster(monsterId)
+    local args = {
+        "MonsterAttackChannel",
+        monsterId
+    }
+    DataPullFunc:InvokeServer(unpack(args))
+end
+
+-- Fungsi untuk mulai menangkap monster
+local function StartCatchMonster(monsterId)
+    local args = {
+        "MonsterCatchStartChannel",
+        monsterId
+    }
+    DataPullFunc:InvokeServer(unpack(args))
+end
+
+-- Fungsi untuk menyelesaikan penangkapan (pasti berhasil)
+local function CompleteCatchMonster(monsterId)
+    local args = {
+        "MonsterCatchCompleteChannel",
+        monsterId
+    }
+    DataPullFunc:InvokeServer(unpack(args))
+    Notify("Monster caught! ID: " .. monsterId, 1)
+end
+
+-- Fungsi lengkap untuk menangkap monster (start + complete)
+local function CatchMonster(monsterId)
+    StartCatchMonster(monsterId)
+    task.wait(0.1) -- Sedikit delay antar remote
+    CompleteCatchMonster(monsterId)
+end
+
+--==================================================
+-- GET MONSTER ID FUNCTIONS
+--==================================================
+
+-- Cari monster berdasarkan nama
+local function FindMonsterIdByName(name)
+    UpdateMonsterDatabase()
+    for _, monster in ipairs(MonsterDatabase) do
+        if monster.Name:lower():find(name:lower()) then
+            return monster.Id, monster
+        end
+    end
+    return nil, nil
+end
+
+-- Cari monster terdekat
+local function FindNearestMonsterId()
+    UpdateMonsterDatabase()
+    local nearest = nil
+    local nearestId = nil
+    local dist = math.huge
+    local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not root then return nil end
+    
+    for _, monster in ipairs(MonsterDatabase) do
+        if monster.IsAlive and monster.HumanoidRootPart then
+            local d = (root.Position - monster.HumanoidRootPart.Position).Magnitude
+            if d < dist then
+                dist = d
+                nearest = monster
+                nearestId = monster.Id
+            end
+        end
+    end
+    
+    return nearestId, nearest
+end
+
+--==================================================
+-- AUTO FARM SYSTEM
+--==================================================
+local AutoFarmSettings = {
+    Enabled = false,
+    TargetMonster = "All",
+    AutoAttack = true,
+    AutoCatch = true,
+    AutoEquipBestPet = true,
+    AutoSell = false,
+    AutoSellTier = 1,
+    AttackInterval = 0.5,
+    CatchDelay = 0.3
+}
+
+local AutoFarmThread = nil
+
+local function StartAutoFarm()
+    if AutoFarmThread then return end
+    
+    AutoFarmThread = task.spawn(function()
+        while AutoFarmSettings.Enabled do
+            if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
+                task.wait(1)
+                continue
+            end
+            
+            -- Auto equip best pet
+            if AutoFarmSettings.AutoEquipBestPet then
+                EquipBestPet()
+                task.wait(0.5)
+            end
+            
+            -- Cari target monster
+            local targetId, targetMonster = nil, nil
+            
+            if AutoFarmSettings.TargetMonster == "All" then
+                targetId, targetMonster = FindNearestMonsterId()
+            else
+                targetId, targetMonster = FindMonsterIdByName(AutoFarmSettings.TargetMonster)
+            end
+            
+            if targetId and targetMonster then
+                -- Teleport ke monster
+                if targetMonster.HumanoidRootPart then
+                    Player.Character.HumanoidRootPart.CFrame = targetMonster.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+                    task.wait(0.2)
+                end
+                
+                -- Auto attack
+                if AutoFarmSettings.AutoAttack then
+                    AttackMonster(targetId)
+                    task.wait(AutoFarmSettings.AttackInterval)
+                end
+                
+                -- Auto catch
+                if AutoFarmSettings.AutoCatch and targetMonster.Humanoid and targetMonster.Humanoid.Health < 50 then
+                    StartCatchMonster(targetId)
+                    task.wait(AutoFarmSettings.CatchDelay)
+                    CompleteCatchMonster(targetId)
+                    task.wait(1)
+                end
+            end
+            
+            -- Auto sell
+            if AutoFarmSettings.AutoSell then
+                SetAutoSell(true, AutoFarmSettings.AutoSellTier)
+            end
+            
+            task.wait(0.3)
+        end
+    end)
+end
+
+local function StopAutoFarm()
+    AutoFarmSettings.Enabled = false
+    if AutoFarmThread then
+        AutoFarmThread = nil
+    end
+    -- Matikan auto attack
+    SetAutoAttack(false)
+    Notify("Auto Farm stopped", 2)
+end
 
 --==================================================
 -- CREATE UI
@@ -213,8 +379,8 @@ end)
 --==================================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 600)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -300)
+MainFrame.Size = UDim2.new(0, 500, 0, 600)
+MainFrame.Position = UDim2.new(0.5, -250, 0.5, -300)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -279,21 +445,22 @@ TitleText.Font = Enum.Font.GothamBold
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Parent = TitleBar
 
+-- Version
 local VersionText = Instance.new("TextLabel")
-VersionText.Size = UDim2.new(0, 80, 0, 20)
+VersionText.Size = UDim2.new(0, 100, 0, 20)
 VersionText.Position = UDim2.new(0, 65, 0.5, 10)
 VersionText.BackgroundTransparency = 1
-VersionText.Text = "v2.0 | ID: 9866..."
+VersionText.Text = "v3.0 | Ultimate"
 VersionText.TextColor3 = Color3.fromRGB(180, 180, 180)
-VersionText.TextSize = 10
+VersionText.TextSize = 11
 VersionText.Font = Enum.Font.Gotham
 VersionText.TextXAlignment = Enum.TextXAlignment.Left
 VersionText.Parent = TitleBar
 
 -- Control buttons
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 32, 0, 32)
-MinBtn.Position = UDim2.new(1, -70, 0.5, -16)
+MinBtn.Size = UDim2.new(0, 35, 0, 35)
+MinBtn.Position = UDim2.new(1, -75, 0.5, -17.5)
 MinBtn.BackgroundColor3 = Color3.fromRGB(60, 50, 55)
 MinBtn.Text = "−"
 MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -303,7 +470,7 @@ MinBtn.BorderSizePixel = 0
 MinBtn.Parent = TitleBar
 
 local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 8)
+MinCorner.CornerRadius = UDim.new(0, 10)
 MinCorner.Parent = MinBtn
 
 MinBtn.MouseButton1Click:Connect(function()
@@ -311,8 +478,8 @@ MinBtn.MouseButton1Click:Connect(function()
 end)
 
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 32, 0, 32)
-CloseBtn.Position = UDim2.new(1, -35, 0.5, -16)
+CloseBtn.Size = UDim2.new(0, 35, 0, 35)
+CloseBtn.Position = UDim2.new(1, -38, 0.5, -17.5)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
 CloseBtn.Text = "×"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -322,12 +489,13 @@ CloseBtn.BorderSizePixel = 0
 CloseBtn.Parent = TitleBar
 
 local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.CornerRadius = UDim.new(0, 10)
 CloseCorner.Parent = CloseBtn
 
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
     _G.CAM_Loaded = false
+    StopAutoFarm()
 end)
 
 --==================================================
@@ -339,18 +507,18 @@ TabFrame.Position = UDim2.new(0, 10, 0, 65)
 TabFrame.BackgroundTransparency = 1
 TabFrame.Parent = MainFrame
 
-local Tabs = {"🏠 Home", "👾 Monsters", "🐕 Pets", "⚡ Auto Farm", "🌀 Teleport", "👁️ Visuals", "⚙️ Misc"}
+local Tabs = {"🏠 Home", "👾 Monsters", "⚡ Auto Farm", "🐕 Pets", "🌀 Teleport", "⚙️ Settings"}
 local TabButtons = {}
 local CurrentTab = "🏠 Home"
 
 for i = 1, #Tabs do
     local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0, 60, 0, 50)
-    TabBtn.Position = UDim2.new(0, (i-1) * 62, 0, 0)
+    TabBtn.Size = UDim2.new(0, 75, 0, 50)
+    TabBtn.Position = UDim2.new(0, (i-1) * 77, 0, 0)
     TabBtn.BackgroundColor3 = Color3.fromRGB(35, 30, 35)
     TabBtn.Text = Tabs[i]
     TabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    TabBtn.TextSize = 11
+    TabBtn.TextSize = 12
     TabBtn.Font = Enum.Font.GothamBold
     TabBtn.BorderSizePixel = 0
     TabBtn.Parent = TabFrame
@@ -598,6 +766,110 @@ function CreateLabel(text)
     Label.Parent = ScrollingFrame
 end
 
+function CreateSlider(text, min, max, value, callback)
+    local SliderFrame = Instance.new("Frame")
+    SliderFrame.Size = UDim2.new(1, 0, 0, 60)
+    SliderFrame.BackgroundColor3 = Color3.fromRGB(30, 25, 30)
+    SliderFrame.BorderSizePixel = 0
+    SliderFrame.Parent = ScrollingFrame
+    
+    local SliderCorner = Instance.new("UICorner")
+    SliderCorner.CornerRadius = UDim.new(0, 8)
+    SliderCorner.Parent = SliderFrame
+    
+    local SliderText = Instance.new("TextLabel")
+    SliderText.Size = UDim2.new(0.6, -15, 0, 20)
+    SliderText.Position = UDim2.new(0, 15, 0, 8)
+    SliderText.BackgroundTransparency = 1
+    SliderText.Text = text
+    SliderText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SliderText.TextSize = 14
+    SliderText.Font = Enum.Font.Gotham
+    SliderText.TextXAlignment = Enum.TextXAlignment.Left
+    SliderText.Parent = SliderFrame
+    
+    local ValueBox = Instance.new("TextBox")
+    ValueBox.Size = UDim2.new(0, 60, 0, 25)
+    ValueBox.Position = UDim2.new(1, -75, 0, 6)
+    ValueBox.BackgroundColor3 = Color3.fromRGB(45, 40, 45)
+    ValueBox.Text = tostring(value)
+    ValueBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ValueBox.TextSize = 13
+    ValueBox.Font = Enum.Font.GothamBold
+    ValueBox.ClearTextOnFocus = false
+    ValueBox.Parent = SliderFrame
+    
+    local ValueCorner = Instance.new("UICorner")
+    ValueCorner.CornerRadius = UDim.new(0, 6)
+    ValueCorner.Parent = ValueBox
+    
+    local SliderBg = Instance.new("Frame")
+    SliderBg.Size = UDim2.new(1, -20, 0, 6)
+    SliderBg.Position = UDim2.new(0, 10, 0, 40)
+    SliderBg.BackgroundColor3 = Color3.fromRGB(45, 40, 45)
+    SliderBg.Parent = SliderFrame
+    
+    local SliderFill = Instance.new("Frame")
+    SliderFill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+    SliderFill.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+    SliderFill.Parent = SliderBg
+    
+    local SliderButton = Instance.new("Frame")
+    SliderButton.Size = UDim2.new(0, 16, 0, 16)
+    SliderButton.Position = UDim2.new((value - min) / (max - min), -8, 0.5, -8)
+    SliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    SliderButton.Parent = SliderFill
+    
+    local ButtonCorner = Instance.new("UICorner")
+    ButtonCorner.CornerRadius = UDim.new(1, 0)
+    ButtonCorner.Parent = SliderButton
+    
+    -- Update function
+    local function updateValue(newValue)
+        newValue = math.clamp(newValue, min, max)
+        local percent = (newValue - min) / (max - min)
+        SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        SliderButton.Position = UDim2.new(percent, -8, 0.5, -8)
+        ValueBox.Text = tostring(math.floor(newValue))
+        callback(math.floor(newValue))
+    end
+    
+    -- Input box
+    ValueBox.FocusLost:Connect(function()
+        local val = tonumber(ValueBox.Text)
+        if val then
+            updateValue(val)
+        else
+            ValueBox.Text = tostring(value)
+        end
+    end)
+    
+    -- Drag
+    local dragging = false
+    SliderButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            local absPos = SliderBg.AbsolutePosition
+            local size = SliderBg.AbsoluteSize.X
+            local percent = math.clamp((mousePos.X - absPos.X) / size, 0, 1)
+            local val = min + (max - min) * percent
+            updateValue(val)
+        end
+    end)
+end
+
 --==================================================
 -- TOGGLE HANDLERS
 --==================================================
@@ -612,101 +884,6 @@ UserInputService.InputBegan:Connect(function(input, gp)
 end)
 
 --==================================================
--- FIND MONSTER FUNCTIONS
---==================================================
-function FindMonsterByName(name)
-    UpdateMonsterDatabase()
-    
-    for _, monster in pairs(MonsterDatabase) do
-        if monster.Name == name and monster.IsAlive then
-            return monster.Instance, monster.HumanoidRootPart
-        end
-    end
-    return nil, nil
-end
-
-function FindNearestMonster()
-    UpdateMonsterDatabase()
-    
-    local nearest = nil
-    local nearestHrp = nil
-    local dist = math.huge
-    local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-    
-    if not root then return nil, nil end
-    
-    for _, monster in pairs(MonsterDatabase) do
-        if monster.IsAlive and monster.HumanoidRootPart then
-            local d = (root.Position - monster.HumanoidRootPart.Position).Magnitude
-            if d < dist then
-                dist = d
-                nearest = monster.Instance
-                nearestHrp = monster.HumanoidRootPart
-            end
-        end
-    end
-    
-    return nearest, nearestHrp
-end
-
---==================================================
--- AUTO FARM BY NAME
---==================================================
-local AutoFarmActive = false
-local SelectedMonster = "All"
-
-function StartAutoFarm()
-    AutoFarmActive = true
-    
-    task.spawn(function()
-        while AutoFarmActive do
-            if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
-                task.wait(1)
-                continue
-            end
-            
-            local targetMonster, targetHrp = nil, nil
-            
-            if SelectedMonster == "All" then
-                targetMonster, targetHrp = FindNearestMonster()
-            else
-                targetMonster, targetHrp = FindMonsterByName(SelectedMonster)
-            end
-            
-            if targetMonster and targetHrp then
-                -- Teleport ke monster
-                Player.Character.HumanoidRootPart.CFrame = targetHrp.CFrame * CFrame.new(0, 3, 0)
-                task.wait(0.1)
-                
-                -- Coba catch monster
-                local tool = Player.Character:FindFirstChildWhichIsA("Tool")
-                if tool then
-                    tool:Activate()
-                end
-                
-                -- Coba remote event
-                local remote = ReplicatedStorage:FindFirstChild("RemoteEvent") or
-                              ReplicatedStorage:FindFirstChild("Catch") or
-                              ReplicatedStorage:FindFirstChild("CatchMonster")
-                if remote then
-                    pcall(function()
-                        remote:FireServer("Catch", targetMonster)
-                    end)
-                end
-                
-                -- Coba proximity prompt
-                local prompt = targetMonster:FindFirstChildWhichIsA("ProximityPrompt")
-                if prompt then
-                    fireproximityprompt(prompt)
-                end
-            end
-            
-            task.wait(0.3)
-        end
-    end)
-end
-
---==================================================
 -- UPDATE TAB CONTENT
 --==================================================
 function UpdateTab(tab)
@@ -719,7 +896,6 @@ function UpdateTab(tab)
     
     -- Update database
     UpdateMonsterDatabase()
-    UpdatePetDatabase()
     
     if tab == "🏠 Home" then
         CreateSection("📊 DASHBOARD")
@@ -730,18 +906,17 @@ function UpdateTab(tab)
         CreateLabel("Players: " .. #Players:GetPlayers())
         
         CreateSection("📈 STATISTICS")
+        CreateLabel("Monsters Found: " .. #MonsterDatabase)
         
-        local monsterCount = 0
-        for _, v in pairs(MonsterDatabase) do monsterCount = monsterCount + 1 end
-        
-        CreateLabel("Monsters Detected: " .. monsterCount)
-        CreateLabel("Pets Owned: " .. #PetDatabase)
-        
-        CreateSection("🎯 QUICK ACTIONS")
+        CreateSection("🎮 QUICK ACTIONS")
         
         CreateButton("Refresh Data", Color3.fromRGB(100, 100, 200), function()
             UpdateTab("🏠 Home")
             Notify("Data refreshed!")
+        end)
+        
+        CreateButton("Equip Best Pet", Color3.fromRGB(0, 200, 100), function()
+            EquipBestPet()
         end)
         
         CreateButton("Rejoin Server", Color3.fromRGB(220, 60, 60), function()
@@ -749,52 +924,40 @@ function UpdateTab(tab)
         end)
         
         CreateSection("ℹ️ INFO")
-        CreateLabel("Game ID: 98664161516921")
-        CreateLabel("Script Version: 2.0")
-        CreateLabel("Auto Update: Every 5s")
+        CreateLabel("Remote Functions Ready")
+        CreateLabel("Auto Attack: ON/OFF via toggle")
+        CreateLabel("Auto Catch: Available in Auto Farm")
         
     elseif tab == "👾 Monsters" then
         CreateSection("👾 MONSTER LIST")
         
-        CreateLabel("Total: " .. table.count(MonsterDatabase))
+        CreateLabel("Total: " .. #MonsterDatabase)
         
-        local count = 0
-        for name, monster in pairs(MonsterDatabase) do
-            count = count + 1
-            if count <= 15 then -- Batasi 15 monster
+        if #MonsterDatabase == 0 then
+            CreateLabel("No monsters found")
+            CreateLabel("Waiting for scan...")
+        end
+        
+        for i, monster in ipairs(MonsterDatabase) do
+            if i <= 20 then -- Batasi 20 monster
                 local dist = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") and 
                             monster.HumanoidRootPart and 
                             math.floor((Player.Character.HumanoidRootPart.Position - monster.HumanoidRootPart.Position).Magnitude) or "?"
                 
                 local healthPercent = monster.MaxHealth > 0 and math.floor((monster.Health / monster.MaxHealth) * 100) or 0
+                local status = monster.IsAlive and "🟢" or "💀"
                 
-                CreateButton("📍 " .. name .. " [" .. dist .. "m] HP: " .. healthPercent .. "%", Color3.fromRGB(200, 100, 100), function()
+                CreateButton(status .. " " .. monster.Name .. " [ID:" .. monster.Id .. "] " .. dist .. "m HP:" .. healthPercent .. "%", Color3.fromRGB(200, 100, 100), function()
                     if monster.HumanoidRootPart then
                         Player.Character.HumanoidRootPart.CFrame = monster.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-                        Notify("Teleported to " .. name)
+                        Notify("Teleported to " .. monster.Name)
                     end
                 end)
             end
         end
         
-        if count > 15 then
-            CreateLabel("... and " .. (count - 15) .. " more")
-        end
-        
-    elseif tab == "🐕 Pets" then
-        CreateSection("🐕 YOUR PETS")
-        
-        CreateLabel("Total: " .. #PetDatabase)
-        
-        if #PetDatabase == 0 then
-            CreateLabel("No pets found")
-        end
-        
-        for i, pet in ipairs(PetDatabase) do
-            local status = pet.IsActive and "✅ Active" or "💤 Inactive"
-            CreateButton("🐕 " .. pet.Name .. " | Lv." .. pet.Level .. " | " .. pet.Rarity .. " | " .. status, Color3.fromRGB(100, 200, 100), function()
-                Notify("Selected: " .. pet.Name)
-            end)
+        if #MonsterDatabase > 20 then
+            CreateLabel("... and " .. (#MonsterDatabase - 20) .. " more")
         end
         
     elseif tab == "⚡ Auto Farm" then
@@ -802,51 +965,111 @@ function UpdateTab(tab)
         
         -- Buat list monster untuk dropdown
         local monsterNames = {"All"}
-        for name, _ in pairs(MonsterDatabase) do
-            table.insert(monsterNames, name)
+        for _, monster in ipairs(MonsterDatabase) do
+            if not table.find(monsterNames, monster.Name) then
+                table.insert(monsterNames, monster.Name)
+            end
         end
         
-        CreateDropdown("Target Monster", monsterNames, function(opt)
-            SelectedMonster = opt
-            Notify("Target: " .. opt)
-        end)
-        
-        CreateToggle("Auto Farm", AutoFarmActive, function(state)
-            AutoFarmActive = state
+        CreateToggle("Auto Farm", AutoFarmSettings.Enabled, function(state)
+            AutoFarmSettings.Enabled = state
             if state then 
+                SetAutoAttack(true)
                 StartAutoFarm()
                 Notify("Auto Farm started")
             else 
-                Notify("Auto Farm stopped")
+                SetAutoAttack(false)
+                StopAutoFarm()
             end
         end)
         
-        CreateSection("📊 TARGET INFO")
+        CreateDropdown("Target Monster", monsterNames, function(opt)
+            AutoFarmSettings.TargetMonster = opt
+            Notify("Target: " .. opt)
+        end)
         
-        if SelectedMonster == "All" then
-            local _, hrp = FindNearestMonster()
-            if hrp then
+        CreateSection("⚡ AUTO ACTIONS")
+        
+        CreateToggle("Auto Attack", AutoFarmSettings.AutoAttack, function(state)
+            AutoFarmSettings.AutoAttack = state
+            SetAutoAttack(state)
+        end)
+        
+        CreateToggle("Auto Catch", AutoFarmSettings.AutoCatch, function(state)
+            AutoFarmSettings.AutoCatch = state
+        end)
+        
+        CreateToggle("Auto Equip Best Pet", AutoFarmSettings.AutoEquipBestPet, function(state)
+            AutoFarmSettings.AutoEquipBestPet = state
+            if state then EquipBestPet() end
+        end)
+        
+        CreateToggle("Auto Sell", AutoFarmSettings.AutoSell, function(state)
+            AutoFarmSettings.AutoSell = state
+            SetAutoSell(state, AutoFarmSettings.AutoSellTier)
+        end)
+        
+        CreateSlider("Sell Tier", 1, 10, AutoFarmSettings.AutoSellTier, function(val)
+            AutoFarmSettings.AutoSellTier = val
+            if AutoFarmSettings.AutoSell then
+                SetAutoSell(true, val)
+            end
+        end)
+        
+        CreateSection("🎯 CURRENT TARGET")
+        
+        if AutoFarmSettings.TargetMonster == "All" then
+            local id, monster = FindNearestMonsterId()
+            if monster then
                 local dist = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") and 
-                            math.floor((Player.Character.HumanoidRootPart.Position - hrp.Position).Magnitude) or "?"
-                CreateLabel("Nearest monster: " .. dist .. "m")
+                            monster.HumanoidRootPart and 
+                            math.floor((Player.Character.HumanoidRootPart.Position - monster.HumanoidRootPart.Position).Magnitude) or "?"
+                CreateLabel("Nearest: " .. monster.Name .. " [" .. dist .. "m]")
+                CreateLabel("ID: " .. id)
             else
                 CreateLabel("No monsters nearby")
             end
         else
-            local monster, hrp = FindMonsterByName(SelectedMonster)
-            if monster and hrp then
+            local id, monster = FindMonsterIdByName(AutoFarmSettings.TargetMonster)
+            if monster then
                 local dist = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") and 
-                            math.floor((Player.Character.HumanoidRootPart.Position - hrp.Position).Magnitude) or "?"
+                            monster.HumanoidRootPart and 
+                            math.floor((Player.Character.HumanoidRootPart.Position - monster.HumanoidRootPart.Position).Magnitude) or "?"
                 CreateLabel("Distance: " .. dist .. "m")
-                
-                local humanoid = monster:FindFirstChild("Humanoid")
-                if humanoid then
-                    CreateLabel("Health: " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth))
+                CreateLabel("ID: " .. id)
+                if monster.Humanoid then
+                    CreateLabel("Health: " .. math.floor(monster.Humanoid.Health) .. "/" .. math.floor(monster.Humanoid.MaxHealth))
                 end
             else
-                CreateLabel("Target monster not found")
+                CreateLabel("Target not found")
             end
         end
+        
+    elseif tab == "🐕 Pets" then
+        CreateSection("🐕 PET COMMANDS")
+        
+        CreateButton("Equip Best Pet", Color3.fromRGB(0, 200, 100), function()
+            EquipBestPet()
+        end)
+        
+        CreateButton("Sell All Tier 1", Color3.fromRGB(200, 100, 0), function()
+            SellPets({1,2,3,4,5}) -- Contoh ID pet
+            Notify("Selling tier 1 pets...")
+        end)
+        
+        CreateSection("⚙️ AUTO SELL SETTINGS")
+        
+        CreateToggle("Auto Sell", AutoFarmSettings.AutoSell, function(state)
+            AutoFarmSettings.AutoSell = state
+            SetAutoSell(state, AutoFarmSettings.AutoSellTier)
+        end)
+        
+        CreateSlider("Sell Tier", 1, 10, AutoFarmSettings.AutoSellTier, function(val)
+            AutoFarmSettings.AutoSellTier = val
+            if AutoFarmSettings.AutoSell then
+                SetAutoSell(true, val)
+            end
+        end)
         
     elseif tab == "🌀 Teleport" then
         CreateSection("🌀 TELEPORTATION")
@@ -860,30 +1083,38 @@ function UpdateTab(tab)
             end
         end
         
-        CreateDropdown("Select Player", playerNames, function(name)
-            local target = Players:FindFirstChild(name)
-            if target and target.Character then
-                Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-                Notify("Teleported to " .. name)
-            end
-        end)
+        if #playerNames > 0 then
+            CreateDropdown("Select Player", playerNames, function(name)
+                local target = Players:FindFirstChild(name)
+                if target and target.Character then
+                    Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+                    Notify("Teleported to " .. name)
+                end
+            end)
+        else
+            CreateLabel("No other players")
+        end
         
         CreateSection("📍 TELEPORT TO MONSTER")
         
         local monsterNames = {"Select Monster"}
-        for name, _ in pairs(MonsterDatabase) do
-            table.insert(monsterNames, name)
+        for _, monster in ipairs(MonsterDatabase) do
+            if not table.find(monsterNames, monster.Name) then
+                table.insert(monsterNames, monster.Name)
+            end
         end
         
-        CreateDropdown("Select Monster", monsterNames, function(name)
-            if name ~= "Select Monster" then
-                local monster, hrp = FindMonsterByName(name)
-                if monster and hrp then
-                    Player.Character.HumanoidRootPart.CFrame = hrp.CFrame * CFrame.new(0, 3, 0)
-                    Notify("Teleported to " .. name)
+        if #monsterNames > 1 then
+            CreateDropdown("Select Monster", monsterNames, function(name)
+                if name ~= "Select Monster" then
+                    local id, monster = FindMonsterIdByName(name)
+                    if monster and monster.HumanoidRootPart then
+                        Player.Character.HumanoidRootPart.CFrame = monster.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+                        Notify("Teleported to " .. name)
+                    end
                 end
-            end
-        end)
+            end)
+        end
         
         CreateSection("📍 SAVE POSITION")
         
@@ -903,35 +1134,12 @@ function UpdateTab(tab)
             end
         end)
         
-    elseif tab == "👁️ Visuals" then
-        CreateSection("👁️ VISUAL ENHANCEMENTS")
+    elseif tab == "⚙️ Settings" then
+        CreateSection("⚙️ REMOTE FUNCTIONS")
         
-        CreateToggle("Full Bright", false, function(state)
-            if state then
-                Lighting.Brightness = 2
-                Lighting.GlobalShadows = false
-                Lighting.Ambient = Color3.new(1, 1, 1)
-            else
-                Lighting.Brightness = 1
-                Lighting.GlobalShadows = true
-                Lighting.Ambient = Color3.new(0, 0, 0)
-            end
-        end)
-        
-        CreateToggle("No Fog", false, function(state)
-            Lighting.FogEnd = state and 1e9 or 100000
-        end)
-        
-    elseif tab == "⚙️ Misc" then
-        CreateSection("⚙️ UTILITY")
-        
-        CreateToggle("Anti AFK", false, function(state)
-            if state then
-                Player.Idled:Connect(function()
-                    VirtualUser:CaptureController()
-                    VirtualUser:ClickButton2(Vector2.new())
-                end)
-            end
+        CreateToggle("Auto Attack", AutoFarmSettings.AutoAttack, function(state)
+            AutoFarmSettings.AutoAttack = state
+            SetAutoAttack(state)
         end)
         
         CreateSection("🎮 CONTROLS")
@@ -940,15 +1148,23 @@ function UpdateTab(tab)
             MainFrame.Visible = not MainFrame.Visible
         end)
         
-        CreateButton("Close GUI", Color3.fromRGB(200, 50, 50), function()
+        CreateButton("Emergency Stop", Color3.fromRGB(220, 60, 60), function()
+            StopAutoFarm()
+            SetAutoAttack(false)
+            SetAutoSell(false, 1)
+            Notify("All features stopped", 2)
+        end)
+        
+        CreateButton("Close GUI", Color3.fromRGB(150, 50, 50), function()
             ScreenGui:Destroy()
             _G.CAM_Loaded = false
+            StopAutoFarm()
         end)
         
         CreateSection("ℹ️ INFO")
-        CreateLabel("Active Features: 0")
-        CreateLabel("Monsters: " .. table.count(MonsterDatabase))
-        CreateLabel("Pets: " .. #PetDatabase)
+        CreateLabel("Active Features: " .. (AutoFarmSettings.Enabled and "Auto Farm ON" or "Idle"))
+        CreateLabel("Monsters: " .. #MonsterDatabase)
+        CreateLabel("Remote: DataPullFunc")
     end
     
     -- Update canvas size
@@ -956,11 +1172,12 @@ function UpdateTab(tab)
     ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
 end
 
--- Helper function untuk count table
-function table.count(t)
-    local count = 0
-    for _ in pairs(t) do count = count + 1 end
-    return count
+-- Helper function untuk table.find
+function table.find(t, value)
+    for i, v in ipairs(t) do
+        if v == value then return i end
+    end
+    return nil
 end
 
 --==================================================
@@ -968,21 +1185,22 @@ end
 --==================================================
 UpdateTab("🏠 Home")
 
--- Auto update setiap 5 detik untuk pets dan monsters
+-- Auto update untuk tab tertentu
 task.spawn(function()
     while _G.CAM_Loaded do
         task.wait(5)
-        if CurrentTab == "👾 Monsters" or CurrentTab == "🐕 Pets" or CurrentTab == "⚡ Auto Farm" then
+        if CurrentTab == "👾 Monsters" or CurrentTab == "⚡ Auto Farm" then
             UpdateTab(CurrentTab)
         end
     end
 end)
 
-Notify("Catch a Monster script ready!", 3)
+Notify("Catch a Monster script ready! Found " .. #MonsterDatabase .. " monsters", 3)
 
 print("========================================")
-print("✅ CATCH A MONSTER SCRIPT LOADED")
+print("✅ CATCH A MONSTER ULTIMATE v3.0")
 print("Game ID: 98664161516921")
-print("Features: Auto Farm by Name | Pet Auto Update")
+print("Remote Functions: DataPullFunc")
+print("Features: Auto Farm | Auto Attack | Auto Catch | Auto Sell")
 print("Press F4 to toggle menu")
 print("========================================")
