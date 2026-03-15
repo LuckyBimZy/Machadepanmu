@@ -7,9 +7,10 @@
 -- Prevent multiple execution
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Violence District",
+        Title = "⚠️ Violence District",
         Text = "Script already loaded!",
-        Duration = 2
+        Duration = 3,
+        Icon = "rbxassetid://6031075938"
     })
     return 
 end
@@ -88,23 +89,94 @@ local NoClipConnection = nil
 local WallhackConnection = nil
 
 --==================================================
--- NOTIFICATION FUNCTION (Safe for all executors)
+-- ENHANCED NOTIFICATION FUNCTION
 --==================================================
-local function Notify(msg, duration)
+local function Notify(msg, duration, type)
+    duration = duration or 3
+    type = type or "info"
+    
+    local icon = "rbxassetid://6031075938" -- Default icon
+    local title = "Violence District"
+    local color = Color3.fromRGB(65, 105, 225) -- Blue
+    
+    if type == "success" then
+        icon = "rbxassetid://6031101444" -- Checkmark
+        color = Color3.fromRGB(0, 255, 0)
+        title = "✅ " .. title
+    elseif type == "error" then
+        icon = "rbxassetid://6031083157" -- Error
+        color = Color3.fromRGB(255, 0, 0)
+        title = "❌ " .. title
+    elseif type == "warning" then
+        icon = "rbxassetid://6031094661" -- Warning
+        color = Color3.fromRGB(255, 255, 0)
+        title = "⚠️ " .. title
+    end
+    
     safe_execute(function()
         StarterGui:SetCore("SendNotification", {
-            Title = "Violence District",
+            Title = title,
             Text = msg,
-            Duration = duration or 3
+            Duration = duration,
+            Icon = icon,
+            Button1 = "OK"
         })
     end)
 end
 
-Notify("Script loaded successfully!", 2)
+--==================================================
+-- LOADING SEQUENCE WITH VISUAL NOTIFICATIONS
+--==================================================
+
+-- Step 1: Initial Loading
+Notify("🚀 Loading Violence District Ultimate...", 2, "info")
+task.wait(1)
+
+-- Step 2: Check Executor Compatibility
+local function checkExecutor()
+    local executorInfo = {
+        name = "Unknown",
+        version = "Unknown"
+    }
+    
+    -- Try to detect executor
+    if syn then 
+        executorInfo.name = "Synapse X"
+    elseif krnl then 
+        executorInfo.name = "Krnl"
+    elseif fluxus then 
+        executorInfo.name = "Fluxus"
+    elseif scriptware then 
+        executorInfo.name = "Script-Ware"
+    elseif isexecutorclosure then 
+        executorInfo.name = "Executor (Unknown)"
+    end
+    
+    return executorInfo
+end
+
+local executor = checkExecutor()
+Notify("🔧 Executor: " .. executor.name, 1, "info")
+
+-- Step 3: Check HTTP Request capability
+local function checkHTTP()
+    local success, result = pcall(function()
+        return game:HttpGet("https://httpbin.org/get", true)
+    end)
+    return success
+end
+
+if checkHTTP() then
+    Notify("🌐 HTTP Requests: OK", 1, "success")
+else
+    Notify("🌐 HTTP Requests: Limited", 1, "warning")
+end
+
+-- Step 4: Create UI Components with progress
+Notify("🎨 Creating UI...", 1, "info")
 
 --==================================================
 -- CREATE SIMPLE BUT PROFESSIONAL UI
--- (Works on all executors - no external dependencies)
 --==================================================
 
 -- Clean old GUI
@@ -166,19 +238,6 @@ FloatShadow.ZIndex = -1
 local ShadowCorner = Instance.new("UICorner")
 ShadowCorner.CornerRadius = UDim.new(0, 17)
 ShadowCorner.Parent = FloatShadow
-
--- Hover effect
-FloatBtn.MouseEnter:Connect(function()
-    safe_execute(function()
-        TweenService:Create(FloatBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 60, 0, 60)}):Play()
-    end)
-end)
-
-FloatBtn.MouseLeave:Connect(function()
-    safe_execute(function()
-        TweenService:Create(FloatBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 55, 0, 55)}):Play()
-    end)
-end)
 
 --==================================================
 -- MAIN MENU
@@ -292,6 +351,7 @@ MinCorner.Parent = MinBtn
 MinBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = false
     FloatBtn.Visible = true
+    Notify("Menu minimized", 1, "info")
 end)
 
 -- Close button
@@ -313,6 +373,7 @@ CloseCorner.Parent = CloseBtn
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
     _G.VD_Loaded = false
+    Notify("Violence District unloaded", 2, "warning")
 end)
 
 --==================================================
@@ -354,6 +415,7 @@ for i = 1, #Tabs do
         TabBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
         TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         UpdateTab(Tabs[i])
+        Notify("Switched to " .. Tabs[i] .. " tab", 1, "info")
     end)
     
     table.insert(TabButtons, TabBtn)
@@ -378,7 +440,7 @@ local ContentCorner = Instance.new("UICorner")
 ContentCorner.CornerRadius = UDim.new(0, 8)
 ContentCorner.Parent = ContentFrame
 
--- Scrolling frame (split into two columns)
+-- Scrolling frame
 local ScrollingFrame = Instance.new("ScrollingFrame")
 ScrollingFrame.Size = UDim2.new(1, -10, 1, -10)
 ScrollingFrame.Position = UDim2.new(0, 5, 0, 5)
@@ -466,10 +528,12 @@ function CreateToggle(text, var, callback)
             ToggleBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
             ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
             ToggleBtn.Text = "ON"
+            Notify(text .. " enabled", 1, "success")
         else
             ToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 52)
             ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
             ToggleBtn.Text = "OFF"
+            Notify(text .. " disabled", 1, "info")
         end
         callback(newState)
     end)
@@ -490,7 +554,10 @@ function CreateButton(text, callback)
     BtnCorner.CornerRadius = UDim.new(0, 6)
     BtnCorner.Parent = Button
     
-    Button.MouseButton1Click:Connect(callback)
+    Button.MouseButton1Click:Connect(function()
+        Notify("Executing: " .. text, 1, "info")
+        callback()
+    end)
 end
 
 function CreateLabel(text)
@@ -578,6 +645,7 @@ function CreateSlider(text, min, max, value, callback)
         local val = tonumber(ValueBox.Text)
         if val then
             updateValue(val)
+            Notify(text .. " set to " .. val, 1, "success")
         else
             ValueBox.Text = tostring(value)
         end
@@ -615,12 +683,22 @@ end
 FloatBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
     FloatBtn.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        Notify("Menu opened", 1, "success")
+    else
+        Notify("Menu closed", 1, "info")
+    end
 end)
 
 UserInputService.InputBegan:Connect(function(input, gp)
     if not gp and input.KeyCode == Enum.KeyCode.F4 then
         MainFrame.Visible = not MainFrame.Visible
         FloatBtn.Visible = not MainFrame.Visible
+        if MainFrame.Visible then
+            Notify("Menu opened (F4)", 1, "success")
+        else
+            Notify("Menu closed (F4)", 1, "info")
+        end
     end
 end)
 
@@ -646,6 +724,8 @@ function EnableESP()
                 end
             end)
         end)
+        
+        Notify("ESP enabled", 2, "success")
     end)
 end
 
@@ -715,6 +795,7 @@ function DisableESP()
                 ESPConnections[player] = nil
             end
         end
+        Notify("ESP disabled", 2, "info")
     end)
 end
 
@@ -735,6 +816,11 @@ function UpdateWallhack()
                     v.Transparency = 0
                 end
             end
+        end
+        if Toggles.Wallhack then
+            Notify("Wallhack enabled", 2, "success")
+        else
+            Notify("Wallhack disabled", 2, "info")
         end
     end)
 end
@@ -761,6 +847,7 @@ function UpdateNoClip()
                     end
                 end)
             end)
+            Notify("NoClip enabled", 2, "success")
         else
             if NoClipConnection then
                 NoClipConnection:Disconnect()
@@ -774,6 +861,7 @@ function UpdateNoClip()
                     end
                 end
             end
+            Notify("NoClip disabled", 2, "info")
         end
     end)
 end
@@ -785,6 +873,8 @@ end
 function StartLoop(name)
     if Loops[name] then return end
     Loops[name] = true
+    
+    Notify("Started " .. name .. " loop", 2, "success")
     
     task.spawn(function()
         while Loops[name] do
@@ -893,6 +983,7 @@ end
 
 function StopLoop(name)
     Loops[name] = false
+    Notify("Stopped " .. name .. " loop", 2, "info")
 end
 
 --==================================================
@@ -905,6 +996,7 @@ UserInputService.InputBegan:Connect(function(input)
         if Toggles.TeleportToMouse and input.UserInputType == Enum.UserInputType.MouseButton2 then
             local target = Mouse.Hit.p
             Player.Character.HumanoidRootPart.CFrame = CFrame.new(target.X, target.Y + 3, target.Z)
+            Notify("Teleported to mouse", 1, "success")
         end
     end)
 end)
@@ -1054,6 +1146,7 @@ Player.CharacterAdded:Connect(function(char)
     if Toggles.JumpBoost then
         char.Humanoid.JumpPower = Toggles.JumpValue
     end
+    Notify("Character respawned, reapplied settings", 2, "info")
 end)
 
 --==================================================
@@ -1082,14 +1175,19 @@ function UpdateTab(tab)
             
             CreateSection("⚡ QUICK ACTIONS")
             CreateButton("🔄 Rejoin Server", function()
+                Notify("Rejoining server...", 2, "warning")
                 safe_execute(function()
                     game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
                 end)
             end)
             
             CreateButton("📋 Copy Server ID", function()
-                setclipboard and setclipboard(game.JobId)
-                Notify("Server ID copied to clipboard!", 2)
+                if setclipboard then
+                    setclipboard(game.JobId)
+                    Notify("Server ID copied to clipboard!", 2, "success")
+                else
+                    Notify("Clipboard not supported", 2, "error")
+                end
             end)
             
             CreateSection("📝 CREDITS")
@@ -1116,16 +1214,19 @@ function UpdateTab(tab)
                     Lighting.Brightness = 2
                     Lighting.GlobalShadows = false
                     Lighting.Ambient = Color3.new(1, 1, 1)
+                    Notify("Full Bright enabled", 2, "success")
                 else
                     Lighting.Brightness = 1
                     Lighting.GlobalShadows = true
                     Lighting.Ambient = Color3.new(0, 0, 0)
+                    Notify("Full Bright disabled", 2, "info")
                 end
             end)
             
             CreateToggle("No Fog", Toggles.NoFog, function(state)
                 Toggles.NoFog = state
                 Lighting.FogEnd = state and 1e9 or 100000
+                Notify(state and "No Fog enabled" or "No Fog disabled", 2, state and "success" or "info")
             end)
             
         elseif tab == "Survivor" then
@@ -1155,8 +1256,10 @@ function UpdateTab(tab)
                 Toggles.SpeedBoost = state
                 if state and Player.Character then
                     Player.Character.Humanoid.WalkSpeed = Toggles.SpeedValue
+                    Notify("Speed Boost enabled (" .. Toggles.SpeedValue .. ")", 2, "success")
                 elseif Player.Character then
                     Player.Character.Humanoid.WalkSpeed = 16
+                    Notify("Speed Boost disabled", 2, "info")
                 end
             end)
             
@@ -1171,8 +1274,10 @@ function UpdateTab(tab)
                 Toggles.JumpBoost = state
                 if state and Player.Character then
                     Player.Character.Humanoid.JumpPower = Toggles.JumpValue
+                    Notify("Jump Boost enabled (" .. Toggles.JumpValue .. ")", 2, "success")
                 elseif Player.Character then
                     Player.Character.Humanoid.JumpPower = 50
+                    Notify("Jump Boost disabled", 2, "info")
                 end
             end)
             
@@ -1215,7 +1320,6 @@ function UpdateTab(tab)
             CreateToggle("NoClip", Toggles.NoClip, function(state)
                 Toggles.NoClip = state
                 UpdateNoClip()
-                Notify(state and "NoClip ON" or "NoClip OFF", 2)
             end)
             
             CreateToggle("TP to Mouse (Right Click)", Toggles.TeleportToMouse, function(state)
@@ -1234,7 +1338,7 @@ function UpdateTab(tab)
                             local target = Players:FindFirstChild(playerName)
                             if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
                                 Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-                                Notify("Teleported to " .. playerName, 2)
+                                Notify("Teleported to " .. playerName, 2, "success")
                             end
                         end)
                     end
@@ -1247,16 +1351,16 @@ function UpdateTab(tab)
             CreateButton("💾 Save Position", function()
                 if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
                     SavedPosition = Player.Character.HumanoidRootPart.CFrame
-                    Notify("Position saved!", 2)
+                    Notify("Position saved!", 2, "success")
                 end
             end)
             
             CreateButton("📂 Load Position", function()
                 if SavedPosition then
                     Player.Character.HumanoidRootPart.CFrame = SavedPosition
-                    Notify("Teleported to saved position", 2)
+                    Notify("Teleported to saved position", 2, "success")
                 else
-                    Notify("No saved position!", 2)
+                    Notify("No saved position!", 2, "error")
                 end
             end)
             
@@ -1276,9 +1380,9 @@ function UpdateTab(tab)
                 local gen = FindNearestGenerator()
                 if gen then
                     Player.Character.HumanoidRootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
-                    Notify("Found generator", 2)
+                    Notify("Found generator", 2, "success")
                 else
-                    Notify("No generator found", 2)
+                    Notify("No generator found", 2, "error")
                 end
             end)
             
@@ -1296,6 +1400,9 @@ function UpdateTab(tab)
                         VirtualUser:CaptureController()
                         VirtualUser:ClickButton2(Vector2.new())
                     end)
+                    Notify("Anti AFK enabled", 2, "success")
+                else
+                    Notify("Anti AFK disabled", 2, "info")
                 end
             end)
             
@@ -1308,11 +1415,17 @@ function UpdateTab(tab)
             CreateButton("🔄 Toggle Menu", function()
                 MainFrame.Visible = not MainFrame.Visible
                 FloatBtn.Visible = not MainFrame.Visible
+                if MainFrame.Visible then
+                    Notify("Menu opened", 1, "success")
+                else
+                    Notify("Menu closed", 1, "info")
+                end
             end)
             
             CreateButton("❌ Close GUI", function()
                 ScreenGui:Destroy()
                 _G.VD_Loaded = false
+                Notify("Violence District unloaded", 2, "warning")
             end)
             
             -- Active features counter
@@ -1340,10 +1453,47 @@ Player.Idled:Connect(function()
     VirtualUser:ClickButton2(Vector2.new())
 end)
 
-print("=== Violence District Ultimate v3.0 ===")
-print("✓ Compatible with all executors")
-print("✓ Press F4 to toggle menu")
-print("✓ ESP with distance enabled")
-print("✓ All features ready")
+--==================================================
+-- FINAL LOADING NOTIFICATIONS
+--==================================================
+task.wait(1)
 
-Notify("Violence District Ultimate loaded! Press F4", 3)
+-- Success notifications
+Notify("✅ Violence District Ultimate v3.0", 3, "success")
+Notify("📋 Press F4 to open menu", 3, "info")
+Notify("⚡ " .. #GetPlayerList() .. " players in server", 2, "info")
+
+-- Show welcome message in chat
+safe_execute(function()
+    local ChatService = game:GetService("TextChatService")
+    if ChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        -- For new chat system
+        local TextChannels = ChatService.TextChannels
+        if TextChannels and TextChannels.RBXGeneral then
+            TextChannels.RBXGeneral:SendAsync("Violence District Ultimate loaded! Press F4")
+        end
+    else
+        -- For legacy chat
+        pcall(function()
+            game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest"):FireServer("Violence District Ultimate loaded! Press F4", "All")
+        end)
+    end
+end)
+
+-- Print to console
+print([[
+
+    ╔══════════════════════════════════════════╗
+    ║     Violence District Ultimate v3.0      ║
+    ║         Successfully Loaded!              ║
+    ╠══════════════════════════════════════════╣
+    ║  • Press F4 to open menu                 ║
+    ║  • Compatible with all executors         ║
+    ║  • 50+ Features ready                    ║
+    ║  • ESP with distance                      ║
+    ╚══════════════════════════════════════════╝
+
+]])
+
+-- Final notification
+Notify("🎮 Violence District ready! Press F4", 4, "success")
