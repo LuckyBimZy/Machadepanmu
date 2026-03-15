@@ -1,7 +1,7 @@
--- ==================== VIOLENCE DISTRICT - PROFESSIONAL EDITION ====================
--- UI Premium dengan ESP + Distance + Fixed Features
--- Author: LuckyBimZy
--- Version: 1.0
+-- ==================== VIOLENCE DISTRICT - CATRAZ EDITION ====================
+-- Premium UI dengan ESP + Distance + Fixed Features
+-- Adapted for Catraz Hub UI Library
+-- Version: 2.0
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -13,6 +13,11 @@ if _G.VD_Loaded then
 end
 
 _G.VD_Loaded = true
+
+--==================================================
+-- LOAD CATRAZ HUB LIBRARY
+--==================================================
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
 
 --==================================================
 -- VARIABLES
@@ -73,648 +78,52 @@ local ESPObjects = {}
 local ESPConnections = {}
 local NoClipConnection = nil
 
+-- Untuk menyimpan referensi toggle elements
+local ToggleElements = {}
+
 --==================================================
 -- NOTIFICATION
 --==================================================
-local function Notify(msg)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Violence District Notif",
-        Text = msg,
-        Duration = 2
+local function Notify(msg, duration)
+    OrionLib:MakeNotification({
+        Name = "Violence District",
+        Content = msg,
+        Image = "shield",
+        Time = duration or 3
     })
 end
 
-Notify("Script loaded successfully!")
+Notify("Script loaded successfully!", 2)
 
 --==================================================
--- CREATE PREMIUM UI
+-- CREATE MAIN WINDOW - CATRAZ STYLE
 --==================================================
-
--- Clean old GUI
-for _, v in pairs(game.CoreGui:GetChildren()) do
-    if v.Name == "VD_Premium" then v:Destroy() end
-end
-
--- Main ScreenGui
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "VD_Premium"
-ScreenGui.Parent = game.CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.ResetOnSpawn = false
-
---==================================================
--- FLOATING BUTTON
---==================================================
-local FloatBtn = Instance.new("TextButton")
-FloatBtn.Name = "FloatBtn"
-FloatBtn.Size = UDim2.new(0, 50, 0, 50)
-FloatBtn.Position = UDim2.new(0, 20, 0.5, -25)
-FloatBtn.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-FloatBtn.Text = "🎮"
-FloatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatBtn.TextSize = 24
-FloatBtn.Font = Enum.Font.Gotham
-FloatBtn.BorderSizePixel = 0
-FloatBtn.Active = true
-FloatBtn.Draggable = true
-FloatBtn.Parent = ScreenGui
-
--- Rounded corners
-local FloatCorner = Instance.new("UICorner")
-FloatCorner.CornerRadius = UDim.new(0, 12)
-FloatCorner.Parent = FloatBtn
-
--- Shadow
-local FloatShadow = Instance.new("Frame")
-FloatShadow.Size = UDim2.new(1, 8, 1, 8)
-FloatShadow.Position = UDim2.new(0, -4, 0, -4)
-FloatShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-FloatShadow.BackgroundTransparency = 0.6
-FloatShadow.BorderSizePixel = 0
-FloatShadow.Parent = FloatBtn
-
-local ShadowCorner = Instance.new("UICorner")
-ShadowCorner.CornerRadius = UDim.new(0, 14)
-ShadowCorner.Parent = FloatShadow
-
--- Hover effect
-FloatBtn.MouseEnter:Connect(function()
-    TweenService:Create(FloatBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 55, 0, 55)}):Play()
-end)
-
-FloatBtn.MouseLeave:Connect(function()
-    TweenService:Create(FloatBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 50, 0, 50)}):Play()
-end)
-
---==================================================
--- MAIN MENU
---==================================================
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 400, 0, 500)
-MainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.ClipsDescendants = true
-MainFrame.Parent = ScreenGui
-
--- Main corner
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 12)
-MainCorner.Parent = MainFrame
-
--- Main shadow
-local MainShadow = Instance.new("Frame")
-MainShadow.Size = UDim2.new(1, 10, 1, 10)
-MainShadow.Position = UDim2.new(0, -5, 0, -5)
-MainShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-MainShadow.BackgroundTransparency = 0.5
-MainShadow.BorderSizePixel = 0
-MainShadow.Parent = MainFrame
-
-local MainShadowCorner = Instance.new("UICorner")
-MainShadowCorner.CornerRadius = UDim.new(0, 14)
-MainShadowCorner.Parent = MainShadow
-
--- Gradient background
-local Gradient = Instance.new("UIGradient")
-Gradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 25, 30)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 20))
+local Window = OrionLib:MakeWindow({
+    Name = "Violence District",
+    Subtext = "Professional Edition",
+    Version = "v2.0.0",
+    VersionIcon = "shield-check",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "ViolenceDistrictConfig",
+    IntroEnabled = true,
+    IntroText = "Violence District",
+    IntroIcon = "rbxassetid://8834748103",
+    Icon = "rbxassetid://8834748103",
+    ShowIcon = true,
+    
+    -- Custom Theme & Appearance
+    ImageBackground = "rbxassetid://93195749393891",
+    ImageTransparency = 0.8,
+    WindowTransparency = 0.1,
+    
+    -- Floating Toggle Customization
+    ToggleIcon = "rbxassetid://105921924721005",
+    ToggleSize = 50
 })
-Gradient.Rotation = 90
-Gradient.Parent = MainFrame
 
---==================================================
--- TITLE BAR
---==================================================
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 50)
-TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = MainFrame
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 12)
-TitleCorner.Parent = TitleBar
-
--- Icon
-local IconFrame = Instance.new("Frame")
-IconFrame.Size = UDim2.new(0, 30, 0, 30)
-IconFrame.Position = UDim2.new(0, 15, 0.5, -15)
-IconFrame.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-IconFrame.BorderSizePixel = 0
-IconFrame.Parent = TitleBar
-
-local IconCorner = Instance.new("UICorner")
-IconCorner.CornerRadius = UDim.new(0, 8)
-IconCorner.Parent = IconFrame
-
-local IconLabel = Instance.new("TextLabel")
-IconLabel.Size = UDim2.new(1, 0, 1, 0)
-IconLabel.BackgroundTransparency = 1
-IconLabel.Text = "🎮"
-IconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-IconLabel.TextSize = 18
-IconLabel.Font = Enum.Font.Gotham
-IconLabel.Parent = IconFrame
-
--- Title
-local TitleText = Instance.new("TextLabel")
-TitleText.Size = UDim2.new(0, 200, 0, 25)
-TitleText.Position = UDim2.new(0, 55, 0.5, -12.5)
-TitleText.BackgroundTransparency = 1
-TitleText.Text = "Violence District - BimZy Coba"
-TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleText.TextSize = 16
-TitleText.Font = Enum.Font.GothamBold
-TitleText.TextXAlignment = Enum.TextXAlignment.Left
-TitleText.Parent = TitleBar
-
-local VersionText = Instance.new("TextLabel")
-VersionText.Size = UDim2.new(0, 50, 0, 20)
-VersionText.Position = UDim2.new(0, 55, 0.5, 8)
-VersionText.BackgroundTransparency = 1
-VersionText.Text = "v1.0 [BETA]"
-VersionText.TextColor3 = Color3.fromRGB(150, 150, 150)
-VersionText.TextSize = 10
-VersionText.Font = Enum.Font.Gotham
-VersionText.TextXAlignment = Enum.TextXAlignment.Left
-VersionText.Parent = TitleBar
-
--- Control buttons
-local ControlFrame = Instance.new("Frame")
-ControlFrame.Size = UDim2.new(0, 60, 0, 30)
-ControlFrame.Position = UDim2.new(1, -70, 0.5, -15)
-ControlFrame.BackgroundTransparency = 1
-ControlFrame.Parent = TitleBar
-
--- Minimize button
-local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 28, 0, 28)
-MinBtn.Position = UDim2.new(0, 0, 0.5, -14)
-MinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-MinBtn.Text = "−"
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.TextSize = 20
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.BorderSizePixel = 0
-MinBtn.Parent = ControlFrame
-
-local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 6)
-MinCorner.Parent = MinBtn
-
-MinBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-    FloatBtn.Text = "🎯"
-end)
-
--- Close button
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 28, 0, 28)
-CloseBtn.Position = UDim2.new(0, 32, 0.5, -14)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-CloseBtn.Text = "×"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 20
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.BorderSizePixel = 0
-CloseBtn.Parent = ControlFrame
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 6)
-CloseCorner.Parent = CloseBtn
-
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-    _G.VD_Loaded = false
-end)
-
---==================================================
--- TABS
---==================================================
-local TabFrame = Instance.new("Frame")
-TabFrame.Size = UDim2.new(1, -20, 0, 40)
-TabFrame.Position = UDim2.new(0, 10, 0, 55)
-TabFrame.BackgroundTransparency = 1
-TabFrame.Parent = MainFrame
-
-local Tabs = {"Main", "Visuals", "Survivor", "Killer", "Teleport", "Farm", "Misc"}
-local TabIcons = {"🏠", "👁️", "🛡️", "⚔️", "🌀", "⚡", "⚙️"}
-local TabButtons = {}
-local CurrentTab = "Main"
-
-for i = 1, #Tabs do
-    local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0, 50, 0, 40)
-    TabBtn.Position = UDim2.new(0, (i-1) * 52, 0, 0)
-    TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-    TabBtn.Text = TabIcons[i]
-    TabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    TabBtn.TextSize = 20
-    TabBtn.Font = Enum.Font.Gotham
-    TabBtn.BorderSizePixel = 0
-    TabBtn.Parent = TabFrame
-    
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 8)
-    BtnCorner.Parent = TabBtn
-    
-    -- Hover
-    TabBtn.MouseEnter:Connect(function()
-        if CurrentTab ~= Tabs[i] then
-            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 50)}):Play()
-        end
-    end)
-    
-    TabBtn.MouseLeave:Connect(function()
-        if CurrentTab ~= Tabs[i] then
-            TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
-        end
-    end)
-    
-    TabBtn.MouseButton1Click:Connect(function()
-        CurrentTab = Tabs[i]
-        for _, btn in pairs(TabButtons) do
-            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
-            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-        end
-        TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(65, 105, 225)}):Play()
-        TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        UpdateTab(Tabs[i])
-    end)
-    
-    table.insert(TabButtons, TabBtn)
-end
-
--- Set first tab active
-TabButtons[1].BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-TabButtons[1].TextColor3 = Color3.fromRGB(255, 255, 255)
-
---==================================================
--- CONTENT AREA
---==================================================
-local ContentFrame = Instance.new("Frame")
-ContentFrame.Size = UDim2.new(1, -20, 1, -110)
-ContentFrame.Position = UDim2.new(0, 10, 0, 100)
-ContentFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-ContentFrame.BorderSizePixel = 0
-ContentFrame.ClipsDescendants = true
-ContentFrame.Parent = MainFrame
-
-local ContentCorner = Instance.new("UICorner")
-ContentCorner.CornerRadius = UDim.new(0, 8)
-ContentCorner.Parent = ContentFrame
-
--- Scrolling frame
-local ScrollingFrame = Instance.new("ScrollingFrame")
-ScrollingFrame.Size = UDim2.new(1, -10, 1, -10)
-ScrollingFrame.Position = UDim2.new(0, 5, 0, 5)
-ScrollingFrame.BackgroundTransparency = 1
-ScrollingFrame.BorderSizePixel = 0
-ScrollingFrame.ScrollBarThickness = 6
-ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(65, 105, 225)
-ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-ScrollingFrame.Parent = ContentFrame
-
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Padding = UDim.new(0, 8)
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Parent = ScrollingFrame
-
---==================================================
--- UI ELEMENTS FUNCTIONS
---==================================================
-
-function CreateSection(title)
-    local Section = Instance.new("TextLabel")
-    Section.Size = UDim2.new(1, 0, 0, 30)
-    Section.BackgroundTransparency = 1
-    Section.Text = "  " .. title
-    Section.TextColor3 = Color3.fromRGB(65, 105, 225)
-    Section.TextSize = 14
-    Section.Font = Enum.Font.GothamBold
-    Section.TextXAlignment = Enum.TextXAlignment.Left
-    Section.Parent = ScrollingFrame
-    
-    local Line = Instance.new("Frame")
-    Line.Size = UDim2.new(1, -10, 0, 1)
-    Line.Position = UDim2.new(0, 5, 0, 28)
-    Line.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-    Line.BackgroundTransparency = 0.5
-    Line.BorderSizePixel = 0
-    Line.Parent = Section
-end
-
-function CreateToggle(text, var, callback)
-    local ToggleFrame = Instance.new("Frame")
-    ToggleFrame.Size = UDim2.new(1, 0, 0, 40)
-    ToggleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    ToggleFrame.BorderSizePixel = 0
-    ToggleFrame.Parent = ScrollingFrame
-    
-    local ToggleCorner = Instance.new("UICorner")
-    ToggleCorner.CornerRadius = UDim.new(0, 6)
-    ToggleCorner.Parent = ToggleFrame
-    
-    local ToggleText = Instance.new("TextLabel")
-    ToggleText.Size = UDim2.new(0.7, -15, 1, 0)
-    ToggleText.Position = UDim2.new(0, 15, 0, 0)
-    ToggleText.BackgroundTransparency = 1
-    ToggleText.Text = text
-    ToggleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleText.TextSize = 13
-    ToggleText.Font = Enum.Font.Gotham
-    ToggleText.TextXAlignment = Enum.TextXAlignment.Left
-    ToggleText.Parent = ToggleFrame
-    
-    local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(0, 70, 0, 28)
-    ToggleBtn.Position = UDim2.new(1, -85, 0.5, -14)
-    ToggleBtn.BackgroundColor3 = var and Color3.fromRGB(65, 105, 225) or Color3.fromRGB(50, 50, 55)
-    ToggleBtn.Text = var and "ON" or "OFF"
-    ToggleBtn.TextColor3 = var and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 100, 100)
-    ToggleBtn.TextSize = 12
-    ToggleBtn.Font = Enum.Font.GothamBold
-    ToggleBtn.BorderSizePixel = 0
-    ToggleBtn.Parent = ToggleFrame
-    
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 20)
-    BtnCorner.Parent = ToggleBtn
-    
-    ToggleBtn.MouseButton1Click:Connect(function()
-        local newState = not var
-        if newState then
-            TweenService:Create(ToggleBtn, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(65, 105, 225),
-                TextColor3 = Color3.fromRGB(255, 255, 255)
-            }):Play()
-            ToggleBtn.Text = "ON"
-        else
-            TweenService:Create(ToggleBtn, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(50, 50, 55),
-                TextColor3 = Color3.fromRGB(255, 100, 100)
-            }):Play()
-            ToggleBtn.Text = "OFF"
-        end
-        callback(newState)
-    end)
-end
-
-function CreateButton(text, callback)
-    local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1, 0, 0, 40)
-    Button.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-    Button.Text = text
-    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Button.TextSize = 13
-    Button.Font = Enum.Font.GothamBold
-    Button.BorderSizePixel = 0
-    Button.Parent = ScrollingFrame
-    
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 6)
-    BtnCorner.Parent = Button
-    
-    -- Hover
-    Button.MouseEnter:Connect(function()
-        TweenService:Create(Button, TweenInfo.new(0.2), {
-            BackgroundColor3 = Color3.fromRGB(85, 125, 245)
-        }):Play()
-    end)
-    
-    Button.MouseLeave:Connect(function()
-        TweenService:Create(Button, TweenInfo.new(0.2), {
-            BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-        }):Play()
-    end)
-    
-    Button.MouseButton1Click:Connect(callback)
-end
-
-function CreateDropdown(text, options, current, callback)
-    local DropdownFrame = Instance.new("Frame")
-    DropdownFrame.Size = UDim2.new(1, 0, 0, 40)
-    DropdownFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    DropdownFrame.BorderSizePixel = 0
-    DropdownFrame.Parent = ScrollingFrame
-    DropdownFrame.ZIndex = 5
-    
-    local DropdownCorner = Instance.new("UICorner")
-    DropdownCorner.CornerRadius = UDim.new(0, 6)
-    DropdownCorner.Parent = DropdownFrame
-    
-    local DropdownText = Instance.new("TextLabel")
-    DropdownText.Size = UDim2.new(0.5, -15, 1, 0)
-    DropdownText.Position = UDim2.new(0, 15, 0, 0)
-    DropdownText.BackgroundTransparency = 1
-    DropdownText.Text = text
-    DropdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DropdownText.TextSize = 13
-    DropdownText.Font = Enum.Font.Gotham
-    DropdownText.TextXAlignment = Enum.TextXAlignment.Left
-    DropdownText.Parent = DropdownFrame
-    DropdownText.ZIndex = 5
-    
-    local DropdownBtn = Instance.new("TextButton")
-    DropdownBtn.Size = UDim2.new(0, 120, 0, 28)
-    DropdownBtn.Position = UDim2.new(1, -135, 0.5, -14)
-    DropdownBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-    DropdownBtn.Text = current
-    DropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DropdownBtn.TextSize = 12
-    DropdownBtn.Font = Enum.Font.Gotham
-    DropdownBtn.BorderSizePixel = 0
-    DropdownBtn.Parent = DropdownFrame
-    DropdownBtn.ZIndex = 5
-    
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 20)
-    BtnCorner.Parent = DropdownBtn
-    
-    DropdownBtn.MouseButton1Click:Connect(function()
-        -- Hapus menu lama
-        local oldMenu = DropdownFrame:FindFirstChild("DropdownMenu")
-        if oldMenu then oldMenu:Destroy() end
-        
-        -- Buat menu baru dengan ZIndex tinggi
-        local menu = Instance.new("Frame")
-        menu.Name = "DropdownMenu"
-        menu.Size = UDim2.new(0, 140, 0, math.min(#options, 5) * 35)
-        menu.Position = UDim2.new(1, -135, 1, 5)
-        menu.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-        menu.BorderSizePixel = 0
-        menu.Parent = DropdownFrame
-        menu.ZIndex = 10
-        
-        local menuCorner = Instance.new("UICorner")
-        menuCorner.CornerRadius = UDim.new(0, 6)
-        menuCorner.Parent = menu
-        
-        for i, option in ipairs(options) do
-            local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 35)
-            optBtn.Position = UDim2.new(0, 0, 0, (i-1) * 35)
-            optBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-            optBtn.Text = option
-            optBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            optBtn.TextSize = 12
-            optBtn.Font = Enum.Font.Gotham
-            optBtn.BorderSizePixel = 0
-            optBtn.Parent = menu
-            optBtn.ZIndex = 11
-            
-            optBtn.MouseEnter:Connect(function()
-                optBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 60)
-            end)
-            
-            optBtn.MouseLeave:Connect(function()
-                optBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-            end)
-            
-            optBtn.MouseButton1Click:Connect(function()
-                DropdownBtn.Text = option
-                callback(option)
-                menu:Destroy()
-            end)
-        end
-    end)
-end
-
-function CreateLabel(text)
-    local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 0, 25)
-    Label.BackgroundTransparency = 1
-    Label.Text = "• " .. text
-    Label.TextColor3 = Color3.fromRGB(180, 180, 180)
-    Label.TextSize = 12
-    Label.Font = Enum.Font.Gotham
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.Parent = ScrollingFrame
-end
-
-function CreateSlider(text, min, max, value, callback)
-    local SliderFrame = Instance.new("Frame")
-    SliderFrame.Size = UDim2.new(1, 0, 0, 55)
-    SliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    SliderFrame.BorderSizePixel = 0
-    SliderFrame.Parent = ScrollingFrame
-    
-    local SliderCorner = Instance.new("UICorner")
-    SliderCorner.CornerRadius = UDim.new(0, 6)
-    SliderCorner.Parent = SliderFrame
-    
-    local SliderText = Instance.new("TextLabel")
-    SliderText.Size = UDim2.new(0.5, -15, 0, 20)
-    SliderText.Position = UDim2.new(0, 15, 0, 8)
-    SliderText.BackgroundTransparency = 1
-    SliderText.Text = text
-    SliderText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SliderText.TextSize = 13
-    SliderText.Font = Enum.Font.Gotham
-    SliderText.TextXAlignment = Enum.TextXAlignment.Left
-    SliderText.Parent = SliderFrame
-    
-    local ValueBox = Instance.new("TextBox")
-    ValueBox.Size = UDim2.new(0, 50, 0, 24)
-    ValueBox.Position = UDim2.new(1, -65, 0, 6)
-    ValueBox.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-    ValueBox.Text = tostring(value)
-    ValueBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ValueBox.TextSize = 12
-    ValueBox.Font = Enum.Font.GothamBold
-    ValueBox.ClearTextOnFocus = false
-    ValueBox.Parent = SliderFrame
-    
-    local ValueCorner = Instance.new("UICorner")
-    ValueCorner.CornerRadius = UDim.new(0, 4)
-    ValueCorner.Parent = ValueBox
-    
-    local SliderBg = Instance.new("Frame")
-    SliderBg.Size = UDim2.new(1, -20, 0, 6)
-    SliderBg.Position = UDim2.new(0, 10, 0, 38)
-    SliderBg.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-    SliderBg.Parent = SliderFrame
-    
-    local SliderFill = Instance.new("Frame")
-    SliderFill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
-    SliderFill.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-    SliderFill.Parent = SliderBg
-    
-    local SliderButton = Instance.new("Frame")
-    SliderButton.Size = UDim2.new(0, 14, 0, 14)
-    SliderButton.Position = UDim2.new((value - min) / (max - min), -7, 0.5, -7)
-    SliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    SliderButton.Parent = SliderFill
-    
-    local ButtonCorner = Instance.new("UICorner")
-    ButtonCorner.CornerRadius = UDim.new(1, 0)
-    ButtonCorner.Parent = SliderButton
-    
-    -- Update function
-    local function updateValue(newValue)
-        newValue = math.clamp(newValue, min, max)
-        local percent = (newValue - min) / (max - min)
-        SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-        SliderButton.Position = UDim2.new(percent, -7, 0.5, -7)
-        ValueBox.Text = tostring(math.floor(newValue))
-        callback(math.floor(newValue))
-    end
-    
-    -- Input box
-    ValueBox.FocusLost:Connect(function()
-        local val = tonumber(ValueBox.Text)
-        if val then
-            updateValue(val)
-        else
-            ValueBox.Text = tostring(value)
-        end
-    end)
-    
-    -- Drag
-    local dragging = false
-    SliderButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-        end
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local mousePos = UserInputService:GetMouseLocation()
-            local absPos = SliderBg.AbsolutePosition
-            local size = SliderBg.AbsoluteSize.X
-            local percent = math.clamp((mousePos.X - absPos.X) / size, 0, 1)
-            local val = min + (max - min) * percent
-            updateValue(val)
-        end
-    end)
-end
-
---==================================================
--- TOGGLE HANDLERS
---==================================================
-FloatBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-    FloatBtn.Text = MainFrame.Visible and "🎮" or "🎯"
-end)
-
-UserInputService.InputBegan:Connect(function(input, gp)
-    if not gp and input.KeyCode == Enum.KeyCode.F4 then
-        MainFrame.Visible = not MainFrame.Visible
-        FloatBtn.Text = MainFrame.Visible and "🎮" or "🎯"
-    end
-end)
+-- Set Theme (Ocean theme looks nice)
+OrionLib.SelectedTheme = "Ocean"
 
 --==================================================
 -- ESP FUNCTIONS - DENGAN JARAK
@@ -860,262 +269,6 @@ function UpdateNoClip()
             end
         end
     end
-end
-
---==================================================
--- UPDATE TAB CONTENT
---==================================================
-function UpdateTab(tab)
-    -- Clear content
-    for _, v in pairs(ScrollingFrame:GetChildren()) do
-        if v:IsA("Frame") or v:IsA("TextButton") or v:IsA("TextLabel") then
-            v:Destroy()
-        end
-    end
-    
-    if tab == "Main" then
-        CreateSection("PLAYER INFO")
-        CreateLabel("Name: " .. Player.Name)
-        CreateLabel("Display: " .. Player.DisplayName)
-        CreateLabel("Age: " .. Player.AccountAge .. " days")
-        
-        CreateSection("SERVER INFO")
-        CreateLabel("Players: " .. #Players:GetPlayers())
-        CreateLabel("Ping: " .. math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) .. "ms")
-        
-        CreateSection("QUICK ACTIONS")
-        CreateButton("Refresh", function() UpdateTab("Main") end)
-        CreateButton("Rejoin", function() game:GetService("TeleportService"):Teleport(game.PlaceId, Player) end)
-        
-        CreateSection("CREDITS")
-        CreateLabel("Violence District v1.0 [Beta]")
-        CreateLabel("Professional Edition")
-        
-    elseif tab == "Visuals" then
-        CreateSection("ESP SETTINGS")
-        CreateToggle("Enable ESP", Toggles.ESP, function(state)
-            Toggles.ESP = state
-            if state then EnableESP() else DisableESP() end
-        end)
-        
-        CreateDropdown("ESP Type", {"Highlight", "Box", "Name"}, Toggles.ESPType, function(opt)
-            Toggles.ESPType = opt
-            if Toggles.ESP then DisableESP() EnableESP() end
-        end)
-        
-        CreateToggle("Wallhack", Toggles.Wallhack, function(state)
-            Toggles.Wallhack = state
-            UpdateWallhack()
-        end)
-        
-        CreateSection("VISUALS")
-        CreateToggle("Full Bright", Toggles.FullBright, function(state)
-            Toggles.FullBright = state
-            if state then
-                Lighting.Brightness = 2
-                Lighting.GlobalShadows = false
-                Lighting.Ambient = Color3.new(1, 1, 1)
-            else
-                Lighting.Brightness = 1
-                Lighting.GlobalShadows = true
-                Lighting.Ambient = Color3.new(0, 0, 0)
-            end
-        end)
-        
-        CreateToggle("No Fog", Toggles.NoFog, function(state)
-            Toggles.NoFog = state
-            Lighting.FogEnd = state and 1e9 or 100000
-        end)
-        
-    elseif tab == "Survivor" then
-        CreateSection("AUTO FARM")
-        CreateToggle("Auto Present", Toggles.AutoPresent, function(state)
-            Toggles.AutoPresent = state
-            if state then StartLoop("Present") else StopLoop("Present") end
-        end)
-        
-        CreateToggle("Auto Gift", Toggles.AutoGift, function(state)
-            Toggles.AutoGift = state
-            if state then StartLoop("Gift") else StopLoop("Gift") end
-        end)
-        
-        CreateToggle("Auto Coins", Toggles.AutoCoins, function(state)
-            Toggles.AutoCoins = state
-            if state then StartLoop("Coins") else StopLoop("Coins") end
-        end)
-        
-        CreateToggle("Auto Heal", Toggles.AutoHeal, function(state)
-            Toggles.AutoHeal = state
-            if state then StartLoop("Heal") else StopLoop("Heal") end
-        end)
-        
-        CreateSection("MOVEMENT")
-        CreateToggle("Speed Boost", Toggles.SpeedBoost, function(state)
-            Toggles.SpeedBoost = state
-            if state then
-                Player.Character.Humanoid.WalkSpeed = Toggles.SpeedValue
-            else
-                Player.Character.Humanoid.WalkSpeed = 16
-            end
-        end)
-        
-        CreateSlider("Speed", 16, 200, Toggles.SpeedValue, function(val)
-            Toggles.SpeedValue = val
-            if Toggles.SpeedBoost then
-                Player.Character.Humanoid.WalkSpeed = val
-            end
-        end)
-        
-        CreateToggle("Jump Boost", Toggles.JumpBoost, function(state)
-            Toggles.JumpBoost = state
-            if state then
-                Player.Character.Humanoid.JumpPower = Toggles.JumpValue
-            else
-                Player.Character.Humanoid.JumpPower = 50
-            end
-        end)
-        
-        CreateSlider("Jump", 50, 200, Toggles.JumpValue, function(val)
-            Toggles.JumpValue = val
-            if Toggles.JumpBoost then
-                Player.Character.Humanoid.JumpPower = val
-            end
-        end)
-        
-    elseif tab == "Killer" then
-        CreateSection("COMBAT")
-        CreateToggle("Aimbot", Toggles.Aimbot, function(state)
-            Toggles.Aimbot = state
-            if state then StartLoop("Aimbot") else StopLoop("Aimbot") end
-        end)
-        
-        CreateToggle("Kill Aura", Toggles.KillAura, function(state)
-            Toggles.KillAura = state
-            if state then StartLoop("KillAura") else StopLoop("KillAura") end
-        end)
-        
-        CreateSlider("Range", 5, 50, Toggles.KillAuraRange, function(val)
-            Toggles.KillAuraRange = val
-        end)
-        
-        CreateSection("TARGET")
-        local target = FindNearestPlayer()
-        if target then
-            local dist = (Player.Character.HumanoidRootPart.Position - target.Character.HumanoidRootPart.Position).Magnitude
-            CreateLabel("Nearest: " .. target.Name)
-            CreateLabel("Distance: " .. math.floor(dist) .. "m")
-        else
-            CreateLabel("No players nearby")
-        end
-        
-    elseif tab == "Teleport" then
-        CreateSection("MOVEMENT")
-        CreateToggle("NoClip", Toggles.NoClip, function(state)
-            Toggles.NoClip = state
-            UpdateNoClip()
-            Notify(state and "NoClip ON" or "NoClip OFF")
-        end)
-        
-        CreateToggle("TP to Mouse", Toggles.TeleportToMouse, function(state)
-            Toggles.TeleportToMouse = state
-            Notify(state and "Teleport to Mouse ON (Right Click)" or "Teleport to Mouse OFF")
-        end)
-        
-        CreateSection("TELEPORT")
-        CreateDropdown("Target", GetPlayerList(), GetPlayerList()[1] or "None", function(name)
-            local target = Players:FindFirstChild(name)
-            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-                Notify("Teleported to " .. name)
-            end
-        end)
-        
-        CreateButton("Refresh List", function() UpdateTab("Teleport") end)
-        
-        CreateSection("WAYPOINTS")
-        CreateButton("Save Position", function()
-            if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                SavedPosition = Player.Character.HumanoidRootPart.CFrame
-                Notify("Position saved!")
-            end
-        end)
-        
-        CreateButton("Load Position", function()
-            if SavedPosition then
-                Player.Character.HumanoidRootPart.CFrame = SavedPosition
-                Notify("Teleported to saved position")
-            else
-                Notify("No saved position!")
-            end
-        end)
-        
-    elseif tab == "Farm" then
-        CreateSection("GENERATOR")
-        CreateToggle("Auto Farm", Toggles.AutoFarmGenerator, function(state)
-            Toggles.AutoFarmGenerator = state
-            if state then StartLoop("Generator") else StopLoop("Generator") end
-        end)
-        
-        CreateToggle("Auto Complete", Toggles.AutoCompleteGenerator, function(state)
-            Toggles.AutoCompleteGenerator = state
-            if state then StartLoop("Complete") else StopLoop("Complete") end
-        end)
-        
-        CreateButton("Find Generator", function()
-            local gen = FindNearestGenerator()
-            if gen then
-                Player.Character.HumanoidRootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
-                Notify("Found generator")
-            else
-                Notify("No generator found")
-            end
-        end)
-        
-        CreateLabel("Generators: " .. CountGenerators())
-        CreateLabel("Presents: " .. CountPresents())
-        CreateLabel("Gifts: " .. CountGifts())
-        
-    elseif tab == "Misc" then
-        CreateSection("UTILITY")
-        CreateToggle("Anti AFK", Toggles.AntiAFK, function(state)
-            Toggles.AntiAFK = state
-            if state then
-                Player.Idled:Connect(function()
-                    VirtualUser:CaptureController()
-                    VirtualUser:ClickButton2(Vector2.new())
-                end)
-            end
-        end)
-        
-        CreateToggle("Auto Click", Toggles.AutoClick, function(state)
-            Toggles.AutoClick = state
-            if state then StartLoop("Click") else StopLoop("Click") end
-        end)
-        
-        CreateToggle("No Skill Check", Toggles.NoSkillCheck, function(state)
-            Toggles.NoSkillCheck = state
-            ToggleSkillCheck(state)
-        end)
-        
-        CreateSection("GUI")
-        CreateButton("Toggle Menu", function()
-            MainFrame.Visible = not MainFrame.Visible
-            FloatBtn.Text = MainFrame.Visible and "🎮" or "🎯"
-        end)
-        
-        CreateButton("Close GUI", function()
-            ScreenGui:Destroy()
-            _G.VD_Loaded = false
-        end)
-        
-        local active = 0
-        for _, v in pairs(Loops) do if v then active = active + 1 end end
-        CreateLabel("Active: " .. active .. " features")
-    end
-    
-    -- Update canvas size
-    task.wait()
-    ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
 end
 
 --==================================================
@@ -1388,12 +541,760 @@ Player.CharacterAdded:Connect(function(char)
 end)
 
 --==================================================
+-- CREATE TABS - CATRAZ STYLE
+--==================================================
+
+-- MAIN TAB
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "home",
+    PremiumOnly = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Info Section
+local InfoSection = MainTab:AddSection({
+    Name = "Player Info",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Player Stats Paragraph
+local StatsParagraph = InfoSection:AddParagraph({
+    Title = "Stats",
+    Desc = "Loading...",
+    Image = "user",
+    ImageSize = 38,
+    Buttons = {
+        {
+            Title = "Refresh",
+            Callback = function()
+                StatsParagraph:SetDesc("Name: " .. Player.Name .. "\nDisplay: " .. Player.DisplayName .. "\nAge: " .. Player.AccountAge .. " days\nPlayers: " .. #Players:GetPlayers())
+            end
+        }
+    }
+})
+
+StatsParagraph:SetDesc("Name: " .. Player.Name .. "\nDisplay: " .. Player.DisplayName .. "\nAge: " .. Player.AccountAge .. " days\nPlayers: " .. #Players:GetPlayers())
+
+-- Quick Actions Section
+local QuickSection = MainTab:AddSection({
+    Name = "Quick Actions",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+QuickSection:AddButton({
+    Name = "Rejoin Server",
+    Icon = "refresh-cw",
+    Outline = true,
+    Callback = function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
+    end
+})
+
+-- Credits Section
+local CreditsSection = MainTab:AddSection({
+    Name = "Credits",
+    TextSize = 17,
+    Folded = true,
+    Glass = true,
+    Outline = true
+})
+
+CreditsSection:AddParagraph({
+    Title = "Violence District",
+    Desc = "Professional Edition v2.0\nAdapted for Catraz Hub",
+    Image = "shield",
+    ImageSize = 38
+})
+
+-- VISUALS TAB
+local VisualsTab = Window:MakeTab({
+    Name = "Visuals",
+    Icon = "eye",
+    PremiumOnly = false,
+    Glass = true,
+    Outline = true
+})
+
+local ESPSection = VisualsTab:AddSection({
+    Name = "ESP Settings",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- ESP Toggle
+ESPSection:AddToggle({
+    Name = "Enable ESP",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ESPToggle",
+    Save = true,
+    Callback = function(Value)
+        Toggles.ESP = Value
+        if Value then 
+            EnableESP() 
+        else 
+            DisableESP() 
+        end
+    end
+})
+
+-- ESP Type Dropdown
+ESPSection:AddDropdown({
+    Name = "ESP Type",
+    Default = "Highlight",
+    Options = {"Highlight", "Box", "Name"},
+    Multi = false,
+    Search = false,
+    AllowNone = false,
+    Outline = true,
+    Callback = function(Value)
+        Toggles.ESPType = Value
+        if Toggles.ESP then 
+            DisableESP() 
+            EnableESP() 
+        end
+    end
+})
+
+-- Wallhack Toggle
+ESPSection:AddToggle({
+    Name = "Wallhack",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "WallhackToggle",
+    Save = true,
+    Callback = function(Value)
+        Toggles.Wallhack = Value
+        UpdateWallhack()
+    end
+})
+
+local WorldSection = VisualsTab:AddSection({
+    Name = "World Visuals",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Full Bright Toggle
+WorldSection:AddToggle({
+    Name = "Full Bright",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "FullBrightToggle",
+    Save = true,
+    Callback = function(Value)
+        Toggles.FullBright = Value
+        if Value then
+            Lighting.Brightness = 2
+            Lighting.GlobalShadows = false
+            Lighting.Ambient = Color3.new(1, 1, 1)
+        else
+            Lighting.Brightness = 1
+            Lighting.GlobalShadows = true
+            Lighting.Ambient = Color3.new(0, 0, 0)
+        end
+    end
+})
+
+-- No Fog Toggle
+WorldSection:AddToggle({
+    Name = "No Fog",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "NoFogToggle",
+    Save = true,
+    Callback = function(Value)
+        Toggles.NoFog = Value
+        Lighting.FogEnd = Value and 1e9 or 100000
+    end
+})
+
+-- SURVIVOR TAB
+local SurvivorTab = Window:MakeTab({
+    Name = "Survivor",
+    Icon = "shield",
+    PremiumOnly = false,
+    Glass = true,
+    Outline = true
+})
+
+local AutoFarmSection = SurvivorTab:AddSection({
+    Name = "Auto Farm",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Auto Present
+AutoFarmSection:AddToggle({
+    Name = "Auto Present",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoPresent",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoPresent = Value
+        if Value then StartLoop("Present") else StopLoop("Present") end
+    end
+})
+
+-- Auto Gift
+AutoFarmSection:AddToggle({
+    Name = "Auto Gift",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoGift",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoGift = Value
+        if Value then StartLoop("Gift") else StopLoop("Gift") end
+    end
+})
+
+-- Auto Coins
+AutoFarmSection:AddToggle({
+    Name = "Auto Coins",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoCoins",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoCoins = Value
+        if Value then StartLoop("Coins") else StopLoop("Coins") end
+    end
+})
+
+-- Auto Heal
+AutoFarmSection:AddToggle({
+    Name = "Auto Heal",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoHeal",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoHeal = Value
+        if Value then StartLoop("Heal") else StopLoop("Heal") end
+    end
+})
+
+local MovementSection = SurvivorTab:AddSection({
+    Name = "Movement",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Speed Boost
+MovementSection:AddToggle({
+    Name = "Speed Boost",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SpeedBoost",
+    Save = true,
+    Callback = function(Value)
+        Toggles.SpeedBoost = Value
+        if Value then
+            Player.Character.Humanoid.WalkSpeed = Toggles.SpeedValue
+        else
+            Player.Character.Humanoid.WalkSpeed = 16
+        end
+    end
+})
+
+-- Speed Slider
+MovementSection:AddSlider({
+    Name = "Speed Value",
+    Min = 16,
+    Max = 200,
+    Default = 50,
+    Color = Color3.fromRGB(65, 105, 225),
+    Increment = 1,
+    ValueName = "WS",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.SpeedValue = Value
+        if Toggles.SpeedBoost then
+            Player.Character.Humanoid.WalkSpeed = Value
+        end
+    end
+})
+
+-- Jump Boost
+MovementSection:AddToggle({
+    Name = "Jump Boost",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "JumpBoost",
+    Save = true,
+    Callback = function(Value)
+        Toggles.JumpBoost = Value
+        if Value then
+            Player.Character.Humanoid.JumpPower = Toggles.JumpValue
+        else
+            Player.Character.Humanoid.JumpPower = 50
+        end
+    end
+})
+
+-- Jump Slider
+MovementSection:AddSlider({
+    Name = "Jump Value",
+    Min = 50,
+    Max = 200,
+    Default = 100,
+    Color = Color3.fromRGB(65, 105, 225),
+    Increment = 1,
+    ValueName = "JP",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.JumpValue = Value
+        if Toggles.JumpBoost then
+            Player.Character.Humanoid.JumpPower = Value
+        end
+    end
+})
+
+-- KILLER TAB
+local KillerTab = Window:MakeTab({
+    Name = "Killer",
+    Icon = "swords",
+    PremiumOnly = false,
+    Glass = true,
+    Outline = true
+})
+
+local CombatSection = KillerTab:AddSection({
+    Name = "Combat",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Aimbot
+CombatSection:AddToggle({
+    Name = "Aimbot",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Aimbot",
+    Save = true,
+    Callback = function(Value)
+        Toggles.Aimbot = Value
+        if Value then StartLoop("Aimbot") else StopLoop("Aimbot") end
+    end
+})
+
+-- Kill Aura
+CombatSection:AddToggle({
+    Name = "Kill Aura",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "KillAura",
+    Save = true,
+    Callback = function(Value)
+        Toggles.KillAura = Value
+        if Value then StartLoop("KillAura") else StopLoop("KillAura") end
+    end
+})
+
+-- Kill Aura Range
+CombatSection:AddSlider({
+    Name = "Aura Range",
+    Min = 5,
+    Max = 50,
+    Default = 20,
+    Color = Color3.fromRGB(65, 105, 225),
+    Increment = 1,
+    ValueName = "m",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.KillAuraRange = Value
+    end
+})
+
+-- Nearest Player Info
+local TargetSection = KillerTab:AddSection({
+    Name = "Target Info",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+local TargetParagraph = TargetSection:AddParagraph({
+    Title = "Nearest Player",
+    Desc = "None",
+    Image = "target",
+    ImageSize = 38,
+    Buttons = {
+        {
+            Title = "Refresh",
+            Callback = function()
+                local target = FindNearestPlayer()
+                if target then
+                    local dist = (Player.Character.HumanoidRootPart.Position - target.Character.HumanoidRootPart.Position).Magnitude
+                    TargetParagraph:SetDesc(target.Name .. "\nDistance: " .. math.floor(dist) .. "m")
+                else
+                    TargetParagraph:SetDesc("No players nearby")
+                end
+            end
+        }
+    }
+})
+
+-- TELEPORT TAB
+local TeleportTab = Window:MakeTab({
+    Name = "Teleport",
+    Icon = "move",
+    PremiumOnly = false,
+    Glass = true,
+    Outline = true
+})
+
+local MovementSection2 = TeleportTab:AddSection({
+    Name = "Movement",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- NoClip
+MovementSection2:AddToggle({
+    Name = "NoClip",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "NoClip",
+    Save = true,
+    Callback = function(Value)
+        Toggles.NoClip = Value
+        UpdateNoClip()
+        Notify(Value and "NoClip ON" or "NoClip OFF", 2)
+    end
+})
+
+-- TP to Mouse
+MovementSection2:AddToggle({
+    Name = "TP to Mouse (Right Click)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "TPMouse",
+    Save = true,
+    Callback = function(Value)
+        Toggles.TeleportToMouse = Value
+        Notify(Value and "Teleport to Mouse ON" or "Teleport to Mouse OFF", 2)
+    end
+})
+
+local TeleportSection = TeleportTab:AddSection({
+    Name = "Teleport to Player",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Player Dropdown
+local PlayerDropdown = TeleportSection:AddDropdown({
+    Name = "Select Player",
+    Default = "None",
+    Options = GetPlayerList(),
+    Multi = false,
+    Search = true,
+    AllowNone = true,
+    Outline = true,
+    Callback = function(Value)
+        local target = Players:FindFirstChild(Value)
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+            Notify("Teleported to " .. Value, 2)
+        end
+    end
+})
+
+-- Refresh Button
+TeleportSection:AddButton({
+    Name = "Refresh Player List",
+    Icon = "refresh-cw",
+    Outline = true,
+    Callback = function()
+        PlayerDropdown:Refresh(GetPlayerList(), true)
+    end
+})
+
+local WaypointSection = TeleportTab:AddSection({
+    Name = "Waypoints",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Save Position
+WaypointSection:AddButton({
+    Name = "Save Position",
+    Icon = "save",
+    Outline = true,
+    Callback = function()
+        if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+            SavedPosition = Player.Character.HumanoidRootPart.CFrame
+            Notify("Position saved!", 2)
+        end
+    end
+})
+
+-- Load Position
+WaypointSection:AddButton({
+    Name = "Load Position",
+    Icon = "download",
+    Outline = true,
+    Callback = function()
+        if SavedPosition then
+            Player.Character.HumanoidRootPart.CFrame = SavedPosition
+            Notify("Teleported to saved position", 2)
+        else
+            Notify("No saved position!", 2)
+        end
+    end
+})
+
+-- FARM TAB
+local FarmTab = Window:MakeTab({
+    Name = "Farm",
+    Icon = "zap",
+    PremiumOnly = false,
+    Glass = true,
+    Outline = true
+})
+
+local GeneratorSection = FarmTab:AddSection({
+    Name = "Generator",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Auto Farm Generator
+GeneratorSection:AddToggle({
+    Name = "Auto Farm Generator",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoFarmGen",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoFarmGenerator = Value
+        if Value then StartLoop("Generator") else StopLoop("Generator") end
+    end
+})
+
+-- Auto Complete Generator
+GeneratorSection:AddToggle({
+    Name = "Auto Complete",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoComplete",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoCompleteGenerator = Value
+        if Value then StartLoop("Complete") else StopLoop("Complete") end
+    end
+})
+
+-- Find Generator Button
+GeneratorSection:AddButton({
+    Name = "Find Generator",
+    Icon = "search",
+    Outline = true,
+    Callback = function()
+        local gen = FindNearestGenerator()
+        if gen then
+            Player.Character.HumanoidRootPart.CFrame = gen.CFrame + Vector3.new(0, 3, 0)
+            Notify("Found generator", 2)
+        else
+            Notify("No generator found", 2)
+        end
+    end
+})
+
+-- Stats Paragraph
+local StatsSection = FarmTab:AddSection({
+    Name = "Stats",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+local FarmStatsParagraph = StatsSection:AddParagraph({
+    Title = "World Stats",
+    Desc = "Loading...",
+    Image = "bar-chart",
+    ImageSize = 38,
+    Buttons = {
+        {
+            Title = "Refresh",
+            Callback = function()
+                FarmStatsParagraph:SetDesc("Generators: " .. CountGenerators() .. "\nPresents: " .. CountPresents() .. "\nGifts: " .. CountGifts())
+            end
+        }
+    }
+})
+
+FarmStatsParagraph:SetDesc("Generators: " .. CountGenerators() .. "\nPresents: " .. CountPresents() .. "\nGifts: " .. CountGifts())
+
+-- MISC TAB
+local MiscTab = Window:MakeTab({
+    Name = "Misc",
+    Icon = "settings",
+    PremiumOnly = false,
+    Glass = true,
+    Outline = true
+})
+
+local UtilitySection = MiscTab:AddSection({
+    Name = "Utility",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Anti AFK
+UtilitySection:AddToggle({
+    Name = "Anti AFK",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AntiAFK",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AntiAFK = Value
+        if Value then
+            Player.Idled:Connect(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+        end
+    end
+})
+
+-- Auto Click
+UtilitySection:AddToggle({
+    Name = "Auto Click",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoClick",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoClick = Value
+        if Value then StartLoop("Click") else StopLoop("Click") end
+    end
+})
+
+-- No Skill Check
+UtilitySection:AddToggle({
+    Name = "No Skill Check",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "NoSkillCheck",
+    Save = true,
+    Callback = function(Value)
+        Toggles.NoSkillCheck = Value
+        ToggleSkillCheck(Value)
+    end
+})
+
+local GUISection = MiscTab:AddSection({
+    Name = "GUI",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Close GUI Button
+GUISection:AddButton({
+    Name = "Close GUI",
+    Icon = "x-circle",
+    Outline = true,
+    Callback = function()
+        OrionLib:Destroy()
+        _G.VD_Loaded = false
+    end
+})
+
+-- Active Features Counter
+local function UpdateActiveCount()
+    local active = 0
+    for _, v in pairs(Loops) do if v then active = active + 1 end
+    for _, toggle in pairs(Toggles) do if toggle then active = active + 1 end end
+    return active
+end
+
+local StatusParagraph = MiscTab:AddSection({
+    Name = "Status",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+}):AddParagraph({
+    Title = "Active Features",
+    Desc = "Calculating...",
+    Image = "activity",
+    ImageSize = 38
+})
+
+StatusParagraph:SetDesc("Active: " .. UpdateActiveCount() .. " features")
+
+--==================================================
+-- ADD CONFIG TAB (BUILT-IN)
+--==================================================
+Window:AddConfigTab({
+    Name = "Config",
+    Icon = "settings"
+})
+
+--==================================================
 -- INITIALIZE
 --==================================================
-UpdateTab("Main")
-Notify("Press F4 or click floating button")
+OrionLib:Init()
 
-print("=== Violence District Professional v1.0 ===")
+Notify("Press F4 or click floating button", 3)
+
+print("=== Violence District Catraz Edition v2.0 ===")
 print("Press F4 to toggle menu")
 print("ESP with distance enabled!")
 print("NoClip fixed and working!")
