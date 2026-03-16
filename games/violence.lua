@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
 -- Premium UI menggunakan Catraz Hub Library
 -- Adapted from LuckyBimZy & RanZx999
--- Version: 3.1 COMPLETE
+-- Version: 3.0 COMPLETE
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -39,15 +39,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 --==================================================
 local TeamColor = Color3.fromRGB(0, 255, 0)
 local EnemyColor = Color3.fromRGB(255, 0, 0)
-local WhiteColor = Color3.fromRGB(255, 255, 255) -- Untuk mode putih
-
---==================================================
--- ESP MODE
---==================================================
-local ESPMode = {
-    DEFAULT = "Default",  -- Mode dengan warna team
-    WHITE = "White"       -- Mode putih seperti gambar
-}
 
 --==================================================
 -- CONFIG
@@ -55,27 +46,14 @@ local ESPMode = {
 local Config = {
     ESP = {
         Enabled = false,
-        Mode = ESPMode.WHITE, -- Default ke White mode
         Boxes = false,
-        Names = true,  -- Default true untuk White mode
-        Distance = true, -- Default true untuk White mode
+        Names = false,
+        Distance = false,
         Health = false,
         Tracers = false,
         TeamCheck = true,
         MaxDistance = 2000,
-        ShowTeammates = false,
-        -- Pengaturan untuk White mode
-        WhiteMode = {
-            NameColor = Color3.fromRGB(255, 255, 255), -- Putih
-            NameSize = 20, -- Lebih besar
-            NameFont = 3, -- Font tebal
-            DistanceColor = Color3.fromRGB(200, 200, 200),
-            DistanceSize = 18,
-            DistanceFont = 3,
-            BoxColor = Color3.fromRGB(255, 255, 255), -- Box putih
-            BoxTransparency = 1,
-            BoxThickness = 2
-        }
+        ShowTeammates = false
     },
     Highlight = {
         Enabled = false,
@@ -96,7 +74,7 @@ local Config = {
         FullbrightEnabled = false,
         NoFogEnabled = false,
         WallhackEnabled = false,
-        ZoomOutEnabled = false
+        InfiniteZoomEnabled = false
     },
     Movement = {
         SpeedEnabled = false,
@@ -125,7 +103,7 @@ local ActiveFeatures = {
     Fullbright = false,
     NoFog = false,
     Wallhack = false,
-    ZoomOut = false,
+    InfiniteZoom = false,
     Speed = false,
     Jump = false,
     InfiniteJump = false,
@@ -170,9 +148,7 @@ local function isTeammate(player)
 end
 
 local function getPlayerColor(player)
-    if Config.ESP.Mode == ESPMode.WHITE then
-        return WhiteColor -- Mode putih selalu putih
-    elseif Config.ESP.TeamCheck and isTeammate(player) then
+    if Config.ESP.TeamCheck and isTeammate(player) then
         return TeamColor
     else
         return EnemyColor
@@ -208,7 +184,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
     Subtext = "ULTIMATE Edition",
-    Version = "v3.1",
+    Version = "v3.0",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -382,7 +358,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- PLAYER ESP SYSTEM (AUTO-DETECT) - DENGAN WHITE MODE
+-- PLAYER ESP SYSTEM (AUTO-DETECT) - DIPERJELAS
 --==================================================
 local ESPObjects = {}
 
@@ -401,31 +377,29 @@ local function createPlayerESP(player)
     
     local esp = ESPObjects[player]
     
-    -- Box settings
     esp.Box.Visible = false
     esp.Box.Thickness = 2
     esp.Box.Transparency = 1
     esp.Box.Filled = false
     
-    -- Name settings - Putih besar (default untuk white mode)
+    -- Name dengan font lebih besar dan putih
     esp.Name.Visible = false
-    esp.Name.Color = Config.ESP.WhiteMode.NameColor
-    esp.Name.Size = Config.ESP.WhiteMode.NameSize
+    esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Putih
+    esp.Name.Size = 18 -- Lebih besar
     esp.Name.Center = true
     esp.Name.Outline = true
     esp.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Name.Font = Config.ESP.WhiteMode.NameFont
+    esp.Name.Font = 3 -- Font lebih tebal
     
-    -- Distance settings
+    -- Distance dengan font lebih besar
     esp.Distance.Visible = false
-    esp.Distance.Color = Config.ESP.WhiteMode.DistanceColor
-    esp.Distance.Size = Config.ESP.WhiteMode.DistanceSize
+    esp.Distance.Color = Color3.fromRGB(200, 200, 200)
+    esp.Distance.Size = 16
     esp.Distance.Center = true
     esp.Distance.Outline = true
     esp.Distance.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Distance.Font = Config.ESP.WhiteMode.DistanceFont
+    esp.Distance.Font = 3
     
-    -- Health bar
     esp.HealthBarBG.Visible = false
     esp.HealthBarBG.Color = Color3.fromRGB(20, 20, 20)
     esp.HealthBarBG.Thickness = 1
@@ -438,7 +412,6 @@ local function createPlayerESP(player)
     esp.HealthBar.Transparency = 1
     esp.HealthBar.Filled = true
     
-    -- Tracer
     esp.Tracer.Visible = false
     esp.Tracer.Thickness = 1
     esp.Tracer.Transparency = 1
@@ -467,8 +440,7 @@ local function updatePlayerESP()
             continue
         end
         
-        -- Skip teammates jika team check aktif (kecuali white mode atau show teammates)
-        if Config.ESP.Mode ~= ESPMode.WHITE and Config.ESP.TeamCheck and isTeammate(player) and not Config.ESP.ShowTeammates then
+        if Config.ESP.TeamCheck and isTeammate(player) and not Config.ESP.ShowTeammates then
             for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
@@ -501,52 +473,32 @@ local function updatePlayerESP()
         local boxSize = Vector2.new(2000 / distance, 2500 / distance)
         local playerColor = getPlayerColor(player)
         
-        -- Update warna berdasarkan mode
-        if Config.ESP.Mode == ESPMode.WHITE then
-            esp.Name.Color = Config.ESP.WhiteMode.NameColor
-            esp.Name.Size = Config.ESP.WhiteMode.NameSize
-            esp.Distance.Color = Config.ESP.WhiteMode.DistanceColor
-            esp.Box.Color = Config.ESP.WhiteMode.BoxColor
-        else
-            esp.Name.Color = playerColor
-            esp.Name.Size = 15 -- Ukuran normal untuk mode default
-            esp.Distance.Color = Color3.fromRGB(200, 200, 200)
-            esp.Box.Color = playerColor
-        end
-        
-        -- Box
         if Config.ESP.Boxes then
             esp.Box.Size = boxSize
             esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
+            esp.Box.Color = playerColor
             esp.Box.Visible = true
         else
             esp.Box.Visible = false
         end
         
-        -- Name - selalu aktif di white mode
-        if Config.ESP.Names or Config.ESP.Mode == ESPMode.WHITE then
-            if Config.ESP.Mode == ESPMode.WHITE then
-                esp.Name.Text = player.Name
-            else
-                esp.Name.Text = player.Name .. (isTeammate(player) and " (Team)" or " (Enemy)")
-            end
+        if Config.ESP.Names then
+            esp.Name.Text = player.Name .. (isTeammate(player) and " (Team)" or " (Enemy)")
             esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 40)
             esp.Name.Visible = true
         else
             esp.Name.Visible = false
         end
         
-        -- Distance - selalu aktif di white mode
-        if Config.ESP.Distance or Config.ESP.Mode == ESPMode.WHITE then
-            esp.Distance.Text = string.format("[%dm]", math.floor(distance))
+        if Config.ESP.Distance then
+            esp.Distance.Text = string.format("[%.0f meters]", distance)
             esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 25)
             esp.Distance.Visible = true
         else
             esp.Distance.Visible = false
         end
         
-        -- Health bar
-        if Config.ESP.Health and hum and Config.ESP.Mode ~= ESPMode.WHITE then
+        if Config.ESP.Health and hum then
             local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             local barWidth = 3
             local barHeight = boxSize.Y
@@ -572,8 +524,7 @@ local function updatePlayerESP()
             esp.HealthBar.Visible = false
         end
         
-        -- Tracers
-        if Config.ESP.Tracers and Config.ESP.Mode ~= ESPMode.WHITE then
+        if Config.ESP.Tracers then
             local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
             esp.Tracer.From = screenCenter
             esp.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
@@ -718,33 +669,15 @@ local function updateWallhack()
 end
 
 --==================================================
--- ZOOM OUT VIEW (Perbaikan)
+-- INFINITE ZOOM
 --==================================================
-local cameraConnection = nil
-local originalFOV = 70 -- Default FOV
-
-local function updateZoomOutView()
-    if Config.Visual.ZoomOutEnabled and Camera then
-        -- Smooth zoom out
-        Camera.FieldOfView = 120 -- Zoom out maximum
+local function updateInfiniteZoom()
+    if Config.Visual.InfiniteZoomEnabled and Camera then
+        Camera.FieldOfView = 120
     elseif Camera then
-        -- Kembalikan ke FOV normal
-        Camera.FieldOfView = originalFOV
+        Camera.FieldOfView = 70
     end
 end
-
--- Monitor perubahan kamera
-if cameraConnection then cameraConnection:Disconnect() end
-cameraConnection = RunService.RenderStepped:Connect(function()
-    updateZoomOutView()
-end)
-
--- Saat kamera berganti (respawn, dll)
-Workspace.CurrentCameraChanged:Connect(function(newCamera)
-    Camera = newCamera
-    task.wait(0.5)
-    updateZoomOutView()
-end)
 
 --==================================================
 -- GENERATOR ESP
@@ -932,6 +865,9 @@ task.spawn(function()
             end
         end
         
+        -- Infinite Zoom
+        updateInfiniteZoom()
+        
         task.wait(0.5)
     end
 end)
@@ -1080,7 +1016,11 @@ task.spawn(function()
 end)
 
 --==================================================
--- ESP TAB - DENGAN WHITE MODE
+-- MAIN TAB CONTENT (sudah dibuat di atas)
+--==================================================
+
+--==================================================
+-- ESP TAB
 --==================================================
 local ESPSection = ESPTab:AddSection({
     Name = "⚡ PLAYER ESP (AUTO-DETECT) ⚡",
@@ -1116,49 +1056,6 @@ ESPSection:AddToggle({
     end
 })
 
--- ESP Mode Selector
-ESPSection:AddDropdown({
-    Name = "ESP Mode",
-    Default = ESPMode.WHITE,
-    Options = {ESPMode.WHITE, ESPMode.DEFAULT},
-    Multi = false,
-    Search = false,
-    AllowNone = false,
-    Outline = true,
-    Flag = "ESPMode",
-    Save = true,
-    Callback = function(Value)
-        Config.ESP.Mode = Value
-        
-        -- Auto-enable Names & Distance untuk White Mode
-        if Value == ESPMode.WHITE then
-            Config.ESP.Names = true
-            Config.ESP.Distance = true
-            Notify("✅ White Mode Active - Names & Distance enabled")
-        end
-        
-        -- Refresh ESP
-        if Config.ESP.Enabled then
-            for player, _ in pairs(ESPObjects) do
-                removePlayerESP(player)
-            end
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= Player then
-                    createPlayerESP(player)
-                end
-            end
-        end
-    end
-})
-
-ESPSection:AddParagraph({
-    Title = "ESP Mode Info",
-    Desc = "⚪ WHITE MODE: Semua karakter putih dengan nama & jarak\n" ..
-           "🎨 DEFAULT MODE: Team colors (Hijau/Teammate, Merah/Enemy)",
-    Image = "info",
-    ImageSize = 38
-})
-
 ESPSection:AddToggle({
     Name = "Show Boxes",
     Default = false,
@@ -1170,8 +1067,8 @@ ESPSection:AddToggle({
 })
 
 ESPSection:AddToggle({
-    Name = "Show Names",
-    Default = true,
+    Name = "Show Names (Large White Text)",
+    Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "ESPNames",
@@ -1181,7 +1078,7 @@ ESPSection:AddToggle({
 
 ESPSection:AddToggle({
     Name = "Show Distance",
-    Default = true,
+    Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "ESPDistance",
@@ -1242,10 +1139,7 @@ ESPSection:AddSlider({
 
 ESPSection:AddParagraph({
     Title = "Color Guide",
-    Desc = "⚪ WHITE MODE: Semua player putih dengan nama & jarak\n" ..
-           "🎨 DEFAULT MODE:\n" ..
-           "   🟢 Green = Teammate\n" ..
-           "   🔴 Red = Enemy",
+    Desc = "🟢 Green = Teammate\n🔴 Red = Enemy\n⚪ White Names = All Players",
     Image = "info",
     ImageSize = 38
 })
@@ -1431,7 +1325,7 @@ HealSection:AddParagraph({
 })
 
 --==================================================
--- VISUAL TAB
+-- VISUAL TAB (LENGKAP)
 --==================================================
 local VisualSection = VisualTab:AddSection({
     Name = "Visual Enhancements",
@@ -1484,17 +1378,16 @@ VisualSection:AddToggle({
 })
 
 VisualSection:AddToggle({
-    Name = "Zoom Out View",
+    Name = "Infinite Zoom Out",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "ZoomOutView",
+    Flag = "InfiniteZoom",
     Save = true,
     Callback = function(Value)
-        Config.Visual.ZoomOutEnabled = Value
-        ActiveFeatures.ZoomOut = Value
-        updateZoomOutView()
-        Notify(Value and "✅ Zoom Out View Enabled" or "❌ Zoom Out View Disabled")
+        Config.Visual.InfiniteZoomEnabled = Value
+        ActiveFeatures.InfiniteZoom = Value
+        Notify(Value and "✅ Infinite Zoom Enabled" or "❌ Infinite Zoom Disabled")
     end
 })
 
@@ -1521,12 +1414,8 @@ VisualSection:AddToggle({
 
 VisualSection:AddParagraph({
     Title = "Info",
-    Desc = "✅ Fullbright - Maximum lighting\n" ..
-           "✅ No Fog - Remove all fog effects\n" ..
-           "✅ Wallhack - See through walls\n" ..
-           "✅ Zoom Out View - Maximum camera zoom\n" ..
-           "✅ Hide Skill Check - Clean screen",
-    Image = "eye",
+    Desc = "✅ Hides SkillCheckPromptGui\n✅ Clean screen while repairing",
+    Image = "eye-off",
     ImageSize = 38
 })
 
@@ -1821,7 +1710,7 @@ task.spawn(function()
         if ActiveFeatures.Fullbright then activeList = activeList .. "✅ Fullbright\n"; count = count + 1 end
         if ActiveFeatures.NoFog then activeList = activeList .. "✅ No Fog\n"; count = count + 1 end
         if ActiveFeatures.Wallhack then activeList = activeList .. "✅ Wallhack\n"; count = count + 1 end
-        if ActiveFeatures.ZoomOut then activeList = activeList .. "✅ Zoom Out View\n"; count = count + 1 end
+        if ActiveFeatures.InfiniteZoom then activeList = activeList .. "✅ Infinite Zoom\n"; count = count + 1 end
         if ActiveFeatures.Speed then activeList = activeList .. "✅ Speed Hack\n"; count = count + 1 end
         if ActiveFeatures.Jump then activeList = activeList .. "✅ Jump Hack\n"; count = count + 1 end
         if ActiveFeatures.InfiniteJump then activeList = activeList .. "✅ Infinite Jump\n"; count = count + 1 end
@@ -1848,7 +1737,7 @@ MiscSection:AddSection({
 
 MiscSection:AddParagraph({
     Title = "Violence District",
-    Desc = "Version: 3.1 ULTIMATE\n" ..
+    Desc = "Version: 3.0 ULTIMATE\n" ..
            "UI: Catraz Hub Library\n" ..
            "Press F4 to toggle menu",
     Image = "info",
@@ -1881,10 +1770,6 @@ MiscSection:AddButton({
         
         if wallhackConnection then
             wallhackConnection:Disconnect()
-        end
-        
-        if cameraConnection then
-            cameraConnection:Disconnect()
         end
         
         Notify("Script Destroyed")
@@ -1922,12 +1807,11 @@ OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.1 🔥")
+print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.0 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ Player ESP - WHITE MODE (Nama Putih + Jarak)")
-print("✅ Player ESP - DEFAULT MODE (Team Colors)")
+print("✅ Player ESP - Large White Text")
 print("✅ Movement Hacks - Speed, Jump, Infinite Jump, Noclip")
-print("✅ Visual - Wallhack, Fullbright, No Fog, Zoom Out View")
+print("✅ Visual - Wallhack, Fullbright, No Fog, Infinite Zoom")
 print("✅ Teleport - To Player, Save/Load Position")
 print("✅ Misc - Anti AFK, Active Features Counter")
 print("✅ Highlight - Team Colors")
