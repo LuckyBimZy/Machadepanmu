@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
 -- Premium UI menggunakan Catraz Hub Library
 -- Adapted from LuckyBimZy & RanZx999
--- Version: 3.0 COMPLETE
+-- Version: 3.1 COMPLETE
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -39,6 +39,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 --==================================================
 local TeamColor = Color3.fromRGB(0, 255, 0)
 local EnemyColor = Color3.fromRGB(255, 0, 0)
+local BasicColor = Color3.fromRGB(255, 255, 255) -- Putih untuk basic mode
 
 --==================================================
 -- CONFIG
@@ -46,6 +47,7 @@ local EnemyColor = Color3.fromRGB(255, 0, 0)
 local Config = {
     ESP = {
         Enabled = false,
+        Mode = "Basic", -- "Basic" atau "Advanced"
         Boxes = false,
         Names = false,
         Distance = false,
@@ -74,7 +76,8 @@ local Config = {
         FullbrightEnabled = false,
         NoFogEnabled = false,
         WallhackEnabled = false,
-        InfiniteZoomEnabled = false
+        InfiniteZoomEnabled = false,
+        OriginalFOV = 70 -- Menyimpan FOV asli
     },
     Movement = {
         SpeedEnabled = false,
@@ -91,6 +94,9 @@ local Config = {
         AntiAFK = false
     }
 }
+
+-- Simpan FOV asli camera
+Config.Visual.OriginalFOV = Camera and Camera.FieldOfView or 70
 
 -- Untuk tracking active features
 local ActiveFeatures = {
@@ -148,15 +154,19 @@ local function isTeammate(player)
 end
 
 local function getPlayerColor(player)
-    if Config.ESP.TeamCheck and isTeammate(player) then
-        return TeamColor
+    if Config.ESP.Mode == "Basic" then
+        return BasicColor -- Putih untuk basic mode
     else
-        return EnemyColor
+        if Config.ESP.TeamCheck and isTeammate(player) then
+            return TeamColor
+        else
+            return EnemyColor
+        end
     end
 end
 
 --==================================================
--- NOTIFICATION
+-- NOTIFICATION (DIPERBAIKI - HANYA SEKALI)
 --==================================================
 local function Notify(msg)
     OrionLib:MakeNotification({
@@ -184,14 +194,14 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
     Subtext = "ULTIMATE Edition",
-    Version = "v3.0",
+    Version = "v3.1",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "VD_ULTIMATE",
-    IntroEnabled = true,
-    IntroText = "Violence District ULTIMATE",
-    IntroIcon = "rbxassetid://8834748103",
+    IntroEnabled = false, -- Nonaktifkan intro untuk kurangi notif
+    IntroText = "",
+    IntroIcon = "",
     Icon = "rbxassetid://8834748103",
     ShowIcon = true,
     
@@ -306,14 +316,14 @@ local ServerInfoSection = MainTab:AddSection({
 
 -- Fungsi untuk update server info
 local function updateServerInfo()
-    local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
+    local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() or 0)
     local players = #Players:GetPlayers()
-    local serverTime = math.floor(workspace.DistributedGameTime)
+    local serverTime = math.floor(workspace.DistributedGameTime or 0)
     local hours = math.floor(serverTime / 3600)
     local minutes = math.floor((serverTime % 3600) / 60)
     local seconds = serverTime % 60
     
-    return "Players: " .. players .. "/" .. Players.MaxPlayers .. "\n" ..
+    return "Players: " .. players .. "/" .. (Players.MaxPlayers or 100) .. "\n" ..
            "Ping: " .. ping .. " ms\n" ..
            "Server Time: " .. string.format("%02d:%02d:%02d", hours, minutes, seconds)
 end
@@ -358,7 +368,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- PLAYER ESP SYSTEM (AUTO-DETECT) - DIPERJELAS
+-- PLAYER ESP SYSTEM (AUTO-DETECT) - DENGAN BASIC MODE
 --==================================================
 local ESPObjects = {}
 
@@ -440,7 +450,7 @@ local function updatePlayerESP()
             continue
         end
         
-        if Config.ESP.TeamCheck and isTeammate(player) and not Config.ESP.ShowTeammates then
+        if Config.ESP.Mode == "Advanced" and Config.ESP.TeamCheck and isTeammate(player) and not Config.ESP.ShowTeammates then
             for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
@@ -473,65 +483,88 @@ local function updatePlayerESP()
         local boxSize = Vector2.new(2000 / distance, 2500 / distance)
         local playerColor = getPlayerColor(player)
         
-        if Config.ESP.Boxes then
-            esp.Box.Size = boxSize
-            esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
-            esp.Box.Color = playerColor
-            esp.Box.Visible = true
-        else
-            esp.Box.Visible = false
-        end
-        
-        if Config.ESP.Names then
-            esp.Name.Text = player.Name .. (isTeammate(player) and " (Team)" or " (Enemy)")
+        -- BASIC MODE: Selalu tampilkan nama dan jarak dengan warna putih
+        if Config.ESP.Mode == "Basic" then
+            -- Nama selalu putih
+            esp.Name.Text = player.Name
             esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 40)
+            esp.Name.Color = Color3.fromRGB(255, 255, 255)
             esp.Name.Visible = true
-        else
-            esp.Name.Visible = false
-        end
-        
-        if Config.ESP.Distance then
-            esp.Distance.Text = string.format("[%.0f meters]", distance)
-            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 25)
+            
+            -- Jarak selalu ditampilkan
+            esp.Distance.Text = string.format("[%.0f m]", distance)
+            esp.Distance.Position = Vector2.new(headPos.X, headPos.Y - 20)
+            esp.Distance.Color = Color3.fromRGB(255, 255, 255)
             esp.Distance.Visible = true
-        else
-            esp.Distance.Visible = false
-        end
-        
-        if Config.ESP.Health and hum then
-            local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-            local barWidth = 3
-            local barHeight = boxSize.Y
             
-            esp.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
-            esp.HealthBarBG.Position = Vector2.new(rootPos.X - boxSize.X / 2 - 5, rootPos.Y - boxSize.Y / 2)
-            esp.HealthBarBG.Visible = true
-            
-            local healthColor = Color3.fromRGB(
-                math.floor(255 * (1 - healthPercent)),
-                math.floor(255 * healthPercent),
-                0
-            )
-            esp.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
-            esp.HealthBar.Position = Vector2.new(
-                rootPos.X - boxSize.X / 2 - 5,
-                rootPos.Y - boxSize.Y / 2 + barHeight * (1 - healthPercent)
-            )
-            esp.HealthBar.Color = healthColor
-            esp.HealthBar.Visible = true
-        else
+            -- Sembunyikan box dan lainnya di basic mode
+            esp.Box.Visible = false
             esp.HealthBarBG.Visible = false
             esp.HealthBar.Visible = false
-        end
-        
-        if Config.ESP.Tracers then
-            local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-            esp.Tracer.From = screenCenter
-            esp.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
-            esp.Tracer.Color = playerColor
-            esp.Tracer.Visible = true
-        else
             esp.Tracer.Visible = false
+            
+        else -- ADVANCED MODE
+            if Config.ESP.Boxes then
+                esp.Box.Size = boxSize
+                esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
+                esp.Box.Color = playerColor
+                esp.Box.Visible = true
+            else
+                esp.Box.Visible = false
+            end
+            
+            if Config.ESP.Names then
+                esp.Name.Text = player.Name .. (isTeammate(player) and " (Team)" or " (Enemy)")
+                esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 40)
+                esp.Name.Color = playerColor
+                esp.Name.Visible = true
+            else
+                esp.Name.Visible = false
+            end
+            
+            if Config.ESP.Distance then
+                esp.Distance.Text = string.format("[%.0f m]", distance)
+                esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 25)
+                esp.Distance.Visible = true
+            else
+                esp.Distance.Visible = false
+            end
+            
+            if Config.ESP.Health and hum then
+                local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                local barWidth = 3
+                local barHeight = boxSize.Y
+                
+                esp.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
+                esp.HealthBarBG.Position = Vector2.new(rootPos.X - boxSize.X / 2 - 5, rootPos.Y - boxSize.Y / 2)
+                esp.HealthBarBG.Visible = true
+                
+                local healthColor = Color3.fromRGB(
+                    math.floor(255 * (1 - healthPercent)),
+                    math.floor(255 * healthPercent),
+                    0
+                )
+                esp.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
+                esp.HealthBar.Position = Vector2.new(
+                    rootPos.X - boxSize.X / 2 - 5,
+                    rootPos.Y - boxSize.Y / 2 + barHeight * (1 - healthPercent)
+                )
+                esp.HealthBar.Color = healthColor
+                esp.HealthBar.Visible = true
+            else
+                esp.HealthBarBG.Visible = false
+                esp.HealthBar.Visible = false
+            end
+            
+            if Config.ESP.Tracers then
+                local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                esp.Tracer.From = screenCenter
+                esp.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
+                esp.Tracer.Color = playerColor
+                esp.Tracer.Visible = true
+            else
+                esp.Tracer.Visible = false
+            end
         end
     end
 end
@@ -669,13 +702,15 @@ local function updateWallhack()
 end
 
 --==================================================
--- INFINITE ZOOM
+-- INFINITE ZOOM (DIPERBAIKI)
 --==================================================
 local function updateInfiniteZoom()
     if Config.Visual.InfiniteZoomEnabled and Camera then
+        -- Zoom out maksimal (120 adalah batas wajar, bisa diubah ke 180 jika ingin lebih ekstrim)
         Camera.FieldOfView = 120
     elseif Camera then
-        Camera.FieldOfView = 70
+        -- Kembali ke FOV asli
+        Camera.FieldOfView = Config.Visual.OriginalFOV
     end
 end
 
@@ -835,7 +870,7 @@ task.spawn(function()
             Lighting.FogStart = originalLighting.FogStart or 0
         end
         
-        -- Atmosphere removal for Fullbright
+        -- Atmosphere removal for Fullbright/NoFog
         if Config.Visual.FullbrightEnabled or Config.Visual.NoFogEnabled then
             for _, v in pairs(Lighting:GetChildren()) do
                 if v:IsA("Atmosphere") then
@@ -1016,10 +1051,6 @@ task.spawn(function()
 end)
 
 --==================================================
--- MAIN TAB CONTENT (sudah dibuat di atas)
---==================================================
-
---==================================================
 -- ESP TAB
 --==================================================
 local ESPSection = ESPTab:AddSection({
@@ -1046,14 +1077,42 @@ ESPSection:AddToggle({
                     createPlayerESP(player)
                 end
             end
-            Notify("✅ Player ESP Enabled")
         else
             for player, _ in pairs(ESPObjects) do
                 removePlayerESP(player)
             end
-            Notify("❌ Player ESP Disabled")
         end
     end
+})
+
+ESPSection:AddDropdown({
+    Name = "ESP Mode",
+    Default = "Basic",
+    Options = {"Basic", "Advanced"},
+    Multi = false,
+    Search = false,
+    AllowNone = false,
+    Outline = true,
+    Flag = "ESPMode",
+    Save = true,
+    Callback = function(Value)
+        Config.ESP.Mode = Value
+    end
+})
+
+ESPSection:AddParagraph({
+    Title = "Mode Description",
+    Desc = "🟢 BASIC: White text with name & distance only\n" ..
+           "🔴 ADVANCED: Full features with team colors",
+    Image = "info",
+    ImageSize = 38
+})
+
+ESPSection:AddSection({
+    Name = "Advanced Mode Options",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
 })
 
 ESPSection:AddToggle({
@@ -1067,7 +1126,7 @@ ESPSection:AddToggle({
 })
 
 ESPSection:AddToggle({
-    Name = "Show Names (Large White Text)",
+    Name = "Show Names",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -1139,7 +1198,9 @@ ESPSection:AddSlider({
 
 ESPSection:AddParagraph({
     Title = "Color Guide",
-    Desc = "🟢 Green = Teammate\n🔴 Red = Enemy\n⚪ White Names = All Players",
+    Desc = "⚪ BASIC: All players white\n" ..
+           "🟢 ADVANCED: Green = Teammate\n" ..
+           "🔴 ADVANCED: Red = Enemy",
     Image = "info",
     ImageSize = 38
 })
@@ -1187,13 +1248,10 @@ HighlightSection:AddToggle({
                     end
                 end)
             end
-            
-            Notify("✅ Highlight Enabled")
         else
             for player, _ in pairs(Highlights) do
                 removeHighlight(player)
             end
-            Notify("❌ Highlight Disabled")
         end
     end
 })
@@ -1218,13 +1276,6 @@ HighlightSection:AddToggle({
     Callback = function(Value) Config.Highlight.ShowTeam = Value end
 })
 
-HighlightSection:AddParagraph({
-    Title = "Color Guide",
-    Desc = "🟢 Green = Teammate\n🔴 Red = Enemy",
-    Image = "info",
-    ImageSize = 38
-})
-
 --==================================================
 -- GENERATOR TAB
 --==================================================
@@ -1247,22 +1298,14 @@ GenSection:AddToggle({
         ActiveFeatures.GenESP = Value
         
         if Value then
-            Notify("✅ Generator ESP Enabled")
+            -- Notify hanya sekali
         else
             for gen, folder in pairs(GeneratorESP) do
                 if folder then folder:Destroy() end
             end
             GeneratorESP = {}
-            Notify("❌ Generator ESP Disabled")
         end
     end
-})
-
-GenSection:AddParagraph({
-    Title = "Color Guide",
-    Desc = "🔵 Cyan = In Progress\n🟢 Green = Complete (100%)",
-    Image = "info",
-    ImageSize = 38
 })
 
 GenSection:AddSection({
@@ -1282,15 +1325,7 @@ GenSection:AddToggle({
     Callback = function(Value)
         Config.Generator.AntiFailEnabled = Value
         ActiveFeatures.GenAntiFail = Value
-        Notify(Value and "✅ Anti-Fail Generator Enabled" or "❌ Anti-Fail Generator Disabled")
     end
-})
-
-GenSection:AddParagraph({
-    Title = "Info",
-    Desc = "✅ Auto-pass generator skill checks\n✅ Hold left click to repair",
-    Image = "info",
-    ImageSize = 38
 })
 
 --==================================================
@@ -1313,19 +1348,11 @@ HealSection:AddToggle({
     Callback = function(Value)
         Config.Healing.AntiFailEnabled = Value
         ActiveFeatures.HealAntiFail = Value
-        Notify(Value and "✅ Anti-Fail Healing Enabled" or "❌ Anti-Fail Healing Disabled")
     end
 })
 
-HealSection:AddParagraph({
-    Title = "Info",
-    Desc = "✅ Auto-pass healing skill checks\n✅ Never fail healing",
-    Image = "info",
-    ImageSize = 38
-})
-
 --==================================================
--- VISUAL TAB (LENGKAP)
+-- VISUAL TAB
 --==================================================
 local VisualSection = VisualTab:AddSection({
     Name = "Visual Enhancements",
@@ -1344,7 +1371,6 @@ VisualSection:AddToggle({
     Callback = function(Value)
         Config.Visual.FullbrightEnabled = Value
         ActiveFeatures.Fullbright = Value
-        Notify(Value and "✅ Fullbright Enabled" or "❌ Fullbright Disabled")
     end
 })
 
@@ -1358,7 +1384,6 @@ VisualSection:AddToggle({
     Callback = function(Value)
         Config.Visual.NoFogEnabled = Value
         ActiveFeatures.NoFog = Value
-        Notify(Value and "✅ No Fog Enabled" or "❌ No Fog Disabled")
     end
 })
 
@@ -1373,7 +1398,6 @@ VisualSection:AddToggle({
         Config.Visual.WallhackEnabled = Value
         ActiveFeatures.Wallhack = Value
         updateWallhack()
-        Notify(Value and "✅ Wallhack Enabled" or "❌ Wallhack Disabled")
     end
 })
 
@@ -1387,7 +1411,8 @@ VisualSection:AddToggle({
     Callback = function(Value)
         Config.Visual.InfiniteZoomEnabled = Value
         ActiveFeatures.InfiniteZoom = Value
-        Notify(Value and "✅ Infinite Zoom Enabled" or "❌ Infinite Zoom Disabled")
+        -- Langsung update zoom
+        updateInfiniteZoom()
     end
 })
 
@@ -1408,19 +1433,11 @@ VisualSection:AddToggle({
     Callback = function(Value)
         Config.UI.HideSkillCheck = Value
         ActiveFeatures.HideSkillCheck = Value
-        Notify(Value and "✅ Skill Check UI Hidden" or "❌ Skill Check UI Visible")
     end
 })
 
-VisualSection:AddParagraph({
-    Title = "Info",
-    Desc = "✅ Hides SkillCheckPromptGui\n✅ Clean screen while repairing",
-    Image = "eye-off",
-    ImageSize = 38
-})
-
 --==================================================
--- MOVEMENT TAB (LENGKAP)
+-- MOVEMENT TAB
 --==================================================
 local MoveSection = MovementTab:AddSection({
     Name = "⚡ SPEED HACK (16-200) ⚡",
@@ -1439,7 +1456,6 @@ MoveSection:AddToggle({
     Callback = function(Value)
         Config.Movement.SpeedEnabled = Value
         ActiveFeatures.Speed = Value
-        Notify(Value and "✅ Speed Hack Enabled" or "❌ Speed Hack Disabled")
     end
 })
 
@@ -1473,7 +1489,6 @@ MoveSection:AddToggle({
     Callback = function(Value)
         Config.Movement.JumpEnabled = Value
         ActiveFeatures.Jump = Value
-        Notify(Value and "✅ Jump Hack Enabled" or "❌ Jump Hack Disabled")
     end
 })
 
@@ -1507,7 +1522,6 @@ MoveSection:AddToggle({
     Callback = function(Value)
         Config.Movement.InfiniteJump = Value
         ActiveFeatures.InfiniteJump = Value
-        Notify(Value and "✅ Infinite Jump Enabled" or "❌ Infinite Jump Disabled")
     end
 })
 
@@ -1524,26 +1538,14 @@ MoveSection:AddToggle({
         
         if Value then
             enableNoclip()
-            Notify("✅ Noclip Enabled")
         else
             disableNoclip()
-            Notify("❌ Noclip Disabled")
         end
     end
 })
 
-MoveSection:AddParagraph({
-    Title = "Movement Features",
-    Desc = "✅ Speed Hack (16-200) - Returns to normal when disabled\n" ..
-           "✅ Jump Hack (50-300) - Returns to normal when disabled\n" ..
-           "✅ Infinite Jump - Jump unlimited times in air\n" ..
-           "✅ Noclip - Walk through walls with stable implementation",
-    Image = "info",
-    ImageSize = 38
-})
-
 --==================================================
--- TELEPORT TAB (LENGKAP)
+-- TELEPORT TAB
 --==================================================
 local TeleportSection = TeleportTab:AddSection({
     Name = "📍 TELEPORT TO PLAYER 📍",
@@ -1644,7 +1646,7 @@ TeleportSection:AddButton({
 })
 
 --==================================================
--- MISC TAB (DENGAN ANTI AFK)
+-- MISC TAB
 --==================================================
 local MiscSection = MiscTab:AddSection({
     Name = "🛡️ ANTI AFK 🛡️",
@@ -1666,19 +1668,10 @@ MiscSection:AddToggle({
         
         if Value then
             enableAntiAFK()
-            Notify("✅ Anti AFK Enabled")
         else
             disableAntiAFK()
-            Notify("❌ Anti AFK Disabled")
         end
     end
-})
-
-MiscSection:AddParagraph({
-    Title = "Info",
-    Desc = "✅ Prevents auto-kick from server\n✅ Simulates player activity",
-    Image = "info",
-    ImageSize = 38
 })
 
 MiscSection:AddSection({
@@ -1726,7 +1719,7 @@ task.spawn(function()
         activeFeaturesList:SetDesc(activeList)
         task.wait(1)
     end
-end)
+end))
 
 MiscSection:AddSection({
     Name = "⚙️ SCRIPT INFO ⚙️",
@@ -1737,7 +1730,7 @@ MiscSection:AddSection({
 
 MiscSection:AddParagraph({
     Title = "Violence District",
-    Desc = "Version: 3.0 ULTIMATE\n" ..
+    Desc = "Version: 3.1 ULTIMATE\n" ..
            "UI: Catraz Hub Library\n" ..
            "Press F4 to toggle menu",
     Image = "info",
@@ -1770,6 +1763,11 @@ MiscSection:AddButton({
         
         if wallhackConnection then
             wallhackConnection:Disconnect()
+        end
+        
+        -- Kembalikan FOV ke normal
+        if Camera then
+            Camera.FieldOfView = Config.Visual.OriginalFOV
         end
         
         Notify("Script Destroyed")
@@ -1805,11 +1803,11 @@ end)
 --==================================================
 OrionLib:Init()
 
-Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.0 🔥")
+print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.1 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ Player ESP - Large White Text")
+print("✅ Player ESP - BASIC Mode (White Text + Distance)")
+print("✅ Player ESP - ADVANCED Mode (Full Features)")
 print("✅ Movement Hacks - Speed, Jump, Infinite Jump, Noclip")
 print("✅ Visual - Wallhack, Fullbright, No Fog, Infinite Zoom")
 print("✅ Teleport - To Player, Save/Load Position")
