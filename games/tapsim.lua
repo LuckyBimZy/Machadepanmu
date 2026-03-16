@@ -3,11 +3,35 @@
 -- Author: Adapted for Catraz Hub
 -- Version: 1.0
 
+--==================================================
+-- NOTIFIKASI AWAL
+--==================================================
+local function ShowExecutionNotification()
+    -- Notifikasi pertama menggunakan Roblox Core
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Tap Simulator",
+        Text = "Script is loading... Please wait",
+        Duration = 3,
+        Icon = "rbxassetid://8834748103"
+    })
+    
+    -- Print di console
+    print("=== Tap Simulator Script ===")
+    print("Loading script...")
+    print("============================")
+end
+
+ShowExecutionNotification()
+
+--==================================================
+-- CEK DUPLICATE SCRIPT
+--==================================================
 if _G.TapSimLoaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Tap Simulator",
         Text = "Script already loaded!",
-        Duration = 2
+        Duration = 2,
+        Icon = "rbxassetid://8834748103"
     })
     return 
 end
@@ -15,9 +39,32 @@ end
 _G.TapSimLoaded = true
 
 --==================================================
--- LOAD CATRAZ HUB LIBRARY
+-- LOAD CATRAZ HUB LIBRARY DENGAN ERROR HANDLING
 --==================================================
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
+local OrionLib
+local loadSuccess, loadError = pcall(function()
+    OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
+end)
+
+if not loadSuccess or not OrionLib then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "ERROR",
+        Text = "Failed to load UI Library! Check internet connection.",
+        Duration = 5,
+        Icon = "rbxassetid://8834748103"
+    })
+    print("Failed to load Catraz Hub:", loadError)
+    _G.TapSimLoaded = false
+    return
+end
+
+-- Notifikasi library berhasil dimuat
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Tap Simulator",
+    Text = "UI Library loaded successfully!",
+    Duration = 2,
+    Icon = "rbxassetid://8834748103"
+})
 
 --==================================================
 -- VARIABLES
@@ -33,7 +80,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
 
 -- Cari Remote Events/Functions
-local RemoteEvent = nil
 local Remotes = {
     Tap = nil,
     BuyEgg = nil,
@@ -46,6 +92,8 @@ local Remotes = {
 
 -- Fungsi untuk mencari remotes
 local function FindRemotes()
+    print("Searching for remotes...")
+    
     -- Cari di ReplicatedStorage
     for _, v in pairs(ReplicatedStorage:GetDescendants()) do
         if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
@@ -128,45 +176,69 @@ local Loops = {}
 -- NOTIFICATION
 --==================================================
 local function Notify(msg)
-    OrionLib:MakeNotification({
-        Name = "Tap Simulator",
-        Content = msg,
-        Image = "zap",
-        Time = 2.5
+    -- Gunakan kedua metode notifikasi
+    pcall(function()
+        OrionLib:MakeNotification({
+            Name = "Tap Simulator",
+            Content = msg,
+            Image = "zap",
+            Time = 2.5
+        })
+    end)
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Tap Simulator",
+        Text = msg,
+        Duration = 2,
+        Icon = "rbxassetid://8834748103"
     })
 end
 
 --==================================================
--- CREATE MAIN WINDOW
+-- CREATE MAIN WINDOW DENGAN ERROR HANDLING
 --==================================================
-local Window = OrionLib:MakeWindow({
-    Name = "Tap Simulator",
-    Subtext = "Auto Farm Premium",
-    Version = "v1.0.0",
-    VersionIcon = "zap",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "TapSim_Config",
-    IntroEnabled = true,
-    IntroText = "Tap Simulator",
-    IntroIcon = "rbxassetid://8834748103",
-    Icon = "rbxassetid://8834748103",
-    ShowIcon = true,
-    
-    -- Custom Theme
-    ImageBackground = "",
-    ImageTransparency = 0.8,
-    WindowTransparency = 0.05,
-    
-    -- Floating Toggle
-    ToggleIcon = "rbxassetid://105921924721005",
-    ToggleSize = 50
-})
+local Window
+local windowSuccess, windowError = pcall(function()
+    Window = OrionLib:MakeWindow({
+        Name = "Tap Simulator",
+        Subtext = "Auto Farm Premium",
+        Version = "v1.0.0",
+        VersionIcon = "zap",
+        HidePremium = false,
+        SaveConfig = true,
+        ConfigFolder = "TapSim_Config",
+        IntroEnabled = true,
+        IntroText = "Tap Simulator",
+        IntroIcon = "rbxassetid://8834748103",
+        Icon = "rbxassetid://8834748103",
+        ShowIcon = true,
+        
+        -- Custom Theme
+        ImageBackground = "",
+        ImageTransparency = 0.8,
+        WindowTransparency = 0.05,
+        
+        -- Floating Toggle
+        ToggleIcon = "rbxassetid://105921924721005",
+        ToggleSize = 50
+    })
+end)
+
+if not windowSuccess or not Window then
+    Notify("Failed to create UI window!")
+    print("Window creation error:", windowError)
+    _G.TapSimLoaded = false
+    return
+end
 
 -- Set Theme
 OrionLib.SelectedTheme = "Ocean"
 
-Notify("Script loaded successfully!")
+-- Notifikasi sukses
+Notify("Script loaded successfully! Press F4 to open menu")
+print("=== Tap Simulator Script Loaded ===")
+print("Press F4 to toggle menu")
+print("===================================")
 
 --==================================================
 -- CREATE TABS
@@ -229,19 +301,11 @@ local function Tap()
             end
         end)
     else
-        -- Fallback: Simulate click on screen
-        local A_1 = "Click"
-        local Event = game:GetService("ReplicatedStorage"):FindFirstChild("ClickEvent") or 
-                     game:GetService("ReplicatedStorage"):FindFirstChild("MainEvent")
-        if Event then
-            Event:FireServer(A_1)
-        else
-            -- Try to find any remote that might work
-            for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-                if v:IsA("RemoteEvent") and not v.Name:find("Character") then
-                    pcall(function() v:FireServer() end)
-                    break
-                end
+        -- Fallback: Try to find any remote that might work
+        for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+            if v:IsA("RemoteEvent") and not v.Name:find("Character") then
+                pcall(function() v:FireServer() end)
+                break
             end
         end
     end
@@ -280,6 +344,19 @@ local function GetRebirths()
         end
     end
     return 0
+end
+
+-- Format angka
+local function formatNumber(num)
+    if num >= 1e9 then
+        return string.format("%.2fB", num / 1e9)
+    elseif num >= 1e6 then
+        return string.format("%.2fM", num / 1e6)
+    elseif num >= 1e3 then
+        return string.format("%.2fK", num / 1e3)
+    else
+        return tostring(num)
+    end
 end
 
 -- Buy egg function
@@ -357,42 +434,6 @@ local function Rebirth()
                       ReplicatedStorage:FindFirstChild("Prestige")
         if remote then
             pcall(function() remote:FireServer() end)
-        end
-    end
-end
-
--- Find eggs in workspace
-local function FindEggs()
-    local eggs = {}
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name:lower():find("egg") and v:IsA("BasePart") and v.Transparency < 1 then
-            table.insert(eggs, v)
-        elseif v:IsA("Model") and v.Name:lower():find("egg") and v.PrimaryPart then
-            table.insert(eggs, v.PrimaryPart)
-        end
-    end
-    return eggs
-end
-
--- Egg ESP
-local function UpdateEggESP()
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name:lower():find("egg") then
-            if v:IsA("BasePart") and Toggles.ESP then
-                -- Add highlight to eggs
-                local highlight = v:FindFirstChild("EggHighlight")
-                if not highlight then
-                    highlight = Instance.new("Highlight")
-                    highlight.Name = "EggHighlight"
-                    highlight.Parent = v
-                    highlight.FillColor = Color3.fromRGB(255, 0, 255)
-                    highlight.OutlineColor = Color3.new(1, 1, 1)
-                    highlight.FillTransparency = 0.3
-                end
-            else
-                local highlight = v:FindFirstChild("EggHighlight")
-                if highlight then highlight:Destroy() end
-            end
         end
     end
 end
@@ -496,6 +537,7 @@ local StatsPara = StatsSection:AddParagraph({
                 local coins = GetCoins()
                 local rebirths = GetRebirths()
                 StatsPara:SetDesc("Coins: " .. formatNumber(coins) .. "\nRebirths: " .. rebirths)
+                Notify("Stats refreshed!")
             end
         }
     }
@@ -510,18 +552,6 @@ task.spawn(function()
         task.wait(5)
     end
 end)
-
-local function formatNumber(num)
-    if num >= 1e9 then
-        return string.format("%.2fB", num / 1e9)
-    elseif num >= 1e6 then
-        return string.format("%.2fM", num / 1e6)
-    elseif num >= 1e3 then
-        return string.format("%.2fK", num / 1e3)
-    else
-        return tostring(num)
-    end
-end
 
 local QuickSection = MainTab:AddSection({
     Name = "Quick Actions",
@@ -574,7 +604,13 @@ TapSection:AddToggle({
     Save = true,
     Callback = function(Value)
         Toggles.AutoTap = Value
-        if Value then StartLoop("AutoTap") else StopLoop("AutoTap") end
+        if Value then 
+            StartLoop("AutoTap")
+            Notify("Auto Tap enabled")
+        else 
+            StopLoop("AutoTap")
+            Notify("Auto Tap disabled")
+        end
     end
 })
 
@@ -601,21 +637,13 @@ TapSection:AddToggle({
     Save = true,
     Callback = function(Value)
         Toggles.AutoClicker = Value
-        if Value then StartLoop("AutoClicker") else StopLoop("AutoClicker") end
-    end
-})
-
-TapSection:AddSlider({
-    Name = "Click Speed",
-    Min = 0.0001,
-    Max = 0.01,
-    Default = 0.001,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 0.0001,
-    ValueName = "sec",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.ClickSpeed = Value
+        if Value then 
+            StartLoop("AutoClicker")
+            Notify("Auto Clicker enabled")
+        else 
+            StopLoop("AutoClicker")
+            Notify("Auto Clicker disabled")
+        end
     end
 })
 
@@ -636,20 +664,13 @@ CollectSection:AddToggle({
     Save = true,
     Callback = function(Value)
         Toggles.AutoCollect = Value
-        if Value then StartLoop("AutoCollect") else StopLoop("AutoCollect") end
-    end
-})
-
-CollectSection:AddToggle({
-    Name = "Auto Claim Daily",
-    Default = false,
-    Color = Color3.fromRGB(0, 255, 100),
-    Outline = true,
-    Flag = "AutoClaim",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoClaim = Value
-        if Value then StartLoop("AutoClaim") else StopLoop("AutoClaim") end
+        if Value then 
+            StartLoop("AutoCollect")
+            Notify("Auto Collect enabled")
+        else 
+            StopLoop("AutoCollect")
+            Notify("Auto Collect disabled")
+        end
     end
 })
 
@@ -673,7 +694,13 @@ EggSection:AddToggle({
     Save = true,
     Callback = function(Value)
         Toggles.AutoBuyEgg = Value
-        if Value then StartLoop("AutoBuyEgg") else StopLoop("AutoBuyEgg") end
+        if Value then 
+            StartLoop("AutoBuyEgg")
+            Notify("Auto Buy Egg enabled")
+        else 
+            StopLoop("AutoBuyEgg")
+            Notify("Auto Buy Egg disabled")
+        end
     end
 })
 
@@ -687,6 +714,7 @@ EggSection:AddDropdown({
     Outline = true,
     Callback = function(Value)
         Toggles.EggType = Value
+        Notify("Egg type set to: " .. Value)
     end
 })
 
@@ -699,17 +727,13 @@ EggSection:AddToggle({
     Save = true,
     Callback = function(Value)
         Toggles.AutoHatch = Value
-        if Value then StartLoop("AutoHatch") else StopLoop("AutoHatch") end
-    end
-})
-
-EggSection:AddButton({
-    Name = "Find Eggs",
-    Icon = "search",
-    Outline = true,
-    Callback = function()
-        local eggs = FindEggs()
-        Notify("Found " .. #eggs .. " eggs!")
+        if Value then 
+            StartLoop("AutoHatch")
+            Notify("Auto Hatch enabled")
+        else 
+            StopLoop("AutoHatch")
+            Notify("Auto Hatch disabled")
+        end
     end
 })
 
@@ -733,7 +757,13 @@ UpgradeSection:AddToggle({
     Save = true,
     Callback = function(Value)
         Toggles.AutoUpgrade = Value
-        if Value then StartLoop("AutoUpgrade") else StopLoop("AutoUpgrade") end
+        if Value then 
+            StartLoop("AutoUpgrade")
+            Notify("Auto Upgrade enabled")
+        else 
+            StopLoop("AutoUpgrade")
+            Notify("Auto Upgrade disabled")
+        end
     end
 })
 
@@ -747,27 +777,7 @@ UpgradeSection:AddDropdown({
     Outline = true,
     Callback = function(Value)
         Toggles.UpgradeType = Value
-    end
-})
-
-local AreaSection = UpgradeTab:AddSection({
-    Name = "Area",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-AreaSection:AddToggle({
-    Name = "Auto Buy Area",
-    Default = false,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "AutoBuyArea",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoBuyArea = Value
-        if Value then StartLoop("AutoBuyArea") else StopLoop("AutoBuyArea") end
+        Notify("Upgrade type set to: " .. Value)
     end
 })
 
@@ -788,7 +798,13 @@ RebirthSection:AddToggle({
     Save = true,
     Callback = function(Value)
         Toggles.AutoRebirth = Value
-        if Value then StartLoop("AutoRebirth") else StopLoop("AutoRebirth") end
+        if Value then 
+            StartLoop("AutoRebirth")
+            Notify("Auto Rebirth enabled")
+        else 
+            StopLoop("AutoRebirth")
+            Notify("Auto Rebirth disabled")
+        end
     end
 })
 
@@ -809,27 +825,6 @@ RebirthSection:AddSlider({
 --==================================================
 -- VISUALS TAB
 --==================================================
-local ESPSection = VisualsTab:AddSection({
-    Name = "ESP",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-ESPSection:AddToggle({
-    Name = "Egg ESP",
-    Default = false,
-    Color = Color3.fromRGB(255, 0, 255),
-    Outline = true,
-    Flag = "EggESP",
-    Save = true,
-    Callback = function(Value)
-        Toggles.ESP = Value
-        UpdateEggESP()
-    end
-})
-
 local LightingSection = VisualsTab:AddSection({
     Name = "Lighting",
     TextSize = 17,
@@ -851,24 +846,13 @@ LightingSection:AddToggle({
             Lighting.Brightness = 2
             Lighting.GlobalShadows = false
             Lighting.Ambient = Color3.new(1, 1, 1)
+            Notify("Full Bright enabled")
         else
             Lighting.Brightness = 1
             Lighting.GlobalShadows = true
             Lighting.Ambient = Color3.new(0, 0, 0)
+            Notify("Full Bright disabled")
         end
-    end
-})
-
-LightingSection:AddToggle({
-    Name = "No Fog",
-    Default = false,
-    Color = Color3.fromRGB(255, 255, 0),
-    Outline = true,
-    Flag = "NoFog",
-    Save = true,
-    Callback = function(Value)
-        Toggles.NoFog = Value
-        Lighting.FogEnd = Value and 1e9 or 100000
     end
 })
 
@@ -897,6 +881,9 @@ MiscSection:AddToggle({
                 VirtualUser:CaptureController()
                 VirtualUser:ClickButton2(Vector2.new())
             end)
+            Notify("Anti AFK enabled")
+        else
+            Notify("Anti AFK disabled")
         end
     end
 })
@@ -906,49 +893,8 @@ MiscSection:AddButton({
     Icon = "refresh-cw",
     Outline = true,
     Callback = function()
+        Notify("Rejoining server...")
         game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
-    end
-})
-
-MiscSection:AddButton({
-    Name = "Server Hop",
-    Icon = "globe",
-    Outline = true,
-    Callback = function()
-        local HttpService = game:GetService("HttpService")
-        local TeleportService = game:GetService("TeleportService")
-        local placeId = game.PlaceId
-        
-        -- Get list of servers
-        local function getServers()
-            local servers = {}
-            local cursor = ""
-            repeat
-                local success, result = pcall(function()
-                    return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?limit=100" .. (cursor ~= "" and "&cursor=" .. cursor or "")))
-                end)
-                if success then
-                    for _, server in ipairs(result.data) do
-                        if server.playing < server.maxPlayers then
-                            table.insert(servers, server.id)
-                        end
-                    end
-                    cursor = result.nextPageCursor
-                else
-                    break
-                end
-            until not cursor
-            return servers
-        end
-        
-        local servers = getServers()
-        if #servers > 0 then
-            -- Pilih server random yang tidak penuh
-            local randomServer = servers[math.random(1, #servers)]
-            TeleportService:TeleportToPlaceInstance(placeId, randomServer, Player)
-        else
-            Notify("No servers available!")
-        end
     end
 })
 
@@ -959,6 +905,7 @@ MiscSection:AddButton({
     Callback = function()
         OrionLib:Destroy()
         _G.TapSimLoaded = false
+        Notify("GUI closed")
     end
 })
 
@@ -997,9 +944,18 @@ Window:AddConfigTab({
 --==================================================
 -- INITIALIZE
 --==================================================
-OrionLib:Init()
+local initSuccess, initError = pcall(function()
+    OrionLib:Init()
+end)
 
-Notify("Press F4 or click floating button to toggle menu")
-print("=== Tap Simulator - Catraz Edition Loaded ===")
-print("Press F4 to toggle menu")
-print("Auto Farm features ready!")
+if initSuccess then
+    print("=== TAP SIMULATOR SCRIPT LOADED SUCCESSFULLY ===")
+    print("Press F4 or click floating button to open menu")
+    print("================================================")
+    
+    -- Notifikasi final
+    Notify("✅ Script loaded! Press F4 to open menu")
+else
+    print("Failed to initialize UI:", initError)
+    Notify("❌ Failed to initialize UI. Please re-execute.")
+end
