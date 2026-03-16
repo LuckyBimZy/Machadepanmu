@@ -1,6 +1,6 @@
--- ==================== TAP SIMULATOR - ULTIMATE COLLECTION ====================
--- Gabungan dari berbagai script dengan UI Catraz Hub
--- Version: 3.0 Ultimate Collection (No Key System)
+-- ==================== TAP SIMULATOR - STANDALONE WORKING EDITION ====================
+-- Script mandiri tanpa loader dan tanpa key system
+-- Version: 5.0 Standalone Working
 
 if _G.TapSimLoaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -34,88 +34,96 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 
 --==================================================
--- REMOTE FINDING (DARI SEMUA SCRIPT)
+-- REMOTE FINDING LENGKAP
 --==================================================
 local Remotes = {
+    -- Main remotes
     Tap = nil,
+    Click = nil,
     BuyEgg = nil,
     HatchEgg = nil,
     BuyArea = nil,
     Upgrade = nil,
     Collect = nil,
     Rebirth = nil,
-    Click = nil,
+    
+    -- Additional remotes
     Purchase = nil,
     Claim = nil,
     Event = nil,
     Enchant = nil,
     Craft = nil,
-    Unlock = nil
+    Unlock = nil,
+    Open = nil,
+    Reset = nil,
+    Prestige = nil,
+    Daily = nil,
+    Reward = nil,
+    GameEvent = nil,
+    MainEvent = nil,
+    ClickEvent = nil,
+    Damage = nil,
+    Speed = nil,
+    Multiplier = nil,
+    Critical = nil
 }
 
--- Egg locations
+-- Lokasi objects
 local EggLocations = {}
+local ZoneLocations = {}
+local CoinLocations = {}
 
--- Fungsi untuk mencari remotes (gabungan dari semua script)
-local function FindRemotes()
-    -- Script 1: Pencarian di ReplicatedStorage
+-- Fungsi pencarian remotes LENGKAP
+local function FindAllRemotes()
+    print("=== MENCARI SEMUA REMOTES ===")
+    
+    -- Cari di ReplicatedStorage
     for _, v in pairs(ReplicatedStorage:GetDescendants()) do
         if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
             local name = v.Name:lower()
             
-            -- Tap/Click remotes
-            if name:find("tap") or name:find("click") then
-                Remotes.Tap = v
-                Remotes.Click = v
-            end
+            -- Tap/Click
+            if name:find("tap") then Remotes.Tap = v end
+            if name:find("click") then Remotes.Click = v end
+            if name:find("game") and name:find("event") then Remotes.GameEvent = v end
+            if name:find("main") and name:find("event") then Remotes.MainEvent = v end
+            if name:find("click") and name:find("event") then Remotes.ClickEvent = v end
             
-            -- Egg remotes
+            -- Egg
             if name:find("egg") then
-                if name:find("buy") or name:find("purchase") then
-                    Remotes.BuyEgg = v
-                end
-                if name:find("hatch") or name:find("open") then
-                    Remotes.HatchEgg = v
-                end
+                if name:find("buy") or name:find("purchase") then Remotes.BuyEgg = v end
+                if name:find("hatch") or name:find("open") then Remotes.HatchEgg = v end
             end
             
-            -- Upgrade remotes
-            if name:find("upgrade") or name:find("power") or name:find("damage") then
-                Remotes.Upgrade = v
-            end
+            -- Upgrade
+            if name:find("upgrade") then Remotes.Upgrade = v end
+            if name:find("purchase") then Remotes.Purchase = v end
+            if name:find("damage") then Remotes.Damage = v end
+            if name:find("speed") then Remotes.Speed = v end
+            if name:find("multiplier") then Remotes.Multiplier = v end
+            if name:find("critical") then Remotes.Critical = v end
             
-            -- Area remotes
+            -- Area
             if name:find("area") or name:find("zone") then
-                if name:find("buy") or name:find("unlock") then
-                    Remotes.BuyArea = v
-                end
+                if name:find("buy") or name:find("unlock") then Remotes.BuyArea = v end
             end
             
-            -- Collection remotes
-            if name:find("collect") or name:find("claim") or name:find("reward") then
-                Remotes.Collect = v
-                Remotes.Claim = v
-            end
+            -- Collect/Claim
+            if name:find("collect") then Remotes.Collect = v end
+            if name:find("claim") then Remotes.Claim = v end
+            if name:find("daily") then Remotes.Daily = v end
+            if name:find("reward") then Remotes.Reward = v end
             
-            -- Rebirth remotes
-            if name:find("rebirth") or name:find("prestige") then
-                Remotes.Rebirth = v
-            end
+            -- Rebirth
+            if name:find("rebirth") then Remotes.Rebirth = v end
+            if name:find("prestige") then Remotes.Prestige = v end
+            if name:find("reset") then Remotes.Reset = v end
             
-            -- Enchant remotes
-            if name:find("enchant") or name:find("enhance") then
-                Remotes.Enchant = v
-            end
-            
-            -- Craft remotes
-            if name:find("craft") or name:find("forge") then
-                Remotes.Craft = v
-            end
-            
-            -- Unlock remotes
-            if name:find("unlock") or name:find("open") then
-                Remotes.Unlock = v
-            end
+            -- Enchant/Craft
+            if name:find("enchant") then Remotes.Enchant = v end
+            if name:find("craft") then Remotes.Craft = v end
+            if name:find("unlock") then Remotes.Unlock = v end
+            if name:find("open") then Remotes.Open = v end
         end
     end
     
@@ -123,79 +131,433 @@ local function FindRemotes()
     for _, v in pairs(Player.PlayerScripts:GetDescendants()) do
         if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
             local name = v.Name:lower()
-            if (name:find("tap") or name:find("click")) and not Remotes.Tap then
-                Remotes.Tap = v
+            if name:find("tap") and not Remotes.Tap then Remotes.Tap = v end
+            if name:find("click") and not Remotes.Click then Remotes.Click = v end
+        end
+    end
+    
+    -- Cari di Workspace
+    for _, v in pairs(Workspace:GetDescendants()) do
+        -- Cari eggs
+        if v.Name:lower():find("egg") then
+            if v:IsA("BasePart") and v.Transparency < 1 then
+                table.insert(EggLocations, v)
+            elseif v:IsA("Model") and v.PrimaryPart then
+                table.insert(EggLocations, v.PrimaryPart)
+            end
+        end
+        
+        -- Cari zones/areas
+        if v.Name:lower():find("zone") or v.Name:lower():find("area") or v.Name:lower():find("spawn") or v.Name:lower():find("island") then
+            table.insert(ZoneLocations, v)
+        end
+        
+        -- Cari coins
+        if v.Name:lower():find("coin") and v:IsA("BasePart") then
+            table.insert(CoinLocations, v)
+        end
+    end
+    
+    -- Tampilkan hasil
+    print("=== REMOTES DITEMUKAN ===")
+    for k, v in pairs(Remotes) do
+        if v then
+            print("✓ " .. k .. ": " .. v.ClassName .. " - " .. v.Name)
+        end
+    end
+    print("=== EGGS DITEMUKAN: " .. #EggLocations .. " ===")
+    print("=== ZONES DITEMUKAN: " .. #ZoneLocations .. " ===")
+    print("=== COINS DITEMUKAN: " .. #CoinLocations .. " ===")
+end
+
+--==================================================
+-- FUNGSI UTAMA
+--==================================================
+
+-- Fungsi Tap dengan berbagai metode
+local function Tap()
+    local success = false
+    
+    -- Coba semua kemungkinan remote
+    if Remotes.Tap and not success then
+        pcall(function()
+            if Remotes.Tap:IsA("RemoteEvent") then
+                Remotes.Tap:FireServer()
+            else
+                Remotes.Tap:InvokeServer()
+            end
+            success = true
+        end)
+    end
+    
+    if Remotes.Click and not success then
+        pcall(function() Remotes.Click:FireServer() success = true end)
+    end
+    
+    if Remotes.GameEvent and not success then
+        pcall(function() Remotes.GameEvent:FireServer("Click") success = true end)
+    end
+    
+    if Remotes.MainEvent and not success then
+        pcall(function() Remotes.MainEvent:FireServer("Click") success = true end)
+    end
+    
+    if Remotes.ClickEvent and not success then
+        pcall(function() Remotes.ClickEvent:FireServer() success = true end)
+    end
+    
+    -- Fallback: coba semua remote event
+    if not success then
+        for _, v in pairs(ReplicatedStorage:GetChildren()) do
+            if v:IsA("RemoteEvent") then
+                pcall(function() v:FireServer() end)
+                pcall(function() v:FireServer("Click") end)
+                pcall(function() v:FireServer("Tap") end)
             end
         end
     end
     
-    -- Cari di Workspace untuk eggs
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name:lower():find("egg") and v:IsA("BasePart") and v.Transparency < 1 then
-            table.insert(EggLocations, v)
-        elseif v:IsA("Model") and v.Name:lower():find("egg") and v.PrimaryPart then
-            table.insert(EggLocations, v.PrimaryPart)
+    return success
+end
+
+-- Fungsi Click
+local function AutoClick()
+    mouse1click()
+    mouse1press()
+    mouse1release()
+end
+
+-- Fungsi Buy Egg
+local function BuyEgg(eggType)
+    if Remotes.BuyEgg then
+        pcall(function() Remotes.BuyEgg:FireServer(eggType) end)
+    elseif Remotes.Purchase then
+        pcall(function() Remotes.Purchase:FireServer("Egg", eggType) end)
+    else
+        for _, v in pairs(ReplicatedStorage:GetChildren()) do
+            if v:IsA("RemoteEvent") and (v.Name:lower():find("buy") or v.Name:lower():find("purchase")) then
+                pcall(function() v:FireServer(eggType or "Basic") end)
+                pcall(function() v:FireServer("BuyEgg", eggType) end)
+            end
+        end
+    end
+end
+
+-- Fungsi Hatch Egg
+local function HatchEgg()
+    if Remotes.HatchEgg then
+        pcall(function() Remotes.HatchEgg:FireServer() end)
+    elseif Remotes.Open then
+        pcall(function() Remotes.Open:FireServer("Egg") end)
+    else
+        for _, v in pairs(ReplicatedStorage:GetChildren()) do
+            if v:IsA("RemoteEvent") and (v.Name:lower():find("hatch") or v.Name:lower():find("open")) then
+                pcall(function() v:FireServer() end)
+            end
+        end
+    end
+end
+
+-- Fungsi Upgrade
+local function Upgrade(upgradeType)
+    if Remotes.Upgrade then
+        pcall(function() Remotes.Upgrade:FireServer(upgradeType) end)
+    elseif Remotes.Purchase then
+        pcall(function() Remotes.Purchase:FireServer("Upgrade", upgradeType) end)
+    elseif upgradeType == "Damage" and Remotes.Damage then
+        pcall(function() Remotes.Damage:FireServer() end)
+    elseif upgradeType == "Speed" and Remotes.Speed then
+        pcall(function() Remotes.Speed:FireServer() end)
+    elseif upgradeType == "Multiplier" and Remotes.Multiplier then
+        pcall(function() Remotes.Multiplier:FireServer() end)
+    elseif upgradeType == "Critical" and Remotes.Critical then
+        pcall(function() Remotes.Critical:FireServer() end)
+    else
+        for _, v in pairs(ReplicatedStorage:GetChildren()) do
+            if v:IsA("RemoteEvent") and v.Name:lower():find("upgrade") then
+                pcall(function() v:FireServer(upgradeType or "Damage") end)
+            end
+        end
+    end
+end
+
+-- Fungsi Buy Area
+local function BuyArea()
+    if Remotes.BuyArea then
+        pcall(function() Remotes.BuyArea:FireServer() end)
+    elseif Remotes.Unlock then
+        pcall(function() Remotes.Unlock:FireServer("Area") end)
+    else
+        for _, v in pairs(ReplicatedStorage:GetChildren()) do
+            if v:IsA("RemoteEvent") and (v.Name:lower():find("area") or v.Name:lower():find("zone")) then
+                pcall(function() v:FireServer() end)
+            end
+        end
+    end
+end
+
+-- Fungsi Collect
+local function Collect()
+    if Remotes.Collect then
+        pcall(function() Remotes.Collect:FireServer() end)
+    elseif Remotes.Claim then
+        pcall(function() Remotes.Claim:FireServer() end)
+    elseif Remotes.Reward then
+        pcall(function() Remotes.Reward:FireServer() end)
+    end
+end
+
+-- Fungsi Rebirth
+local function Rebirth()
+    if Remotes.Rebirth then
+        pcall(function() Remotes.Rebirth:FireServer() end)
+    elseif Remotes.Prestige then
+        pcall(function() Remotes.Prestige:FireServer() end)
+    elseif Remotes.Reset then
+        pcall(function() Remotes.Reset:FireServer() end)
+    else
+        for _, v in pairs(ReplicatedStorage:GetChildren()) do
+            if v:IsA("RemoteEvent") and (v.Name:lower():find("rebirth") or v.Name:lower():find("prestige") or v.Name:lower():find("reset")) then
+                pcall(function() v:FireServer() end)
+            end
+        end
+    end
+end
+
+-- Fungsi Enchant
+local function Enchant()
+    if Remotes.Enchant then
+        pcall(function() Remotes.Enchant:FireServer() end)
+    else
+        for _, v in pairs(ReplicatedStorage:GetChildren()) do
+            if v:IsA("RemoteEvent") and v.Name:lower():find("enchant") then
+                pcall(function() v:FireServer() end)
+            end
+        end
+    end
+end
+
+-- Fungsi Craft
+local function Craft()
+    if Remotes.Craft then
+        pcall(function() Remotes.Craft:FireServer() end)
+    else
+        for _, v in pairs(ReplicatedStorage:GetChildren()) do
+            if v:IsA("RemoteEvent") and v.Name:lower():find("craft") then
+                pcall(function() v:FireServer() end)
+            end
+        end
+    end
+end
+
+-- Fungsi Unlock
+local function Unlock()
+    if Remotes.Unlock then
+        pcall(function() Remotes.Unlock:FireServer() end)
+    elseif Remotes.Open then
+        pcall(function() Remotes.Open:FireServer() end)
+    end
+end
+
+-- Fungsi Claim Daily
+local function ClaimDaily()
+    if Remotes.Daily then
+        pcall(function() Remotes.Daily:FireServer() end)
+    elseif Remotes.Claim then
+        pcall(function() Remotes.Claim:FireServer("Daily") end)
+    end
+end
+
+-- Get coins dari leaderstats
+local function GetCoins()
+    -- Coba leaderstats
+    local leaderstats = Player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, v in pairs(leaderstats:GetChildren()) do
+            if v:IsA("NumberValue") then
+                local name = v.Name:lower()
+                if name:find("coin") or name:find("cash") or name:find("point") or name:find("gem") or name:find("money") then
+                    return v.Value
+                end
+            end
         end
     end
     
-    print("=== REMOTES FOUND ===")
-    for k, v in pairs(Remotes) do
-        print(k, v and "✓" or "✗")
+    -- Cari di Player
+    for _, v in pairs(Player:GetChildren()) do
+        if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash")) then
+            return v.Value
+        end
     end
-    print("=== EGGS FOUND: " .. #EggLocations .. " ===")
+    
+    -- Cari di Data folder
+    local data = Player:FindFirstChild("Data") or Player:FindFirstChild("Stats")
+    if data then
+        for _, v in pairs(data:GetChildren()) do
+            if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash")) then
+                return v.Value
+            end
+        end
+    end
+    
+    return 0
+end
+
+-- Get rebirths
+local function GetRebirths()
+    local leaderstats = Player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, v in pairs(leaderstats:GetChildren()) do
+            if v:IsA("NumberValue") then
+                local name = v.Name:lower()
+                if name:find("rebirth") or name:find("prestige") or name:find("reset") or name:find("prestiged") then
+                    return v.Value
+                end
+            end
+        end
+    end
+    
+    -- Cari di Player
+    for _, v in pairs(Player:GetChildren()) do
+        if v:IsA("NumberValue") and (v.Name:lower():find("rebirth") or v.Name:lower():find("prestige")) then
+            return v.Value
+        end
+    end
+    
+    return 0
+end
+
+-- Format angka
+local function formatNumber(num)
+    if num >= 1e12 then
+        return string.format("%.2fT", num / 1e12)
+    elseif num >= 1e9 then
+        return string.format("%.2fB", num / 1e9)
+    elseif num >= 1e6 then
+        return string.format("%.2fM", num / 1e6)
+    elseif num >= 1e3 then
+        return string.format("%.2fK", num / 1e3)
+    else
+        return tostring(num)
+    end
+end
+
+-- Get zones
+local function GetZones()
+    local zones = {"Spawn"}
+    for _, v in pairs(ZoneLocations) do
+        if not table.find(zones, v.Name) then
+            table.insert(zones, v.Name)
+        end
+    end
+    return zones
+end
+
+-- Teleport ke zone
+local function TeleportToZone(zoneName)
+    if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
+        Notify("No character found!")
+        return
+    end
+    
+    for _, v in pairs(ZoneLocations) do
+        if v.Name == zoneName then
+            if v:IsA("BasePart") then
+                Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 5, 0)
+                Notify("Teleported to " .. zoneName)
+                return
+            elseif v:IsA("Model") and v.PrimaryPart then
+                Player.Character.HumanoidRootPart.CFrame = v.PrimaryPart.CFrame + Vector3.new(0, 5, 0)
+                Notify("Teleported to " .. zoneName)
+                return
+            end
+        end
+    end
+    
+    Notify("Zone not found: " .. zoneName)
+end
+
+-- Update Egg ESP
+local function UpdateEggESP()
+    for _, v in pairs(EggLocations) do
+        if Toggles.EggESP then
+            local highlight = v:FindFirstChild("EggHighlight")
+            if not highlight then
+                highlight = Instance.new("Highlight")
+                highlight.Name = "EggHighlight"
+                highlight.Parent = v
+                highlight.FillColor = Color3.fromRGB(255, 0, 255)
+                highlight.OutlineColor = Color3.new(1, 1, 1)
+                highlight.FillTransparency = 0.3
+            end
+        else
+            local highlight = v:FindFirstChild("EggHighlight")
+            if highlight then highlight:Destroy() end
+        end
+    end
+end
+
+-- Find nearest egg
+local function FindNearestEgg()
+    local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    
+    local nearest = nil
+    local nearestDist = math.huge
+    
+    for _, egg in pairs(EggLocations) do
+        if egg and egg.Position then
+            local dist = (root.Position - egg.Position).Magnitude
+            if dist < nearestDist then
+                nearestDist = dist
+                nearest = egg
+            end
+        end
+    end
+    
+    return nearest
+end
+
+-- Teleport to egg
+local function TeleportToEgg()
+    local egg = FindNearestEgg()
+    if egg and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+        Player.Character.HumanoidRootPart.CFrame = egg.CFrame + Vector3.new(0, 3, 0)
+        Notify("Teleported to nearest egg")
+    else
+        Notify("No eggs found!")
+    end
 end
 
 --==================================================
 -- TOGGLES
 --==================================================
 local Toggles = {
-    -- Auto Tap (dari AutoTap.lua, AutoTapKeyless.lua)
     AutoTap = false,
     TapSpeed = 0.01,
     AutoClicker = false,
     ClickSpeed = 0.001,
-    
-    -- Eggs (dari EggSystem.lua)
     AutoBuyEgg = false,
     EggType = "Basic",
     AutoHatch = false,
     HatchDelay = 0.5,
     EggESP = false,
-    
-    -- Upgrades (dari OPCraftingScript.lua)
     AutoUpgrade = false,
     UpgradeType = "All",
     AutoBuyArea = false,
     AutoUnlock = false,
-    
-    -- Rebirth (dari AutoRebirth.lua, AutoFarm&Rebirth.lua)
     AutoRebirth = false,
     RebirthAt = 1000,
     RebirthDelay = 3,
-    
-    -- Collection (dari Rewards.lua)
     AutoCollect = false,
     AutoClaim = false,
-    
-    -- Enchant (dari AutoEnchant.lua, BestAutoEnchant.lua)
     AutoEnchant = false,
-    EnchantType = "All",
-    
-    -- Craft (dari OPCraftingScript.lua)
     AutoCraft = false,
-    CraftType = "All",
-    
-    -- Visuals (dari Visuals tab)
     FullBright = false,
     NoFog = false,
-    
-    -- Misc (dari AutomationScript.lua, Automations.lua)
     AntiAFK = false,
     AutoFarm = false,
     AutoProgress = false,
-    
-    -- Teleport (dari TeleportZones.lua, Teleports.lua)
-    TeleportEnabled = false,
     SelectedZone = "Spawn"
 }
 
@@ -218,403 +580,39 @@ end
 -- CREATE MAIN WINDOW
 --==================================================
 local Window = OrionLib:MakeWindow({
-    Name = "Tap Simulator - Ultimate",
-    Subtext = "Collection Edition v3.0",
-    Version = "v3.0.0",
+    Name = "Tap Simulator - STANDALONE",
+    Subtext = "Working Edition v5.0",
+    Version = "v5.0.0",
     VersionIcon = "zap",
     HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "TapSim_Ultimate",
+    ConfigFolder = "TapSim_Standalone",
     IntroEnabled = true,
-    IntroText = "Tap Simulator Ultimate",
+    IntroText = "Tap Simulator Standalone",
     IntroIcon = "rbxassetid://8834748103",
     Icon = "rbxassetid://8834748103",
     ShowIcon = true,
-    
-    -- Custom Theme
     ImageBackground = "",
     ImageTransparency = 0.8,
     WindowTransparency = 0.05,
-    
-    -- Floating Toggle
     ToggleIcon = "rbxassetid://105921924721005",
     ToggleSize = 50
 })
 
--- Set Theme
 OrionLib.SelectedTheme = "Ocean"
-
-Notify("Script loaded successfully!")
 
 --==================================================
 -- CREATE TABS
 --==================================================
-local MainTab = Window:MakeTab({
-    Name = "Main",
-    Icon = "home",
-    PremiumOnly = false,
-    Glass = true,
-    Outline = true
-})
-
-local AutoTapTab = Window:MakeTab({
-    Name = "Auto Tap",
-    Icon = "hand",
-    Glass = true,
-    Outline = true
-})
-
-local EggTab = Window:MakeTab({
-    Name = "Egg System",
-    Icon = "egg",
-    Glass = true,
-    Outline = true
-})
-
-local UpgradeTab = Window:MakeTab({
-    Name = "Upgrades",
-    Icon = "trending-up",
-    Glass = true,
-    Outline = true
-})
-
-local RebirthTab = Window:MakeTab({
-    Name = "Rebirth",
-    Icon = "refresh-cw",
-    Glass = true,
-    Outline = true
-})
-
-local EnchantTab = Window:MakeTab({
-    Name = "Enchant",
-    Icon = "sparkles",
-    Glass = true,
-    Outline = true
-})
-
-local TeleportTab = Window:MakeTab({
-    Name = "Teleport",
-    Icon = "map-pin",
-    Glass = true,
-    Outline = true
-})
-
-local VisualsTab = Window:MakeTab({
-    Name = "Visuals",
-    Icon = "eye",
-    Glass = true,
-    Outline = true
-})
-
-local MiscTab = Window:MakeTab({
-    Name = "Misc",
-    Icon = "settings",
-    Glass = true,
-    Outline = true
-})
-
---==================================================
--- UTILITY FUNCTIONS
---==================================================
-
--- Tap function (dari AutoTap.lua)
-local function Tap()
-    if Remotes.Tap then
-        pcall(function()
-            if Remotes.Tap:IsA("RemoteEvent") then
-                Remotes.Tap:FireServer()
-            elseif Remotes.Tap:IsA("RemoteFunction") then
-                Remotes.Tap:InvokeServer()
-            end
-        end)
-    else
-        -- Fallback dari berbagai script
-        local events = {
-            ReplicatedStorage:FindFirstChild("ClickEvent"),
-            ReplicatedStorage:FindFirstChild("MainEvent"),
-            ReplicatedStorage:FindFirstChild("GameEvent"),
-            ReplicatedStorage:FindFirstChild("RemoteEvent")
-        }
-        for _, event in pairs(events) do
-            if event then
-                pcall(function() event:FireServer("Click") end)
-                pcall(function() event:FireServer("Tap") end)
-                pcall(function() event:FireServer() end)
-                break
-            end
-        end
-    end
-end
-
--- Get coins (dari berbagai script)
-local function GetCoins()
-    local leaderstats = Player:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in pairs(leaderstats:GetChildren()) do
-            if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash") or v.Name:lower():find("point") or v.Name:lower():find("gem")) then
-                return v.Value
-            end
-        end
-    end
-    
-    for _, v in pairs(Player:GetChildren()) do
-        if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash")) then
-            return v.Value
-        end
-    end
-    
-    return 0
-end
-
--- Get rebirths (dari AutoRebirth.lua)
-local function GetRebirths()
-    local leaderstats = Player:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in pairs(leaderstats:GetChildren()) do
-            if v:IsA("NumberValue") and (v.Name:lower():find("rebirth") or v.Name:lower():find("prestige") or v.Name:lower():find("reset")) then
-                return v.Value
-            end
-        end
-    end
-    return 0
-end
-
--- Buy egg (dari EggSystem.lua)
-local function BuyEgg(eggType)
-    if Remotes.BuyEgg then
-        pcall(function() Remotes.BuyEgg:FireServer(eggType) end)
-    else
-        local remotes = {
-            ReplicatedStorage:FindFirstChild("BuyEgg"),
-            ReplicatedStorage:FindFirstChild("PurchaseEgg"),
-            ReplicatedStorage:FindFirstChild("Buy"),
-            ReplicatedStorage:FindFirstChild("Purchase")
-        }
-        for _, remote in pairs(remotes) do
-            if remote then
-                pcall(function() remote:FireServer(eggType or "Basic") end)
-                break
-            end
-        end
-    end
-end
-
--- Hatch egg (dari EggSystem.lua)
-local function HatchEgg()
-    if Remotes.HatchEgg then
-        pcall(function() Remotes.HatchEgg:FireServer() end)
-    else
-        local remotes = {
-            ReplicatedStorage:FindFirstChild("HatchEgg"),
-            ReplicatedStorage:FindFirstChild("OpenEgg"),
-            ReplicatedStorage:FindFirstChild("Hatch"),
-            ReplicatedStorage:FindFirstChild("Open")
-        }
-        for _, remote in pairs(remotes) do
-            if remote then
-                pcall(function() remote:FireServer() end)
-                break
-            end
-        end
-    end
-end
-
--- Upgrade (dari OPCraftingScript.lua)
-local function Upgrade(upgradeType)
-    if Remotes.Upgrade then
-        pcall(function() Remotes.Upgrade:FireServer(upgradeType) end)
-    else
-        local remotes = {
-            ReplicatedStorage:FindFirstChild("Upgrade"),
-            ReplicatedStorage:FindFirstChild("PurchaseUpgrade"),
-            ReplicatedStorage:FindFirstChild("BuyUpgrade")
-        }
-        for _, remote in pairs(remotes) do
-            if remote then
-                pcall(function() remote:FireServer(upgradeType or "Damage") end)
-                break
-            end
-        end
-    end
-end
-
--- Buy area (dari OPCraftingScript.lua)
-local function BuyArea()
-    if Remotes.BuyArea then
-        pcall(function() Remotes.BuyArea:FireServer() end)
-    else
-        local remotes = {
-            ReplicatedStorage:FindFirstChild("BuyArea"),
-            ReplicatedStorage:FindFirstChild("PurchaseArea"),
-            ReplicatedStorage:FindFirstChild("UnlockArea"),
-            ReplicatedStorage:FindFirstChild("BuyZone")
-        }
-        for _, remote in pairs(remotes) do
-            if remote then
-                pcall(function() remote:FireServer() end)
-                break
-            end
-        end
-    end
-end
-
--- Collect rewards (dari Rewards.lua)
-local function Collect()
-    if Remotes.Collect then
-        pcall(function() Remotes.Collect:FireServer() end)
-    else
-        local remotes = {
-            ReplicatedStorage:FindFirstChild("Collect"),
-            ReplicatedStorage:FindFirstChild("ClaimReward"),
-            ReplicatedStorage:FindFirstChild("GetReward"),
-            ReplicatedStorage:FindFirstChild("Claim")
-        }
-        for _, remote in pairs(remotes) do
-            if remote then
-                pcall(function() remote:FireServer() end)
-                break
-            end
-        end
-    end
-end
-
--- Rebirth (dari AutoRebirth.lua, AutoFarm&Rebirth.lua)
-local function Rebirth()
-    if Remotes.Rebirth then
-        pcall(function() Remotes.Rebirth:FireServer() end)
-    else
-        local remotes = {
-            ReplicatedStorage:FindFirstChild("Rebirth"),
-            ReplicatedStorage:FindFirstChild("Prestige"),
-            ReplicatedStorage:FindFirstChild("Reset"),
-            ReplicatedStorage:FindFirstChild("NewGame")
-        }
-        for _, remote in pairs(remotes) do
-            if remote then
-                pcall(function() remote:FireServer() end)
-                break
-            end
-        end
-    end
-end
-
--- Enchant (dari AutoEnchant.lua, BestAutoEnchant.lua)
-local function Enchant()
-    if Remotes.Enchant then
-        pcall(function() Remotes.Enchant:FireServer() end)
-    else
-        local remotes = {
-            ReplicatedStorage:FindFirstChild("Enchant"),
-            ReplicatedStorage:FindFirstChild("Enhance"),
-            ReplicatedStorage:FindFirstChild("UpgradeEnchant")
-        }
-        for _, remote in pairs(remotes) do
-            if remote then
-                pcall(function() remote:FireServer() end)
-                break
-            end
-        end
-    end
-end
-
--- Craft (dari OPCraftingScript.lua)
-local function Craft()
-    if Remotes.Craft then
-        pcall(function() Remotes.Craft:FireServer() end)
-    else
-        local remotes = {
-            ReplicatedStorage:FindFirstChild("Craft"),
-            ReplicatedStorage:FindFirstChild("Forge"),
-            ReplicatedStorage:FindFirstChild("Create")
-        }
-        for _, remote in pairs(remotes) do
-            if remote then
-                pcall(function() remote:FireServer() end)
-                break
-            end
-        end
-    end
-end
-
--- Unlock (dari AutoUnlock.lua)
-local function Unlock()
-    if Remotes.Unlock then
-        pcall(function() Remotes.Unlock:FireServer() end)
-    else
-        local remotes = {
-            ReplicatedStorage:FindFirstChild("Unlock"),
-            ReplicatedStorage:FindFirstChild("Open"),
-            ReplicatedStorage:FindFirstChild("Activate")
-        }
-        for _, remote in pairs(remotes) do
-            if remote then
-                pcall(function() remote:FireServer() end)
-                break
-            end
-        end
-    end
-end
-
--- Format numbers
-local function formatNumber(num)
-    if num >= 1e9 then
-        return string.format("%.2fB", num / 1e9)
-    elseif num >= 1e6 then
-        return string.format("%.2fM", num / 1e6)
-    elseif num >= 1e3 then
-        return string.format("%.2fK", num / 1e3)
-    else
-        return tostring(num)
-    end
-end
-
--- Get zones/areas (dari TeleportZones.lua, Teleports.lua)
-local function GetZones()
-    local zones = {"Spawn"}
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name:lower():find("zone") or v.Name:lower():find("area") then
-            table.insert(zones, v.Name)
-        end
-    end
-    return zones
-end
-
--- Teleport to zone (dari TeleportZones.lua, Teleports.lua)
-local function TeleportToZone(zoneName)
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name == zoneName then
-            if v:IsA("BasePart") then
-                Player.Character.HumanoidRootPart.CFrame = v.CFrame + Vector3.new(0, 5, 0)
-            elseif v:IsA("Model") and v.PrimaryPart then
-                Player.Character.HumanoidRootPart.CFrame = v.PrimaryPart.CFrame + Vector3.new(0, 5, 0)
-            end
-            Notify("Teleported to " .. zoneName)
-            break
-        end
-    end
-end
-
--- Update Egg ESP (dari EggSystem.lua)
-local function UpdateEggESP()
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name:lower():find("egg") then
-            if v:IsA("BasePart") and Toggles.EggESP then
-                local highlight = v:FindFirstChild("EggHighlight")
-                if not highlight then
-                    highlight = Instance.new("Highlight")
-                    highlight.Name = "EggHighlight"
-                    highlight.Parent = v
-                    highlight.FillColor = Color3.fromRGB(255, 0, 255)
-                    highlight.OutlineColor = Color3.new(1, 1, 1)
-                    highlight.FillTransparency = 0.3
-                end
-            else
-                local highlight = v:FindFirstChild("EggHighlight")
-                if highlight then highlight:Destroy() end
-            end
-        end
-    end
-end
+local MainTab = Window:MakeTab({Name = "Main", Icon = "home", Glass = true, Outline = true})
+local AutoTapTab = Window:MakeTab({Name = "Auto Tap", Icon = "hand", Glass = true, Outline = true})
+local EggTab = Window:MakeTab({Name = "Egg System", Icon = "egg", Glass = true, Outline = true})
+local UpgradeTab = Window:MakeTab({Name = "Upgrades", Icon = "trending-up", Glass = true, Outline = true})
+local RebirthTab = Window:MakeTab({Name = "Rebirth", Icon = "refresh-cw", Glass = true, Outline = true})
+local EnchantTab = Window:MakeTab({Name = "Enchant", Icon = "sparkles", Glass = true, Outline = true})
+local TeleportTab = Window:MakeTab({Name = "Teleport", Icon = "map-pin", Glass = true, Outline = true})
+local VisualsTab = Window:MakeTab({Name = "Visuals", Icon = "eye", Glass = true, Outline = true})
+local MiscTab = Window:MakeTab({Name = "Misc", Icon = "settings", Glass = true, Outline = true})
 
 --==================================================
 -- LOOP FUNCTIONS
@@ -636,7 +634,7 @@ function StartLoop(name)
                 task.wait(Toggles.TapSpeed)
                 
             elseif name == "AutoClicker" and Toggles.AutoClicker then
-                mouse1click()
+                AutoClick()
                 task.wait(Toggles.ClickSpeed)
                 
             elseif name == "AutoBuyEgg" and Toggles.AutoBuyEgg then
@@ -650,11 +648,11 @@ function StartLoop(name)
             elseif name == "AutoUpgrade" and Toggles.AutoUpgrade then
                 if Toggles.UpgradeType == "All" then
                     Upgrade("Damage")
-                    task.wait(0.1)
+                    task.wait(0.2)
                     Upgrade("Speed")
-                    task.wait(0.1)
+                    task.wait(0.2)
                     Upgrade("Multiplier")
-                    task.wait(0.1)
+                    task.wait(0.2)
                     Upgrade("Critical")
                 else
                     Upgrade(Toggles.UpgradeType)
@@ -663,23 +661,19 @@ function StartLoop(name)
                 
             elseif name == "AutoBuyArea" and Toggles.AutoBuyArea then
                 BuyArea()
-                task.wait(2)
+                task.wait(1)
                 
             elseif name == "AutoUnlock" and Toggles.AutoUnlock then
                 Unlock()
-                task.wait(1)
+                task.wait(0.5)
                 
             elseif name == "AutoCollect" and Toggles.AutoCollect then
                 Collect()
-                task.wait(2)
+                task.wait(1)
                 
             elseif name == "AutoClaim" and Toggles.AutoClaim then
-                local claimRemote = ReplicatedStorage:FindFirstChild("ClaimDaily") or 
-                                   ReplicatedStorage:FindFirstChild("DailyReward")
-                if claimRemote then
-                    pcall(function() claimRemote:FireServer() end)
-                end
-                task.wait(60)
+                ClaimDaily()
+                task.wait(30)
                 
             elseif name == "AutoRebirth" and Toggles.AutoRebirth then
                 local coins = GetCoins()
@@ -687,32 +681,31 @@ function StartLoop(name)
                     Rebirth()
                     task.wait(Toggles.RebirthDelay)
                 else
-                    task.wait(5)
+                    task.wait(2)
                 end
                 
             elseif name == "AutoEnchant" and Toggles.AutoEnchant then
                 Enchant()
-                task.wait(1)
+                task.wait(0.5)
                 
             elseif name == "AutoCraft" and Toggles.AutoCraft then
                 Craft()
-                task.wait(2)
+                task.wait(1)
                 
             elseif name == "AutoFarm" and Toggles.AutoFarm then
-                -- Auto farm dari AutomationScript.lua
                 Tap()
-                if math.random(1, 10) == 1 then
+                if math.random(1, 5) == 1 then
                     Collect()
                 end
-                task.wait(0.1)
+                task.wait(0.05)
                 
             elseif name == "AutoProgress" and Toggles.AutoProgress then
-                -- Auto progress dari QuickProgress.lua
                 Tap()
-                if GetCoins() > 1000 then
+                local coins = GetCoins()
+                if coins > 1000 then
                     Upgrade("Damage")
                 end
-                task.wait(0.2)
+                task.wait(0.1)
             end
             
             task.wait()
@@ -727,13 +720,7 @@ end
 --==================================================
 -- MAIN TAB
 --==================================================
-local StatsSection = MainTab:AddSection({
-    Name = "Player Stats",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local StatsSection = MainTab:AddSection({Name = "Player Stats", TextSize = 17, Glass = true, Outline = true})
 
 local StatsPara = StatsSection:AddParagraph({
     Title = Player.Name,
@@ -752,34 +739,28 @@ local StatsPara = StatsSection:AddParagraph({
     }
 })
 
--- Update stats setiap 5 detik
+-- Update stats setiap 3 detik
 task.spawn(function()
     while true do
         local coins = GetCoins()
         local rebirths = GetRebirths()
         StatsPara:SetDesc("Coins: " .. formatNumber(coins) .. "\nRebirths: " .. rebirths)
-        task.wait(5)
+        task.wait(3)
     end
 end)
 
-local QuickSection = MainTab:AddSection({
-    Name = "Quick Actions",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local QuickSection = MainTab:AddSection({Name = "Quick Actions", TextSize = 17, Glass = true, Outline = true})
 
 QuickSection:AddButton({
-    Name = "Tap 10x",
+    Name = "Tap 50x",
     Icon = "hand",
     Outline = true,
     Callback = function()
-        for i = 1, 10 do
+        for i = 1, 50 do
             Tap()
-            task.wait(0.05)
+            task.wait(0.01)
         end
-        Notify("Tapped 10 times!")
+        Notify("Tapped 50 times!")
     end
 })
 
@@ -803,16 +784,19 @@ QuickSection:AddButton({
     end
 })
 
---==================================================
--- AUTO TAP TAB (dari AutoTap.lua, AutoTapKeyless.lua)
---==================================================
-local TapSection = AutoTapTab:AddSection({
-    Name = "Auto Tap Settings",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
+QuickSection:AddButton({
+    Name = "Teleport to Egg",
+    Icon = "map-pin",
+    Outline = true,
+    Callback = function()
+        TeleportToEgg()
+    end
 })
+
+--==================================================
+-- AUTO TAP TAB
+--==================================================
+local TapSection = AutoTapTab:AddSection({Name = "Auto Tap Settings", TextSize = 17, Glass = true, Outline = true})
 
 TapSection:AddToggle({
     Name = "Auto Tap",
@@ -869,15 +853,9 @@ TapSection:AddSlider({
 })
 
 --==================================================
--- EGG SYSTEM TAB (dari EggSystem.lua)
+-- EGG SYSTEM TAB
 --==================================================
-local EggMainSection = EggTab:AddSection({
-    Name = "Egg Settings",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local EggMainSection = EggTab:AddSection({Name = "Egg Settings", TextSize = 17, Glass = true, Outline = true})
 
 EggMainSection:AddToggle({
     Name = "Auto Buy Egg",
@@ -950,26 +928,14 @@ EggMainSection:AddButton({
     Icon = "search",
     Outline = true,
     Callback = function()
-        EggLocations = {}
-        for _, v in pairs(Workspace:GetDescendants()) do
-            if v.Name:lower():find("egg") then
-                table.insert(EggLocations, v)
-            end
-        end
         Notify("Found " .. #EggLocations .. " eggs!")
     end
 })
 
 --==================================================
--- UPGRADES TAB (dari OPCraftingScript.lua)
+-- UPGRADES TAB
 --==================================================
-local UpgradeMainSection = UpgradeTab:AddSection({
-    Name = "Auto Upgrade",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local UpgradeMainSection = UpgradeTab:AddSection({Name = "Auto Upgrade", TextSize = 17, Glass = true, Outline = true})
 
 UpgradeMainSection:AddToggle({
     Name = "Auto Upgrade",
@@ -1024,15 +990,9 @@ UpgradeMainSection:AddToggle({
 })
 
 --==================================================
--- REBIRTH TAB (dari AutoRebirth.lua, AutoFarm&Rebirth.lua)
+-- REBIRTH TAB
 --==================================================
-local RebirthMainSection = RebirthTab:AddSection({
-    Name = "Rebirth Settings",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local RebirthMainSection = RebirthTab:AddSection({Name = "Rebirth Settings", TextSize = 17, Glass = true, Outline = true})
 
 RebirthMainSection:AddToggle({
     Name = "Auto Rebirth",
@@ -1076,15 +1036,9 @@ RebirthMainSection:AddSlider({
 })
 
 --==================================================
--- ENCHANT TAB (dari AutoEnchant.lua, BestAutoEnchant.lua)
+-- ENCHANT TAB
 --==================================================
-local EnchantMainSection = EnchantTab:AddSection({
-    Name = "Enchant Settings",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local EnchantMainSection = EnchantTab:AddSection({Name = "Enchant Settings", TextSize = 17, Glass = true, Outline = true})
 
 EnchantMainSection:AddToggle({
     Name = "Auto Enchant",
@@ -1126,15 +1080,9 @@ EnchantMainSection:AddToggle({
 })
 
 --==================================================
--- TELEPORT TAB (dari TeleportZones.lua, Teleports.lua)
+-- TELEPORT TAB
 --==================================================
-local TeleportMainSection = TeleportTab:AddSection({
-    Name = "Teleport Zones",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local TeleportMainSection = TeleportTab:AddSection({Name = "Teleport Zones", TextSize = 17, Glass = true, Outline = true})
 
 local zones = GetZones()
 TeleportMainSection:AddDropdown({
@@ -1160,6 +1108,15 @@ TeleportMainSection:AddButton({
 })
 
 TeleportMainSection:AddButton({
+    Name = "Teleport to Egg",
+    Icon = "egg",
+    Outline = true,
+    Callback = function()
+        TeleportToEgg()
+    end
+})
+
+TeleportMainSection:AddButton({
     Name = "Refresh Zones",
     Icon = "refresh-cw",
     Outline = true,
@@ -1172,13 +1129,7 @@ TeleportMainSection:AddButton({
 --==================================================
 -- VISUALS TAB
 --==================================================
-local VisualsMainSection = VisualsTab:AddSection({
-    Name = "Lighting",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local VisualsMainSection = VisualsTab:AddSection({Name = "Lighting", TextSize = 17, Glass = true, Outline = true})
 
 VisualsMainSection:AddToggle({
     Name = "Full Bright",
@@ -1215,15 +1166,9 @@ VisualsMainSection:AddToggle({
 })
 
 --==================================================
--- MISC TAB (dari AutomationScript.lua, Automations.lua, dll)
+-- MISC TAB
 --==================================================
-local MiscMainSection = MiscTab:AddSection({
-    Name = "Automation",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local MiscMainSection = MiscTab:AddSection({Name = "Automation", TextSize = 17, Glass = true, Outline = true})
 
 MiscMainSection:AddToggle({
     Name = "Auto Farm",
@@ -1295,20 +1240,14 @@ MiscMainSection:AddToggle({
     end
 })
 
-local ServerSection = MiscTab:AddSection({
-    Name = "Server",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local ServerSection = MiscTab:AddSection({Name = "Server", TextSize = 17, Glass = true, Outline = true})
 
 ServerSection:AddButton({
     Name = "Rejoin Server",
     Icon = "refresh-cw",
     Outline = true,
     Callback = function()
-        game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
+        TeleportService:Teleport(game.PlaceId, Player)
     end
 })
 
@@ -1322,7 +1261,7 @@ ServerSection:AddButton({
             local cursor = ""
             repeat
                 local success, result = pcall(function()
-                    return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100" .. (cursor ~= "" and "&cursor=" .. cursor or "")))
+                    return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100" .. (cursor ~= "" and "&cursor=" .. cursor or "")))
                 end)
                 if success then
                     for _, server in ipairs(result.data) do
@@ -1358,13 +1297,7 @@ ServerSection:AddButton({
     end
 })
 
-local InfoSection = MiscTab:AddSection({
-    Name = "Server Info",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
+local InfoSection = MiscTab:AddSection({Name = "Server Info", TextSize = 17, Glass = true, Outline = true})
 
 InfoSection:AddParagraph({
     Title = "Server Status",
@@ -1385,14 +1318,16 @@ Window:AddConfigTab({
 -- INITIALIZE
 --==================================================
 
--- Find remotes first
-FindRemotes()
+-- Find all remotes
+FindAllRemotes()
 
 -- Initialize UI
 OrionLib:Init()
 
-Notify("Tap Simulator Ultimate loaded! Press F4 to toggle menu")
-print("=== Tap Simulator - Ultimate Collection v3.0 ===")
-print("Found " .. #zones .. " zones")
-print("Found " .. #EggLocations .. " eggs")
+Notify("Tap Simulator STANDALONE loaded! Press F4 to toggle menu")
+print("=== TAP SIMULATOR - STANDALONE WORKING EDITION v5.0 ===")
+print("Found remotes: " .. table.count(Remotes))
+print("Found eggs: " .. #EggLocations)
+print("Found zones: " .. #ZoneLocations)
+print("Found coins: " .. #CoinLocations)
 print("Press F4 to toggle menu")
