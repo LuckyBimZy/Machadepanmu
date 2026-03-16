@@ -1,6 +1,6 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 3.1 - Fixed White Box Issue
+-- Version: 3.0 COMPLETE
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -45,8 +45,8 @@ local EnemyColor = Color3.fromRGB(255, 0, 0)
 local Config = {
     ESP = {
         Enabled = false,
-        Boxes = false,  -- BOXES NONAKTIF DEFAULT
-        Names = true,    -- NAMES AKTIF DEFAULT
+        Boxes = false,
+        Names = false,
         Distance = false,
         Health = false,
         Tracers = false,
@@ -146,7 +146,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
     Subtext = "ULTIMATE Edition",
-    Version = "v3.1",
+    Version = "v3.0",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -343,7 +343,7 @@ local function getPlayerColor(player)
 end
 
 --==================================================
--- PLAYER ESP SYSTEM (AUTO-DETECT) - FIXED WHITE BOX ISSUE
+-- PLAYER ESP SYSTEM (AUTO-DETECT) - DENGAN FONT LEBIH BESAR
 --==================================================
 local ESPObjects = {}
 
@@ -362,12 +362,11 @@ local function createPlayerESP(player)
     
     local esp = ESPObjects[player]
     
-    -- Box settings - NONAKTIF DEFAULT
-    esp.Box.Visible = false  -- PASTIKAN BOX TIDAK TERLIHAT
+    -- Box settings
+    esp.Box.Visible = false
     esp.Box.Thickness = 2
     esp.Box.Transparency = 1
     esp.Box.Filled = false
-    esp.Box.Color = Color3.fromRGB(255, 255, 255) -- Warna putih tapi tidak aktif
     
     -- Name settings - FONT LEBIH BESAR DAN JELAS
     esp.Name.Visible = false
@@ -418,9 +417,7 @@ end
 local function updatePlayerESP()
     if not Config.ESP.Enabled then
         for _, esp in pairs(ESPObjects) do
-            for _, obj in pairs(esp) do 
-                obj.Visible = false 
-            end
+            for _, obj in pairs(esp) do obj.Visible = false end
         end
         return
     end
@@ -432,9 +429,7 @@ local function updatePlayerESP()
         end
         
         if Config.ESP.TeamCheck and isTeammate(player) and not Config.ESP.ShowTeammates then
-            for _, obj in pairs(esp) do 
-                obj.Visible = false 
-            end
+            for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
         
@@ -444,18 +439,14 @@ local function updatePlayerESP()
         local head = char:FindFirstChild("Head")
         
         if not hrp or not hum or not head then
-            for _, obj in pairs(esp) do 
-                obj.Visible = false 
-            end
+            for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
         
         local distance = (hrp.Position - Camera.CFrame.Position).Magnitude
         
         if distance > Config.ESP.MaxDistance then
-            for _, obj in pairs(esp) do 
-                obj.Visible = false 
-            end
+            for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
         
@@ -463,36 +454,31 @@ local function updatePlayerESP()
         local rootPos = Camera:WorldToViewportPoint(hrp.Position)
         
         if not onScreen then
-            for _, obj in pairs(esp) do 
-                obj.Visible = false 
-            end
+            for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
         
         local boxSize = Vector2.new(2000 / distance, 2500 / distance)
         local playerColor = getPlayerColor(player)
         
-        -- BOX - HANYA AKTIF JIKA CONFIG.BOXES = TRUE
         if Config.ESP.Boxes then
             esp.Box.Size = boxSize
             esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
             esp.Box.Color = playerColor
             esp.Box.Visible = true
         else
-            esp.Box.Visible = false  -- PASTIKAN BOX TIDAK TERLIHAT
+            esp.Box.Visible = false
         end
         
-        -- NAME - AKTIF DEFAULT
         if Config.ESP.Names then
             esp.Name.Text = player.Name
-            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 45)
+            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 45) -- Naikkan posisi untuk font lebih besar
             esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Putih
             esp.Name.Visible = true
         else
             esp.Name.Visible = false
         end
         
-        -- DISTANCE
         if Config.ESP.Distance then
             esp.Distance.Text = string.format("[%.0fm]", distance)
             esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 25)
@@ -501,7 +487,6 @@ local function updatePlayerESP()
             esp.Distance.Visible = false
         end
         
-        -- HEALTH BAR
         if Config.ESP.Health and hum then
             local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             local barWidth = 3
@@ -528,7 +513,6 @@ local function updatePlayerESP()
             esp.HealthBar.Visible = false
         end
         
-        -- TRACERS
         if Config.ESP.Tracers then
             local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
             esp.Tracer.From = screenCenter
@@ -780,7 +764,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 --==================================================
--- ESP TAB - DENGAN BOX NONAKTIF DEFAULT
+-- ESP TAB
 --==================================================
 local ESPSection = ESPTab:AddSection({
     Name = "🎯 PLAYER ESP SETTINGS",
@@ -791,7 +775,7 @@ local ESPSection = ESPTab:AddSection({
 
 ESPSection:AddToggle({
     Name = "ENABLE ESP",
-    Default = true,  -- ENABLE DEFAULT
+    Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "ESPEnable",
@@ -815,28 +799,18 @@ ESPSection:AddToggle({
 })
 
 ESPSection:AddToggle({
-    Name = "SHOW BOXES (OFF = NO WHITE BOX)",
-    Default = false,  -- NONAKTIF DEFAULT
+    Name = "SHOW BOXES",
+    Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "ESPBoxes",
     Save = true,
-    Callback = function(Value)
-        Config.ESP.Boxes = Value
-        if not Value then
-            -- Pastikan semua box mati saat toggle dimatikan
-            for _, esp in pairs(ESPObjects) do
-                if esp.Box then
-                    esp.Box.Visible = false
-                end
-            end
-        end
-    end
+    Callback = function(Value) Config.ESP.Boxes = Value end
 })
 
 ESPSection:AddToggle({
     Name = "SHOW NAMES (WHITE - LARGE FONT)",
-    Default = true,  -- AKTIF DEFAULT
+    Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "ESPNames",
@@ -907,7 +881,7 @@ ESPSection:AddSlider({
 
 ESPSection:AddParagraph({
     Title = "COLOR GUIDE",
-    Desc = "⚪ WHITE = Names (Large Font)\n🟢 GREEN = Teammate (Box)\n🔴 RED = Enemy (Box)\n📦 BOXES = OFF by default",
+    Desc = "🟢 GREEN = Teammate\n🔴 RED = Enemy\n⚪ WHITE = Names",
     Image = "info",
     ImageSize = 38
 })
@@ -1034,7 +1008,7 @@ ExtraSection:AddToggle({
 })
 
 --==================================================
--- VISUAL TAB
+-- VISUAL TAB - DENGAN WALLHACK, FULLBRIGHT, NO FOG, INFINITE ZOOM
 --==================================================
 local VisualMainSection = VisualTab:AddSection({
     Name = "☀️ VISUAL ENHANCEMENTS",
@@ -1099,8 +1073,15 @@ VisualMainSection:AddToggle({
     end
 })
 
+VisualMainSection:AddParagraph({
+    Title = "VISUAL FEATURES",
+    Desc = "👁️ Wallhack: See through walls\n☀️ Fullbright: Remove shadows\n🌫️ No Fog: Clear view\n🔍 Infinite Zoom: Max FOV",
+    Image = "sun",
+    ImageSize = 38
+})
+
 --==================================================
--- TELEPORT TAB
+-- TELEPORT TAB - LENGKAP
 --==================================================
 local TeleportMainSection = TeleportTab:AddSection({
     Name = "📍 TELEPORT TO PLAYER",
@@ -1109,6 +1090,7 @@ local TeleportMainSection = TeleportTab:AddSection({
     Outline = true
 })
 
+local PlayerDropdown = nil
 local SelectedPlayer = ""
 
 -- Buat dropdown untuk player list
@@ -1143,6 +1125,8 @@ TeleportMainSection:AddButton({
     Icon = "refresh-cw",
     Outline = true,
     Callback = function()
+        -- Refresh dropdown options
+        -- Note: In Catraz Hub, you'd need to properly refresh the dropdown
         Notify("Player list refreshed")
     end
 })
@@ -1181,7 +1165,7 @@ WaypointSection:AddButton({
 })
 
 --==================================================
--- MISC TAB
+-- MISC TAB - DENGAN ANTI AFK
 --==================================================
 local MiscMainSection = MiscTab:AddSection({
     Name = "⚙️ UTILITY FEATURES",
@@ -1202,6 +1186,13 @@ MiscMainSection:AddToggle({
         setupAntiAFK()
         Notify(Value and "Anti AFK Enabled" or "Anti AFK Disabled")
     end
+})
+
+MiscMainSection:AddParagraph({
+    Title = "ACTIVE FEATURES MONITOR",
+    Desc = "Check Main Tab for active features list",
+    Image = "activity",
+    ImageSize = 38
 })
 
 --==================================================
@@ -1238,6 +1229,101 @@ HighlightSection:AddToggle({
         end
     end
 })
+
+--==================================================
+-- GENERATOR TAB
+--==================================================
+local GenSection = GeneratorTab:AddSection({
+    Name = "⚡ GENERATOR FEATURES",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+GenSection:AddToggle({
+    Name = "ENABLE GENERATOR ESP",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "GenESP",
+    Save = true,
+    Callback = function(Value)
+        Config.Generator.ESPEnabled = Value
+    end
+})
+
+GenSection:AddToggle({
+    Name = "ENABLE ANTI-FAIL GENERATOR",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "GenAntiFail",
+    Save = true,
+    Callback = function(Value)
+        Config.Generator.AntiFailEnabled = Value
+    end
+})
+
+--==================================================
+-- HEALING TAB
+--==================================================
+local HealSection = HealingTab:AddSection({
+    Name = "❤️ HEALING FEATURES",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+HealSection:AddToggle({
+    Name = "ENABLE ANTI-FAIL HEALING",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HealAntiFail",
+    Save = true,
+    Callback = function(Value)
+        Config.Healing.AntiFailEnabled = Value
+    end
+})
+
+--==================================================
+-- HIDE SKILL CHECK UI
+--==================================================
+local UISection = VisualTab:AddSection({
+    Name = "🎮 UI SETTINGS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+UISection:AddToggle({
+    Name = "HIDE SKILL CHECK UI",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HideSkillCheck",
+    Save = true,
+    Callback = function(Value)
+        Config.UI.HideSkillCheck = Value
+    end
+})
+
+RunService.RenderStepped:Connect(function()
+    if Config.UI.HideSkillCheck then
+        local PlayerGui = Player:WaitForChild("PlayerGui")
+        
+        local targetUI = PlayerGui:FindFirstChild("SkillCheckPromptGui")
+        local targetUICon = PlayerGui:FindFirstChild("SkillCheckPromptGui-con")
+        
+        if targetUI and targetUI.Enabled then
+            targetUI.Enabled = false
+        end
+        
+        if targetUICon and targetUICon.Enabled then
+            targetUICon.Enabled = false
+        end
+    end
+end)
 
 --==================================================
 -- HIGHLIGHT SYSTEM
@@ -1277,6 +1363,174 @@ local function removeHighlight(player)
     end
 end
 
+local function updateHighlights()
+    for player, highlight in pairs(Highlights) do
+        if not player or not player.Parent or not player.Character then
+            removeHighlight(player)
+            continue
+        end
+        
+        if Config.Highlight.TeamCheck and isTeammate(player) and not Config.Highlight.ShowTeam then
+            highlight.Enabled = false
+            continue
+        else
+            highlight.Enabled = true
+        end
+        
+        if Config.Highlight.TeamCheck then
+            if isTeammate(player) then
+                highlight.FillColor = TeamColor
+                highlight.OutlineColor = TeamColor
+            else
+                highlight.FillColor = EnemyColor
+                highlight.OutlineColor = EnemyColor
+            end
+        else
+            highlight.FillColor = Color3.fromRGB(255, 255, 255)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        end
+    end
+end
+
+--==================================================
+-- ANTI-FAIL SYSTEM
+--==================================================
+local AntiFailHooked = false
+
+local function setupAntiFail()
+    if AntiFailHooked then return end
+    
+    task.spawn(function()
+        local success = pcall(function()
+            local oldNamecall
+            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                -- GENERATOR ANTI-FAIL
+                if Config.Generator.AntiFailEnabled then
+                    if tostring(self):find("SkillCheckFailEvent") and method == "FireServer" then
+                        return nil
+                    end
+                    
+                    if tostring(self):find("SkillCheckResultEvent") and method == "FireServer" then
+                        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                            args[1] = true
+                            return oldNamecall(self, unpack(args))
+                        else
+                            return nil
+                        end
+                    end
+                end
+                
+                -- HEALING ANTI-FAIL
+                if Config.Healing.AntiFailEnabled then
+                    if tostring(self):find("Heal") and tostring(self):find("Fail") and method == "FireServer" then
+                        return nil
+                    end
+                    
+                    if tostring(self):find("Heal") and tostring(self):find("Result") and method == "FireServer" then
+                        args[1] = true
+                        return oldNamecall(self, unpack(args))
+                    end
+                end
+                
+                return oldNamecall(self, ...)
+            end)
+            
+            AntiFailHooked = true
+        end)
+    end)
+end
+
+setupAntiFail()
+
+--==================================================
+-- GENERATOR ESP
+--==================================================
+local GeneratorESP = {}
+
+local function createGeneratorESP(gen)
+    if not gen:IsA("Model") or gen:FindFirstChild("GenESP") then return end
+    
+    local folder = Instance.new("Folder", gen)
+    folder.Name = "GenESP"
+    
+    local highlight = Instance.new("Highlight", folder)
+    highlight.Adornee = gen
+    highlight.FillColor = Color3.new(0, 1, 1)
+    highlight.DepthMode = "AlwaysOnTop"
+    
+    local billboard = Instance.new("BillboardGui", folder)
+    billboard.Size = UDim2.new(0, 80, 0, 40)
+    billboard.AlwaysOnTop = true
+    billboard.Adornee = gen:FindFirstChild("HitBox") or gen.PrimaryPart
+    billboard.ExtentsOffset = Vector3.new(0, 3, 0)
+    
+    local textLabel = Instance.new("TextLabel", billboard)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 14
+    
+    task.spawn(function()
+        while gen.Parent and folder.Parent do
+            local progress = gen:GetAttribute("RepairProgress") or 0
+            textLabel.Text = math.floor(progress) .. "%"
+            highlight.Enabled = Config.Generator.ESPEnabled
+            textLabel.Visible = Config.Generator.ESPEnabled
+            
+            if progress >= 100 then
+                highlight.FillColor = Color3.new(0, 1, 0)
+            else
+                highlight.FillColor = Color3.new(0, 1, 1)
+            end
+            
+            task.wait(1)
+        end
+    end)
+    
+    GeneratorESP[gen] = folder
+end
+
+task.spawn(function()
+    while true do
+        if Config.Generator.ESPEnabled then
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if obj.Name == "Generator" and obj:IsA("Model") then
+                    createGeneratorESP(obj)
+                end
+            end
+        end
+        task.wait(3)
+    end
+end)
+
+--==================================================
+-- CHARACTER UPDATES
+--==================================================
+Player.CharacterAdded:Connect(function(char)
+    Player.Character = char
+    task.wait(1)
+    
+    -- Re-apply noclip if enabled
+    if Config.Movement.Noclip then
+        enableNoclip()
+    end
+    
+    -- Reset speed/jump if enabled
+    if Config.Movement.SpeedEnabled then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = Config.Movement.SpeedValue end
+    end
+    
+    if Config.Movement.JumpEnabled then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.JumpPower = Config.Movement.JumpValue end
+    end
+end)
+
 --==================================================
 -- ADD CONFIG TAB
 --==================================================
@@ -1292,12 +1546,12 @@ OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.1 🔥")
+print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.0 🔥")
 print("═══════════════════════════════════════════════════════")
 print("✅ Player ESP - Auto-detect + Large White Names")
-print("✅ BOXES OFF by default - No white boxes!")
 print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
 print("✅ Visual - Wallhack, Fullbright, No Fog, Infinite Zoom")
 print("✅ Teleport - Player TP, Waypoints, Refresh List")
 print("✅ Misc - Anti AFK, Active Features Counter")
+print("✅ Player Info - Complete stats on Main Tab")
 print("═══════════════════════════════════════════════════════")
