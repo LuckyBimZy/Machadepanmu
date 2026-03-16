@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
 -- Premium UI menggunakan Catraz Hub Library
 -- Adapted from LuckyBimZy & RanZx999
--- Version: 3.0 COMPLETE
+-- Version: 3.0 COMPLETE with Dual ESP Modes
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -44,12 +44,24 @@ local EnemyColor = Color3.fromRGB(255, 0, 0)
 -- CONFIG
 --==================================================
 local Config = {
-    ESP = {
+    -- ESP Settings
+    ModernESP = {
         Enabled = false,
-        ESPType = "Highlight", -- Highlight, Box, Name
+        Names = true,
+        Distance = true,
         Boxes = false,
-        Names = false,
-        Distance = false,
+        Highlight = false,
+        Health = false,
+        Tracers = false,
+        TeamCheck = true,
+        MaxDistance = 2000,
+        ShowTeammates = false
+    },
+    ClassicESP = {
+        Enabled = false,
+        Names = true,
+        Distance = true,
+        Boxes = false,
         Health = false,
         Tracers = false,
         TeamCheck = true,
@@ -129,7 +141,8 @@ local ActiveFeatures = {}
 local function updateActiveFeatures()
     ActiveFeatures = {}
     
-    if Config.ESP.Enabled then table.insert(ActiveFeatures, "ESP") end
+    if Config.ModernESP.Enabled then table.insert(ActiveFeatures, "Modern ESP") end
+    if Config.ClassicESP.Enabled then table.insert(ActiveFeatures, "Classic ESP") end
     if Config.Highlight.Enabled then table.insert(ActiveFeatures, "Highlight") end
     if Config.Generator.ESPEnabled then table.insert(ActiveFeatures, "Gen ESP") end
     if Config.Generator.AntiFailEnabled then table.insert(ActiveFeatures, "Anti-Fail Gen") end
@@ -158,11 +171,19 @@ local function isTeammate(player)
     return player.Team == Player.Team
 end
 
-local function getPlayerColor(player)
-    if Config.ESP.TeamCheck and isTeammate(player) then
-        return TeamColor
+local function getPlayerColor(player, mode)
+    if mode == "modern" then
+        if Config.ModernESP.TeamCheck and isTeammate(player) then
+            return TeamColor
+        else
+            return EnemyColor
+        end
     else
-        return EnemyColor
+        if Config.ClassicESP.TeamCheck and isTeammate(player) then
+            return TeamColor
+        else
+            return EnemyColor
+        end
     end
 end
 
@@ -220,9 +241,16 @@ local MainTab = Window:MakeTab({
     Outline = true
 })
 
-local ESPTab = Window:MakeTab({
-    Name = "Player ESP",
+local ModernESPTab = Window:MakeTab({
+    Name = "✨ Modern ESP",
     Icon = "eye",
+    Glass = true,
+    Outline = true
+})
+
+local ClassicESPTab = Window:MakeTab({
+    Name = "📦 Classic ESP",
+    Icon = "box",
     Glass = true,
     Outline = true
 })
@@ -286,28 +314,14 @@ local PlayerInfoSection = MainTab:AddSection({
     Outline = true
 })
 
--- Function to update player info
-local function updatePlayerInfo()
-    local playerInfoText = string.format(
-        "Name: %s\nDisplay Name: %s\nUser ID: %d\nAccount Age: %d days\nTeam: %s",
-        Player.Name,
-        Player.DisplayName,
-        Player.UserId,
-        Player.AccountAge,
-        Player.Team and Player.Team.Name or "No Team"
-    )
-    
-    -- This would need to be updated dynamically in a real implementation
-    -- For now, we'll create a static paragraph
-end
-
 PlayerInfoSection:AddParagraph({
     Title = "📊 Player Statistics",
     Desc = string.format(
-        "Name: %s\nDisplay: %s\nAge: %d days",
+        "Name: %s\nDisplay: %s\nAge: %d days\nTeam: %s",
         Player.Name,
         Player.DisplayName,
-        Player.AccountAge
+        Player.AccountAge,
+        Player.Team and Player.Team.Name or "No Team"
     ),
     Image = "user",
     ImageSize = 42
@@ -352,7 +366,7 @@ task.spawn(function()
     while true do
         local features = updateActiveFeatures()
         if #features > 0 then
-            activeFeaturesPara:SetDesc(table.concat(features, "\n• "))
+            activeFeaturesPara:SetDesc("• " .. table.concat(features, "\n• "))
         else
             activeFeaturesPara:SetDesc("None")
         end
@@ -361,57 +375,63 @@ task.spawn(function()
 end)
 
 --==================================================
--- PLAYER ESP SYSTEM (ENHANCED)
+-- MODERN ESP SYSTEM (Seperti di gambar)
 --==================================================
-local ESPObjects = {}
+local ModernESPObjects = {}
 
-local function createPlayerESP(player)
+local function createModernESP(player)
     if player == Player then return end
-    if ESPObjects[player] then return end
+    if ModernESPObjects[player] then return end
     
-    ESPObjects[player] = {
-        Box = Drawing.new("Square"),
+    ModernESPObjects[player] = {
+        -- Modern Name (Besar, Putih, Bold, dengan Outline)
         Name = Drawing.new("Text"),
+        -- Modern Distance (Seperti di gambar: "[80m]" dengan warna putih)
         Distance = Drawing.new("Text"),
+        -- Box outline tipis
+        Box = Drawing.new("Square"),
+        -- Highlight transparan
+        Highlight = Drawing.new("Square"),
+        -- Health bar
         HealthBarBG = Drawing.new("Square"),
         HealthBar = Drawing.new("Square"),
-        Tracer = Drawing.new("Line"),
-        HighlightBox = Drawing.new("Square") -- For Highlight mode
+        -- Tracer
+        Tracer = Drawing.new("Line")
     }
     
-    local esp = ESPObjects[player]
+    local esp = ModernESPObjects[player]
     
-    -- Box settings
+    -- Modern Name Settings
+    esp.Name.Visible = false
+    esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Pure white
+    esp.Name.Size = 20 -- Lebih besar
+    esp.Name.Center = true
+    esp.Name.Outline = true
+    esp.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
+    esp.Name.Font = 3 -- Bold font (Enum.Font.SourceSansBold)
+    
+    -- Modern Distance Settings
+    esp.Distance.Visible = false
+    esp.Distance.Color = Color3.fromRGB(255, 255, 255) -- Pure white
+    esp.Distance.Size = 18 -- Sedikit lebih kecil dari nama
+    esp.Distance.Center = true
+    esp.Distance.Outline = true
+    esp.Distance.OutlineColor = Color3.fromRGB(0, 0, 0)
+    esp.Distance.Font = 3 -- Bold font
+    
+    -- Box Settings
     esp.Box.Visible = false
     esp.Box.Thickness = 2
     esp.Box.Transparency = 1
     esp.Box.Filled = false
     esp.Box.Color = Color3.fromRGB(255, 255, 255)
     
-    -- Highlight Box settings (for Highlight mode)
-    esp.HighlightBox.Visible = false
-    esp.HighlightBox.Thickness = 3
-    esp.HighlightBox.Transparency = 0.7
-    esp.HighlightBox.Filled = true
-    esp.HighlightBox.Color = Color3.fromRGB(255, 255, 255)
-    
-    -- Name settings - ENHANCED VISIBILITY
-    esp.Name.Visible = false
-    esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Pure white
-    esp.Name.Size = 18 -- Larger font
-    esp.Name.Center = true
-    esp.Name.Outline = true
-    esp.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Name.Font = 3 -- Bold font
-    
-    -- Distance settings
-    esp.Distance.Visible = false
-    esp.Distance.Color = Color3.fromRGB(255, 255, 255) -- Pure white
-    esp.Distance.Size = 16 -- Larger font
-    esp.Distance.Center = true
-    esp.Distance.Outline = true
-    esp.Distance.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Distance.Font = 3 -- Bold font
+    -- Highlight Settings
+    esp.Highlight.Visible = false
+    esp.Highlight.Thickness = 1
+    esp.Highlight.Transparency = 0.7
+    esp.Highlight.Filled = true
+    esp.Highlight.Color = Color3.fromRGB(255, 255, 255)
     
     -- Health bar settings
     esp.HealthBarBG.Visible = false
@@ -432,31 +452,35 @@ local function createPlayerESP(player)
     esp.Tracer.Transparency = 1
 end
 
-local function removePlayerESP(player)
-    if ESPObjects[player] then
-        for _, obj in pairs(ESPObjects[player]) do
+local function removeModernESP(player)
+    if ModernESPObjects[player] then
+        for _, obj in pairs(ModernESPObjects[player]) do
             pcall(function() obj:Remove() end)
         end
-        ESPObjects[player] = nil
+        ModernESPObjects[player] = nil
     end
 end
 
-local function updatePlayerESP()
-    if not Config.ESP.Enabled then
-        for _, esp in pairs(ESPObjects) do
-            for _, obj in pairs(esp) do obj.Visible = false end
+local function updateModernESP()
+    if not Config.ModernESP.Enabled then
+        for _, esp in pairs(ModernESPObjects) do
+            for _, obj in pairs(esp) do 
+                pcall(function() obj.Visible = false end)
+            end
         end
         return
     end
     
-    for player, esp in pairs(ESPObjects) do
+    for player, esp in pairs(ModernESPObjects) do
         if not player or not player.Parent or not player.Character then
-            removePlayerESP(player)
+            removeModernESP(player)
             continue
         end
         
-        if Config.ESP.TeamCheck and isTeammate(player) and not Config.ESP.ShowTeammates then
-            for _, obj in pairs(esp) do obj.Visible = false end
+        if Config.ModernESP.TeamCheck and isTeammate(player) and not Config.ModernESP.ShowTeammates then
+            for _, obj in pairs(esp) do 
+                pcall(function() obj.Visible = false end)
+            end
             continue
         end
         
@@ -466,14 +490,18 @@ local function updatePlayerESP()
         local head = char:FindFirstChild("Head")
         
         if not hrp or not hum or not head then
-            for _, obj in pairs(esp) do obj.Visible = false end
+            for _, obj in pairs(esp) do 
+                pcall(function() obj.Visible = false end)
+            end
             continue
         end
         
         local distance = (hrp.Position - Camera.CFrame.Position).Magnitude
         
-        if distance > Config.ESP.MaxDistance then
-            for _, obj in pairs(esp) do obj.Visible = false end
+        if distance > Config.ModernESP.MaxDistance then
+            for _, obj in pairs(esp) do 
+                pcall(function() obj.Visible = false end)
+            end
             continue
         end
         
@@ -481,56 +509,54 @@ local function updatePlayerESP()
         local rootPos = Camera:WorldToViewportPoint(hrp.Position)
         
         if not onScreen then
-            for _, obj in pairs(esp) do obj.Visible = false end
+            for _, obj in pairs(esp) do 
+                pcall(function() obj.Visible = false end)
+            end
             continue
         end
         
         local boxSize = Vector2.new(2000 / distance, 2500 / distance)
-        local playerColor = getPlayerColor(player)
+        local playerColor = getPlayerColor(player, "modern")
         
-        -- Handle different ESP modes
-        if Config.ESP.ESPType == "Highlight" then
-            -- Highlight mode (filled box with transparency)
-            esp.HighlightBox.Size = boxSize + Vector2.new(10, 10)
-            esp.HighlightBox.Position = Vector2.new(rootPos.X - (boxSize.X + 10) / 2, rootPos.Y - (boxSize.Y + 10) / 2)
-            esp.HighlightBox.Color = playerColor
-            esp.HighlightBox.Visible = true
-            esp.Box.Visible = false
-        elseif Config.ESP.ESPType == "Box" then
-            -- Box mode (outline only)
+        -- Hide all elements first
+        for _, obj in pairs(esp) do 
+            pcall(function() obj.Visible = false end)
+        end
+        
+        -- Modern Name (di atas)
+        if Config.ModernESP.Names then
+            esp.Name.Text = player.Name
+            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 45)
+            esp.Name.Color = playerColor
+            esp.Name.Visible = true
+        end
+        
+        -- Modern Distance [80m]
+        if Config.ModernESP.Distance then
+            esp.Distance.Text = string.format("[%dm]", math.floor(distance))
+            esp.Distance.Position = Vector2.new(headPos.X, headPos.Y - 20)
+            esp.Distance.Color = playerColor
+            esp.Distance.Visible = true
+        end
+        
+        -- Box outline
+        if Config.ModernESP.Boxes then
             esp.Box.Size = boxSize
             esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
             esp.Box.Color = playerColor
             esp.Box.Visible = true
-            esp.HighlightBox.Visible = false
-        else
-            -- Name only mode
-            esp.Box.Visible = false
-            esp.HighlightBox.Visible = false
         end
         
-        -- Always show name if enabled (with enhanced visibility)
-        if Config.ESP.Names then
-            esp.Name.Text = player.Name
-            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 40)
-            esp.Name.Color = playerColor
-            esp.Name.Visible = true
-        else
-            esp.Name.Visible = false
-        end
-        
-        -- Distance text (enhanced visibility)
-        if Config.ESP.Distance then
-            esp.Distance.Text = string.format("[%dm]", math.floor(distance))
-            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 25)
-            esp.Distance.Color = playerColor
-            esp.Distance.Visible = true
-        else
-            esp.Distance.Visible = false
+        -- Highlight effect
+        if Config.ModernESP.Highlight then
+            esp.Highlight.Size = boxSize + Vector2.new(8, 8)
+            esp.Highlight.Position = Vector2.new(rootPos.X - (boxSize.X + 8) / 2, rootPos.Y - (boxSize.Y + 8) / 2)
+            esp.Highlight.Color = playerColor
+            esp.Highlight.Visible = true
         end
         
         -- Health bar
-        if Config.ESP.Health and hum then
+        if Config.ModernESP.Health and hum then
             local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             local barWidth = 4
             local barHeight = boxSize.Y
@@ -551,53 +577,241 @@ local function updatePlayerESP()
             )
             esp.HealthBar.Color = healthColor
             esp.HealthBar.Visible = true
-        else
-            esp.HealthBarBG.Visible = false
-            esp.HealthBar.Visible = false
         end
         
         -- Tracers
-        if Config.ESP.Tracers then
+        if Config.ModernESP.Tracers then
             local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
             esp.Tracer.From = screenCenter
             esp.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
             esp.Tracer.Color = playerColor
             esp.Tracer.Visible = true
-        else
-            esp.Tracer.Visible = false
         end
     end
 end
 
-local function setupPlayerESP(player)
-    player.CharacterAdded:Connect(function(char)
-        char:WaitForChild("HumanoidRootPart")
-        task.wait(0.5)
-        if Config.ESP.Enabled then
-            createPlayerESP(player)
-        end
-    end)
+--==================================================
+-- CLASSIC ESP SYSTEM (Dari script sebelumnya)
+--==================================================
+local ClassicESPObjects = {}
+
+local function createClassicESP(player)
+    if player == Player then return end
+    if ClassicESPObjects[player] then return end
     
-    if player.Character then
-        task.spawn(function()
-            player.Character:WaitForChild("HumanoidRootPart")
-            task.wait(0.5)
-            if Config.ESP.Enabled then
-                createPlayerESP(player)
+    ClassicESPObjects[player] = {
+        -- Classic Name
+        Name = Drawing.new("Text"),
+        -- Classic Distance
+        Distance = Drawing.new("Text"),
+        -- Classic Box
+        Box = Drawing.new("Square"),
+        -- Health bar
+        HealthBarBG = Drawing.new("Square"),
+        HealthBar = Drawing.new("Square"),
+        -- Tracer
+        Tracer = Drawing.new("Line")
+    }
+    
+    local esp = ClassicESPObjects[player]
+    
+    -- Classic Name Settings
+    esp.Name.Visible = false
+    esp.Name.Color = Color3.fromRGB(255, 255, 255)
+    esp.Name.Size = 15
+    esp.Name.Center = true
+    esp.Name.Outline = true
+    esp.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
+    esp.Name.Font = 2
+    
+    -- Classic Distance Settings
+    esp.Distance.Visible = false
+    esp.Distance.Color = Color3.fromRGB(200, 200, 200)
+    esp.Distance.Size = 13
+    esp.Distance.Center = true
+    esp.Distance.Outline = true
+    esp.Distance.OutlineColor = Color3.fromRGB(0, 0, 0)
+    esp.Distance.Font = 2
+    
+    -- Classic Box Settings
+    esp.Box.Visible = false
+    esp.Box.Thickness = 2
+    esp.Box.Transparency = 1
+    esp.Box.Filled = false
+    esp.Box.Color = Color3.fromRGB(255, 255, 255)
+    
+    -- Health bar settings
+    esp.HealthBarBG.Visible = false
+    esp.HealthBarBG.Color = Color3.fromRGB(20, 20, 20)
+    esp.HealthBarBG.Thickness = 1
+    esp.HealthBarBG.Transparency = 0.8
+    esp.HealthBarBG.Filled = true
+    
+    esp.HealthBar.Visible = false
+    esp.HealthBar.Color = Color3.fromRGB(0, 255, 0)
+    esp.HealthBar.Thickness = 1
+    esp.HealthBar.Transparency = 1
+    esp.HealthBar.Filled = true
+    
+    -- Tracer settings
+    esp.Tracer.Visible = false
+    esp.Tracer.Thickness = 1
+    esp.Tracer.Transparency = 1
+end
+
+local function removeClassicESP(player)
+    if ClassicESPObjects[player] then
+        for _, obj in pairs(ClassicESPObjects[player]) do
+            pcall(function() obj:Remove() end)
+        end
+        ClassicESPObjects[player] = nil
+    end
+end
+
+local function updateClassicESP()
+    if not Config.ClassicESP.Enabled then
+        for _, esp in pairs(ClassicESPObjects) do
+            for _, obj in pairs(esp) do 
+                pcall(function() obj.Visible = false end)
             end
-        end)
+        end
+        return
+    end
+    
+    for player, esp in pairs(ClassicESPObjects) do
+        if not player or not player.Parent or not player.Character then
+            removeClassicESP(player)
+            continue
+        end
+        
+        if Config.ClassicESP.TeamCheck and isTeammate(player) and not Config.ClassicESP.ShowTeammates then
+            for _, obj in pairs(esp) do 
+                pcall(function() obj.Visible = false end)
+            end
+            continue
+        end
+        
+        local char = player.Character
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        local head = char:FindFirstChild("Head")
+        
+        if not hrp or not hum or not head then
+            for _, obj in pairs(esp) do 
+                pcall(function() obj.Visible = false end)
+            end
+            continue
+        end
+        
+        local distance = (hrp.Position - Camera.CFrame.Position).Magnitude
+        
+        if distance > Config.ClassicESP.MaxDistance then
+            for _, obj in pairs(esp) do 
+                pcall(function() obj.Visible = false end)
+            end
+            continue
+        end
+        
+        local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+        local rootPos = Camera:WorldToViewportPoint(hrp.Position)
+        
+        if not onScreen then
+            for _, obj in pairs(esp) do 
+                pcall(function() obj.Visible = false end)
+            end
+            continue
+        end
+        
+        local boxSize = Vector2.new(2000 / distance, 2500 / distance)
+        local playerColor = getPlayerColor(player, "classic")
+        
+        -- Hide all elements first
+        for _, obj in pairs(esp) do 
+            pcall(function() obj.Visible = false end)
+        end
+        
+        -- Classic Name
+        if Config.ClassicESP.Names then
+            esp.Name.Text = player.Name
+            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 35)
+            esp.Name.Color = playerColor
+            esp.Name.Visible = true
+        end
+        
+        -- Classic Distance
+        if Config.ClassicESP.Distance then
+            esp.Distance.Text = string.format("[%.0fm]", distance)
+            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 20)
+            esp.Distance.Visible = true
+        end
+        
+        -- Classic Box
+        if Config.ClassicESP.Boxes then
+            esp.Box.Size = boxSize
+            esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
+            esp.Box.Color = playerColor
+            esp.Box.Visible = true
+        end
+        
+        -- Health bar
+        if Config.ClassicESP.Health and hum then
+            local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+            local barWidth = 3
+            local barHeight = boxSize.Y
+            
+            esp.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
+            esp.HealthBarBG.Position = Vector2.new(rootPos.X - boxSize.X / 2 - 5, rootPos.Y - boxSize.Y / 2)
+            esp.HealthBarBG.Visible = true
+            
+            local healthColor = Color3.fromRGB(
+                math.floor(255 * (1 - healthPercent)),
+                math.floor(255 * healthPercent),
+                0
+            )
+            esp.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
+            esp.HealthBar.Position = Vector2.new(
+                rootPos.X - boxSize.X / 2 - 5,
+                rootPos.Y - boxSize.Y / 2 + barHeight * (1 - healthPercent)
+            )
+            esp.HealthBar.Color = healthColor
+            esp.HealthBar.Visible = true
+        end
+        
+        -- Tracers
+        if Config.ClassicESP.Tracers then
+            local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+            esp.Tracer.From = screenCenter
+            esp.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
+            esp.Tracer.Color = playerColor
+            esp.Tracer.Visible = true
+        end
     end
 end
 
 -- Initialize ESP for existing players
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= Player then
-        setupPlayerESP(player)
+local function setupAllESP()
+    -- Modern ESP
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player then
+            createModernESP(player)
+            createClassicESP(player)
+        end
     end
 end
 
-Players.PlayerAdded:Connect(setupPlayerESP)
-Players.PlayerRemoving:Connect(removePlayerESP)
+Players.PlayerAdded:Connect(function(player)
+    if player ~= Player then
+        createModernESP(player)
+        createClassicESP(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    removeModernESP(player)
+    removeClassicESP(player)
+end)
+
+setupAllESP()
 
 --==================================================
 -- WALLHACK FUNCTION
@@ -1017,7 +1231,8 @@ end
 --==================================================
 RunService.Heartbeat:Connect(function()
     updateMovement()
-    updatePlayerESP()
+    updateModernESP()
+    updateClassicESP()
     if Config.Highlight.Enabled then
         updateHighlights()
     end
@@ -1038,126 +1253,116 @@ task.spawn(function()
 end)
 
 --==================================================
--- MAIN TAB CONTENT (Already created above)
+-- MODERN ESP TAB
 --==================================================
-
---==================================================
--- ESP TAB (ENHANCED)
---==================================================
-local ESPSection = ESPTab:AddSection({
-    Name = "⚡ PLAYER ESP - AUTO DETECT ⚡",
+local ModernSection = ModernESPTab:AddSection({
+    Name = "✨ MODERN ESP (Seperti di Gambar) ✨",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-ESPSection:AddToggle({
-    Name = "Enable ESP",
+ModernSection:AddToggle({
+    Name = "Enable Modern ESP",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "ESPEnable",
+    Flag = "ModernESPEnable",
     Save = true,
     Callback = function(Value)
-        Config.ESP.Enabled = Value
-        
-        if Value then
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= Player then
-                    createPlayerESP(player)
-                end
-            end
-            Notify("Player ESP Enabled")
-        else
-            for player, _ in pairs(ESPObjects) do
-                removePlayerESP(player)
-            end
-        end
+        Config.ModernESP.Enabled = Value
+        Notify(Value and "Modern ESP Enabled" or "Modern ESP Disabled")
     end
 })
 
-ESPSection:AddDropdown({
-    Name = "ESP Display Mode",
-    Default = "Highlight",
-    Options = {"Highlight", "Box", "Name Only"},
-    Multi = false,
-    Search = false,
-    AllowNone = false,
-    Outline = true,
-    Flag = "ESPMode",
-    Save = true,
-    Callback = function(Value)
-        if Value == "Highlight" then
-            Config.ESP.ESPType = "Highlight"
-        elseif Value == "Box" then
-            Config.ESP.ESPType = "Box"
-        else
-            Config.ESP.ESPType = "Name"
-        end
-    end
+ModernSection:AddParagraph({
+    Title = "Modern ESP Features",
+    Desc = "• Nama besar putih (size 20)\n• Distance format [80m] putih\n• Bold font dengan outline hitam",
+    Image = "eye",
+    ImageSize = 38
 })
 
-ESPSection:AddToggle({
+ModernSection:AddToggle({
     Name = "Show Names",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ModernNames",
+    Save = true,
+    Callback = function(Value) Config.ModernESP.Names = Value end
+})
+
+ModernSection:AddToggle({
+    Name = "Show Distance [80m]",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ModernDistance",
+    Save = true,
+    Callback = function(Value) Config.ModernESP.Distance = Value end
+})
+
+ModernSection:AddToggle({
+    Name = "Show Boxes",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "ESPNames",
+    Flag = "ModernBoxes",
     Save = true,
-    Callback = function(Value) Config.ESP.Names = Value end
+    Callback = function(Value) Config.ModernESP.Boxes = Value end
 })
 
-ESPSection:AddToggle({
-    Name = "Show Distance",
+ModernSection:AddToggle({
+    Name = "Show Highlight",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "ESPDistance",
+    Flag = "ModernHighlight",
     Save = true,
-    Callback = function(Value) Config.ESP.Distance = Value end
+    Callback = function(Value) Config.ModernESP.Highlight = Value end
 })
 
-ESPSection:AddToggle({
+ModernSection:AddToggle({
     Name = "Show Health Bar",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "ESPHealth",
+    Flag = "ModernHealth",
     Save = true,
-    Callback = function(Value) Config.ESP.Health = Value end
+    Callback = function(Value) Config.ModernESP.Health = Value end
 })
 
-ESPSection:AddToggle({
+ModernSection:AddToggle({
     Name = "Show Tracers",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "ESPTracers",
+    Flag = "ModernTracers",
     Save = true,
-    Callback = function(Value) Config.ESP.Tracers = Value end
+    Callback = function(Value) Config.ModernESP.Tracers = Value end
 })
 
-ESPSection:AddToggle({
+ModernSection:AddToggle({
     Name = "Team Check (Hide Teammates)",
     Default = true,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "ESPTeamCheck",
+    Flag = "ModernTeamCheck",
     Save = true,
-    Callback = function(Value) Config.ESP.TeamCheck = Value end
+    Callback = function(Value) Config.ModernESP.TeamCheck = Value end
 })
 
-ESPSection:AddToggle({
+ModernSection:AddToggle({
     Name = "Show Teammates (Override)",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "ESPShowTeam",
+    Flag = "ModernShowTeam",
     Save = true,
-    Callback = function(Value) Config.ESP.ShowTeammates = Value end
+    Callback = function(Value) Config.ModernESP.ShowTeammates = Value end
 })
 
-ESPSection:AddSlider({
+ModernSection:AddSlider({
     Name = "Max ESP Distance",
     Min = 500,
     Max = 5000,
@@ -1165,16 +1370,122 @@ ESPSection:AddSlider({
     Increment = 100,
     ValueName = "m",
     Outline = true,
-    Flag = "ESPMaxDist",
+    Flag = "ModernMaxDist",
     Save = true,
-    Callback = function(Value) Config.ESP.MaxDistance = Value end
+    Callback = function(Value) Config.ModernESP.MaxDistance = Value end
 })
 
-ESPSection:AddParagraph({
-    Title = "Color Guide",
-    Desc = "🟢 Green = Teammate\n🔴 Red = Enemy",
-    Image = "info",
+--==================================================
+-- CLASSIC ESP TAB
+--==================================================
+local ClassicSection = ClassicESPTab:AddSection({
+    Name = "📦 CLASSIC ESP (Dari Script Sebelumnya) 📦",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+ClassicSection:AddToggle({
+    Name = "Enable Classic ESP",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ClassicESPEnable",
+    Save = true,
+    Callback = function(Value)
+        Config.ClassicESP.Enabled = Value
+        Notify(Value and "Classic ESP Enabled" or "Classic ESP Disabled")
+    end
+})
+
+ClassicSection:AddParagraph({
+    Title = "Classic ESP Features",
+    Desc = "• Nama ukuran normal (size 15)\n• Distance abu-abu (size 13)\n• Regular font",
+    Image = "box",
     ImageSize = 38
+})
+
+ClassicSection:AddToggle({
+    Name = "Show Names",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ClassicNames",
+    Save = true,
+    Callback = function(Value) Config.ClassicESP.Names = Value end
+})
+
+ClassicSection:AddToggle({
+    Name = "Show Distance",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ClassicDistance",
+    Save = true,
+    Callback = function(Value) Config.ClassicESP.Distance = Value end
+})
+
+ClassicSection:AddToggle({
+    Name = "Show Boxes",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ClassicBoxes",
+    Save = true,
+    Callback = function(Value) Config.ClassicESP.Boxes = Value end
+})
+
+ClassicSection:AddToggle({
+    Name = "Show Health Bar",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ClassicHealth",
+    Save = true,
+    Callback = function(Value) Config.ClassicESP.Health = Value end
+})
+
+ClassicSection:AddToggle({
+    Name = "Show Tracers",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ClassicTracers",
+    Save = true,
+    Callback = function(Value) Config.ClassicESP.Tracers = Value end
+})
+
+ClassicSection:AddToggle({
+    Name = "Team Check (Hide Teammates)",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ClassicTeamCheck",
+    Save = true,
+    Callback = function(Value) Config.ClassicESP.TeamCheck = Value end
+})
+
+ClassicSection:AddToggle({
+    Name = "Show Teammates (Override)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "ClassicShowTeam",
+    Save = true,
+    Callback = function(Value) Config.ClassicESP.ShowTeammates = Value end
+})
+
+ClassicSection:AddSlider({
+    Name = "Max ESP Distance",
+    Min = 500,
+    Max = 5000,
+    Default = 2000,
+    Increment = 100,
+    ValueName = "m",
+    Outline = true,
+    Flag = "ClassicMaxDist",
+    Save = true,
+    Callback = function(Value) Config.ClassicESP.MaxDistance = Value end
 })
 
 --==================================================
@@ -1352,7 +1663,7 @@ HealSection:AddParagraph({
 })
 
 --==================================================
--- VISUAL TAB (ENHANCED)
+-- VISUAL TAB
 --==================================================
 local VisualSection = VisualTab:AddSection({
     Name = "☀️ VISUAL ENHANCEMENTS ☀️",
@@ -1420,13 +1731,6 @@ VisualSection:AddToggle({
     end
 })
 
-VisualSection:AddParagraph({
-    Title = "Fullbright Features",
-    Desc = "✅ Removes shadows\n✅ Brightens map",
-    Image = "sun",
-    ImageSize = 38
-})
-
 VisualSection:AddSection({
     Name = "🎮 UI SETTINGS 🎮",
     TextSize = 18,
@@ -1445,13 +1749,6 @@ VisualSection:AddToggle({
         Config.UI.HideSkillCheck = Value
         Notify(Value and "Skill Check UI Hidden" or "Skill Check UI Visible")
     end
-})
-
-VisualSection:AddParagraph({
-    Title = "Info",
-    Desc = "✅ Hides SkillCheckPromptGui\n✅ Clean screen while repairing",
-    Image = "eye-off",
-    ImageSize = 38
 })
 
 --==================================================
@@ -1580,7 +1877,7 @@ MoveSection:AddToggle({
 })
 
 --==================================================
--- TELEPORT TAB (RESTORED)
+-- TELEPORT TAB
 --==================================================
 local TeleportSection = TeleportTab:AddSection({
     Name = "📍 TELEPORT TO PLAYER 📍",
@@ -1641,21 +1938,6 @@ TeleportSection:AddButton({
     Icon = "refresh-cw",
     Outline = true,
     Callback = function()
-        -- Refresh dropdown
-        TeleportTab:AddDropdown({
-            Name = "Select Player",
-            Default = "None",
-            Options = getPlayerList(),
-            Multi = false,
-            Search = true,
-            AllowNone = true,
-            Outline = true,
-            Flag = "TeleportTarget",
-            Save = false,
-            Callback = function(Value)
-                selectedPlayer = Value
-            end
-        })
         Notify("Player list refreshed")
     end
 })
@@ -1694,7 +1976,7 @@ TeleportSection:AddButton({
 })
 
 --==================================================
--- MISC TAB (RESTORED)
+-- MISC TAB
 --==================================================
 local MiscSection = MiscTab:AddSection({
     Name = "⚙️ UTILITY FEATURES ⚙️",
@@ -1749,9 +2031,6 @@ MiscSection:AddParagraph({
     ImageSize = 38
 })
 
--- Active features counter (updated every 2 seconds from Main Tab)
--- This is already handled in Main Tab
-
 --==================================================
 -- CHARACTER UPDATES
 --==================================================
@@ -1785,11 +2064,13 @@ Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
 print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.0 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ Player ESP - Auto-detect + Enhanced Visibility")
+print("✨ Modern ESP - Nama besar putih + [80m] (Seperti gambar)")
+print("📦 Classic ESP - Dari script sebelumnya")
+print("✅ User bebas memilih mode ESP yang diinginkan")
+print("✅ Kedua mode bisa aktif bersamaan atau sendiri-sendiri")
 print("✅ Highlight - Team colors (Green/Red)")
 print("✅ Generator ESP - Auto-scan with progress %")
 print("✅ Anti-Fail System - Generator + Healing")
-print("✅ Hide Skill Check UI - Clean screen")
 print("✅ Visual - Fullbright, No Fog, Wallhack, Infinite Zoom")
 print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
 print("✅ Teleport - To Player + Waypoints")
