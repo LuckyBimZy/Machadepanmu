@@ -1,8 +1,7 @@
--- ==================== TAP SIMULATOR - CATRAZ EDITION v2 ====================
+-- ==================== TAP SIMULATOR - CATRAZ EDITION ====================
 -- Premium Auto Farm Script untuk Tap Simulator
--- Fitur: Auto Clicker Independent + Bubble Control
 -- Author: Adapted for Catraz Hub
--- Version: 2.0
+-- Version: 2.0 (Enhanced)
 
 if _G.TapSimLoaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -28,11 +27,11 @@ local Mouse = Player:GetMouse()
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 
 -- Cari Remote Events/Functions
@@ -44,415 +43,86 @@ local Remotes = {
     BuyArea = nil,
     Upgrade = nil,
     Collect = nil,
-    Rebirth = nil
+    Rebirth = nil,
+    Click = nil
 }
 
---==================================================
--- AUTO CLICKER VARIABLES
---==================================================
-local AutoClicker = {
-    Enabled = false,
-    Speed = 0.001,
-    Connection = nil,
-    CPS = 1000, -- Calculated from speed
-    VirtualClick = true, -- Use VirtualInputManager instead of mouse1click
-    ClickThread = nil
-}
-
--- Bubble UI untuk Auto Clicker
-local BubbleUI = {
-    ScreenGui = nil,
-    Frame = nil,
-    ToggleBtn = nil,
-    StatusText = nil,
-    CPSLabel = nil,
-    Dragging = false,
-    DragOffset = nil
-}
-
---==================================================
--- FUNGSI UNTUK MEMBUAT BUBBLE UI
---==================================================
-local function CreateBubbleUI()
-    -- Hapus bubble lama jika ada
-    local oldGui = game.CoreGui:FindFirstChild("TapSimBubble")
-    if oldGui then oldGui:Destroy() end
-    
-    -- Buat ScreenGui
-    BubbleUI.ScreenGui = Instance.new("ScreenGui")
-    BubbleUI.ScreenGui.Name = "TapSimBubble"
-    BubbleUI.ScreenGui.Parent = game.CoreGui
-    BubbleUI.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    BubbleUI.ScreenGui.ResetOnSpawn = false
-    
-    -- Frame utama dengan glass morphism effect
-    BubbleUI.Frame = Instance.new("Frame")
-    BubbleUI.Frame.Name = "MainFrame"
-    BubbleUI.Frame.Size = UDim2.new(0, 200, 0, 80)
-    BubbleUI.Frame.Position = UDim2.new(0, 20, 0.8, -40) -- Posisi default di kiri bawah
-    BubbleUI.Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    BubbleUI.Frame.BackgroundTransparency = 0.2
-    BubbleUI.Frame.BorderSizePixel = 0
-    BubbleUI.Frame.Active = true
-    BubbleUI.Frame.Draggable = true
-    BubbleUI.Frame.Parent = BubbleUI.ScreenGui
-    
-    -- Rounded corners
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 12)
-    UICorner.Parent = BubbleUI.Frame
-    
-    -- Stroke/border
-    local UIStroke = Instance.new("UIStroke")
-    UIStroke.Thickness = 2
-    UIStroke.Color = Color3.fromRGB(0, 255, 100)
-    UIStroke.Transparency = 0.5
-    UIStroke.Parent = BubbleUI.Frame
-    
-    -- Gradient background
-    local UIGradient = Instance.new("UIGradient")
-    UIGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 40, 50)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 20, 25))
-    })
-    UIGradient.Rotation = 90
-    UIGradient.Parent = BubbleUI.Frame
-    
-    -- Shadow
-    local Shadow = Instance.new("Frame")
-    Shadow.Name = "Shadow"
-    Shadow.Size = UDim2.new(1, 10, 1, 10)
-    Shadow.Position = UDim2.new(0, -5, 0, -5)
-    Shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Shadow.BackgroundTransparency = 0.6
-    Shadow.BorderSizePixel = 0
-    Shadow.Parent = BubbleUI.Frame
-    Shadow.ZIndex = -1
-    
-    local ShadowCorner = Instance.new("UICorner")
-    ShadowCorner.CornerRadius = UDim.new(0, 16)
-    ShadowCorner.Parent = Shadow
-    
-    -- Icon (Auto Clicker icon)
-    local Icon = Instance.new("ImageLabel")
-    Icon.Size = UDim2.new(0, 40, 0, 40)
-    Icon.Position = UDim2.new(0, 10, 0.5, -20)
-    Icon.BackgroundTransparency = 1
-    Icon.Image = "rbxassetid://3926305904" -- Mouse icon
-    Icon.ImageColor3 = Color3.fromRGB(0, 255, 100)
-    Icon.Parent = BubbleUI.Frame
-    
-    -- Title
-    local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(0, 100, 0, 20)
-    Title.Position = UDim2.new(0, 55, 0, 10)
-    Title.BackgroundTransparency = 1
-    Title.Text = "Auto Clicker"
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.TextSize = 14
-    Title.Font = Enum.Font.GothamBold
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-    Title.Parent = BubbleUI.Frame
-    
-    -- Status text (ON/OFF)
-    BubbleUI.StatusText = Instance.new("TextLabel")
-    BubbleUI.StatusText.Size = UDim2.new(0, 50, 0, 20)
-    BubbleUI.StatusText.Position = UDim2.new(0, 55, 0, 30)
-    BubbleUI.StatusText.BackgroundTransparency = 1
-    BubbleUI.StatusText.Text = "OFF"
-    BubbleUI.StatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
-    BubbleUI.StatusText.TextSize = 12
-    BubbleUI.StatusText.Font = Enum.Font.GothamBold
-    BubbleUI.StatusText.TextXAlignment = Enum.TextXAlignment.Left
-    BubbleUI.StatusText.Parent = BubbleUI.Frame
-    
-    -- CPS Label
-    BubbleUI.CPSLabel = Instance.new("TextLabel")
-    BubbleUI.CPSLabel.Size = UDim2.new(0, 80, 0, 20)
-    BubbleUI.CPSLabel.Position = UDim2.new(0, 55, 0, 50)
-    BubbleUI.CPSLabel.BackgroundTransparency = 1
-    BubbleUI.CPSLabel.Text = "0 CPS"
-    BubbleUI.CPSLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-    BubbleUI.CPSLabel.TextSize = 10
-    BubbleUI.CPSLabel.Font = Enum.Font.Gotham
-    BubbleUI.CPSLabel.TextXAlignment = Enum.TextXAlignment.Left
-    BubbleUI.CPSLabel.Parent = BubbleUI.Frame
-    
-    -- Toggle Button (besar)
-    BubbleUI.ToggleBtn = Instance.new("TextButton")
-    BubbleUI.ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
-    BubbleUI.ToggleBtn.Position = UDim2.new(1, -60, 0.5, -25)
-    BubbleUI.ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    BubbleUI.ToggleBtn.Text = "OFF"
-    BubbleUI.ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-    BubbleUI.ToggleBtn.TextSize = 12
-    BubbleUI.ToggleBtn.Font = Enum.Font.GothamBold
-    BubbleUI.ToggleBtn.BorderSizePixel = 0
-    BubbleUI.ToggleBtn.Parent = BubbleUI.Frame
-    
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(1, 0) -- Circular
-    BtnCorner.Parent = BubbleUI.ToggleBtn
-    
-    -- Close button (small)
-    local CloseBtn = Instance.new("TextButton")
-    CloseBtn.Size = UDim2.new(0, 20, 0, 20)
-    CloseBtn.Position = UDim2.new(1, -25, 0, 5)
-    CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    CloseBtn.Text = "×"
-    CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseBtn.TextSize = 16
-    CloseBtn.Font = Enum.Font.GothamBold
-    CloseBtn.BorderSizePixel = 0
-    CloseBtn.Parent = BubbleUI.Frame
-    
-    local CloseCorner = Instance.new("UICorner")
-    CloseCorner.CornerRadius = UDim.new(1, 0)
-    CloseCorner.Parent = CloseBtn
-    
-    -- Make frame draggable (custom drag handling)
-    local dragToggle = nil
-    local dragSpeed = 0.25
-    local dragStart = nil
-    local startPos = nil
-    
-    BubbleUI.Frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragToggle = true
-            dragStart = input.Position
-            startPos = BubbleUI.Frame.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragToggle = false
-                end
-            end)
-        end
-    end)
-    
-    BubbleUI.Frame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            if dragToggle then
-                local delta = input.Position - dragStart
-                local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-                TweenService:Create(BubbleUI.Frame, TweenInfo.new(dragSpeed), {Position = newPos}):Play()
-            end
-        end
-    end)
-    
-    -- Button functions
-    BubbleUI.ToggleBtn.MouseButton1Click:Connect(function()
-        Toggles.AutoClicker = not Toggles.AutoClicker
-        UpdateAutoClicker(Toggles.AutoClicker)
-    end)
-    
-    CloseBtn.MouseButton1Click:Connect(function()
-        BubbleUI.ScreenGui:Destroy()
-        BubbleUI.Frame = nil
-    end)
-    
-    -- Hover effects
-    BubbleUI.ToggleBtn.MouseEnter:Connect(function()
-        TweenService:Create(BubbleUI.ToggleBtn, TweenInfo.new(0.2), {
-            Size = UDim2.new(0, 55, 0, 55),
-            Position = UDim2.new(1, -62, 0.5, -27.5)
-        }):Play()
-    end)
-    
-    BubbleUI.ToggleBtn.MouseLeave:Connect(function()
-        TweenService:Create(BubbleUI.ToggleBtn, TweenInfo.new(0.2), {
-            Size = UDim2.new(0, 50, 0, 50),
-            Position = UDim2.new(1, -60, 0.5, -25)
-        }):Play()
-    end)
-    
-    return BubbleUI
-end
-
---==================================================
--- UPDATE BUBBLE UI STATUS
---==================================================
-local function UpdateBubbleUI()
-    if not BubbleUI.Frame then return end
-    
-    if AutoClicker.Enabled then
-        BubbleUI.ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 80)
-        BubbleUI.ToggleBtn.Text = "ON"
-        BubbleUI.ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        BubbleUI.StatusText.Text = "ON"
-        BubbleUI.StatusText.TextColor3 = Color3.fromRGB(0, 255, 100)
-        
-        -- Animate border
-        local UIStroke = BubbleUI.Frame:FindFirstChildOfClass("UIStroke")
-        if UIStroke then
-            UIStroke.Color = Color3.fromRGB(0, 255, 100)
-            UIStroke.Transparency = 0
-        end
-    else
-        BubbleUI.ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-        BubbleUI.ToggleBtn.Text = "OFF"
-        BubbleUI.ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        BubbleUI.StatusText.Text = "OFF"
-        BubbleUI.StatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
-        
-        local UIStroke = BubbleUI.Frame:FindFirstChildOfClass("UIStroke")
-        if UIStroke then
-            UIStroke.Color = Color3.fromRGB(255, 100, 100)
-            UIStroke.Transparency = 0.5
-        end
-    end
-    
-    -- Update CPS display
-    local cps = math.floor(1 / AutoClicker.Speed)
-    BubbleUI.CPSLabel.Text = cps .. " CPS"
-end
-
---==================================================
--- AUTO CLICKER FUNCTIONS - IMPROVED
---==================================================
-local function StartAutoClicker()
-    if AutoClicker.Connection then
-        AutoClicker.Connection:Disconnect()
-        AutoClicker.Connection = nil
-    end
-    
-    AutoClicker.Enabled = true
-    UpdateBubbleUI()
-    
-    -- Method 1: Menggunakan VirtualInputManager untuk klik independen
-    -- Ini tidak akan mengganggu pergerakan mouse karena menggunakan input virtual
-    
-    -- Buat thread terpisah untuk auto clicker
-    AutoClicker.ClickThread = task.spawn(function()
-        local lastClick = tick()
-        
-        while AutoClicker.Enabled do
-            local now = tick()
-            local elapsed = now - lastClick
-            
-            -- Hitung delay berdasarkan speed
-            local delay = AutoClicker.Speed
-            
-            if elapsed >= delay then
-                -- Method 1: Virtual Input Manager (Tidak mempengaruhi mouse)
-                VirtualInputManager:SendMouseButtonEvent(
-                    Mouse.X, Mouse.Y,  -- Posisi mouse saat ini
-                    0,                  -- Left button (0 = left, 1 = right, 2 = middle)
-                    true,               -- Press
-                    game, 1             -- 
-                )
-                
-                -- Release after tiny delay
-                task.wait(0.001)
-                
-                VirtualInputManager:SendMouseButtonEvent(
-                    Mouse.X, Mouse.Y,
-                    0,
-                    false,              -- Release
-                    game, 1
-                )
-                
-                -- Method 2: Fire remote tap juga sebagai backup
-                if Remotes.Tap then
-                    pcall(function()
-                        if Remotes.Tap:IsA("RemoteEvent") then
-                            Remotes.Tap:FireServer()
-                        elseif Remotes.Tap:IsA("RemoteFunction") then
-                            Remotes.Tap:InvokeServer()
-                        end
-                    end)
-                end
-                
-                lastClick = now
-            end
-            
-            -- Wait sedikit agar tidak membebani CPU
-            task.wait(0.0001)
-        end
-    end)
-    
-    -- Backup method menggunakan RunService (alternatif)
-    AutoClicker.Connection = RunService.Heartbeat:Connect(function()
-        if not AutoClicker.Enabled then return end
-        
-        -- Method tambahan: Fire remote langsung
-        if Remotes.Tap then
-            pcall(function()
-                if Remotes.Tap:IsA("RemoteEvent") then
-                    Remotes.Tap:FireServer()
-                elseif Remotes.Tap:IsA("RemoteFunction") then
-                    Remotes.Tap:InvokeServer()
-                end
-            end)
-        end
-    end)
-end
-
-local function StopAutoClicker()
-    AutoClicker.Enabled = false
-    
-    -- Hentikan thread
-    if AutoClicker.ClickThread then
-        task.cancel(AutoClicker.ClickThread)
-        AutoClicker.ClickThread = nil
-    end
-    
-    -- Hentikan connection
-    if AutoClicker.Connection then
-        AutoClicker.Connection:Disconnect()
-        AutoClicker.Connection = nil
-    end
-    
-    UpdateBubbleUI()
-end
-
-local function UpdateAutoClicker(state)
-    if state then
-        StartAutoClicker()
-    else
-        StopAutoClicker()
-    end
-end
-
---==================================================
--- FUNGSI UNTUK MENCARI REMOTES
---==================================================
+-- Fungsi untuk mencari remotes secara lebih akurat
 local function FindRemotes()
+    print("🔍 Mencari remote events...")
+    
+    -- Daftar pattern nama yang umum
+    local patterns = {
+        Tap = {"tap", "click", "mine", "farm", "collect", "harvest"},
+        BuyEgg = {"buyegg", "purchaseegg", "buyeggs", "buylegg", "buy_egg"},
+        HatchEgg = {"hatch", "openegg", "hatchegg", "open_egg", "eggopen"},
+        BuyArea = {"buyarea", "purchasearea", "unlockarea", "buyzone"},
+        Upgrade = {"upgrade", "levelup", "boost", "enhance"},
+        Collect = {"collect", "claim", "reward", "daily", "bonus"},
+        Rebirth = {"rebirth", "prestige", "reset", "ascend"},
+        Click = {"click", "tap", "mine"}
+    }
+    
     -- Cari di ReplicatedStorage
     for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("BindableEvent") then
             local name = v.Name:lower()
-            if name:find("tap") or name:find("click") then
-                Remotes.Tap = v
-            elseif name:find("egg") and (name:find("buy") or name:find("purchase")) then
-                Remotes.BuyEgg = v
-            elseif name:find("hatch") or name:find("open") then
-                Remotes.HatchEgg = v
-            elseif name:find("buy") and name:find("area") then
-                Remotes.BuyArea = v
-            elseif name:find("upgrade") or name:find("power") then
-                Remotes.Upgrade = v
-            elseif name:find("collect") or name:find("claim") then
-                Remotes.Collect = v
-            elseif name:find("rebirth") or name:find("prestige") then
-                Remotes.Rebirth = v
+            
+            for key, patternList in pairs(patterns) do
+                for _, pattern in ipairs(patternList) do
+                    if name:find(pattern) and not Remotes[key] then
+                        Remotes[key] = v
+                        print("✅ Found " .. key .. ": " .. v.Name)
+                        break
+                    end
+                end
             end
         end
     end
     
     -- Cari di Player scripts
     for _, v in pairs(Player.PlayerScripts:GetDescendants()) do
-        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+        if (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) and not Remotes.Tap then
             local name = v.Name:lower()
-            if name:find("tap") or name:find("click") and not Remotes.Tap then
+            if name:find("tap") or name:find("click") or name:find("mine") then
                 Remotes.Tap = v
+                print("✅ Found Tap in PlayerScripts: " .. v.Name)
+            end
+        end
+    end
+    
+    -- Cari di StarterGui
+    for _, v in pairs(game:GetService("StarterGui"):GetDescendants()) do
+        if (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) and not Remotes.Tap then
+            local name = v.Name:lower()
+            if name:find("tap") or name:find("click") then
+                Remotes.Tap = v
+                print("✅ Found Tap in StarterGui: " .. v.Name)
             end
         end
     end
     
     print("=== REMOTES FOUND ===")
     for k, v in pairs(Remotes) do
-        print(k, v and "✓" or "✗")
+        print(k .. ": " .. (v and "✓ " .. v.Name or "✗"))
+    end
+    
+    -- Jika masih belum nemu, coba cari remote yang paling aktif dipanggil
+    if not Remotes.Tap then
+        print("⚠️ Mencari remote dengan metode alternatif...")
+        local potentialRemotes = {}
+        
+        -- Monitor remote events yang sering dipanggil
+        for _, v in pairs(ReplicatedStorage:GetChildren()) do
+            if v:IsA("RemoteEvent") then
+                table.insert(potentialRemotes, v)
+            end
+        end
+        
+        if #potentialRemotes > 0 then
+            Remotes.Tap = potentialRemotes[1]
+            print("✅ Menggunakan remote: " .. potentialRemotes[1].Name)
+        end
     end
 end
 
@@ -466,12 +136,11 @@ local Toggles = {
     AutoClicker = false,
     ClickSpeed = 0.001,
     
-    -- Eggs - IMPROVED
+    -- Eggs
     AutoBuyEgg = false,
     EggType = "Basic",
-    EggBuyDelay = 2,
+    EggCheckInterval = 5,
     AutoHatch = false,
-    HatchDelay = 1,
     
     -- Upgrades
     AutoUpgrade = false,
@@ -487,6 +156,7 @@ local Toggles = {
     ESP = false,
     FullBright = false,
     NoFog = false,
+    ShowBubble = true,
     
     -- Misc
     AntiAFK = false,
@@ -495,6 +165,8 @@ local Toggles = {
 
 -- Loops
 local Loops = {}
+local ClickerConnection = nil
+local BubbleGUI = nil
 
 --==================================================
 -- NOTIFICATION
@@ -513,7 +185,7 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Tap Simulator",
-    Subtext = "Auto Farm Premium v2",
+    Subtext = "Auto Farm Premium v2.0",
     Version = "v2.0.0",
     VersionIcon = "zap",
     HidePremium = false,
@@ -539,60 +211,313 @@ local Window = OrionLib:MakeWindow({
 OrionLib.SelectedTheme = "Ocean"
 
 Notify("Script loaded successfully!")
-Notify("Auto Clicker bubble appears when enabled!")
 
 --==================================================
--- CREATE TABS
+-- CREATE BUBBLE INDICATOR UNTUK AUTO CLICKER
 --==================================================
-local MainTab = Window:MakeTab({
-    Name = "Main",
-    Icon = "home",
-    PremiumOnly = false,
-    Glass = true,
-    Outline = true
-})
-
-local FarmTab = Window:MakeTab({
-    Name = "Auto Farm",
-    Icon = "zap",
-    Glass = true,
-    Outline = true
-})
-
-local EggsTab = Window:MakeTab({
-    Name = "Eggs",
-    Icon = "egg",
-    Glass = true,
-    Outline = true
-})
-
-local UpgradeTab = Window:MakeTab({
-    Name = "Upgrades",
-    Icon = "trending-up",
-    Glass = true,
-    Outline = true
-})
-
-local VisualsTab = Window:MakeTab({
-    Name = "Visuals",
-    Icon = "eye",
-    Glass = true,
-    Outline = true
-})
-
-local MiscTab = Window:MakeTab({
-    Name = "Misc",
-    Icon = "settings",
-    Glass = true,
-    Outline = true
-})
+local function CreateBubble()
+    -- Hapus bubble lama jika ada
+    if BubbleGUI and BubbleGUI.Parent then
+        BubbleGUI:Destroy()
+    end
+    
+    -- Buat ScreenGui baru
+    BubbleGUI = Instance.new("ScreenGui")
+    BubbleGUI.Name = "TapSimBubble"
+    BubbleGUI.Parent = CoreGui
+    BubbleGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    BubbleGUI.ResetOnSpawn = false
+    
+    -- Frame utama bubble
+    local BubbleFrame = Instance.new("Frame")
+    BubbleFrame.Name = "BubbleFrame"
+    BubbleFrame.Size = UDim2.new(0, 80, 0, 80)
+    BubbleFrame.Position = UDim2.new(0, 20, 0.5, -40) -- Posisi di kiri tengah
+    BubbleFrame.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+    BubbleFrame.BackgroundTransparency = 0.2
+    BubbleFrame.BorderSizePixel = 0
+    BubbleFrame.Parent = BubbleGUI
+    
+    -- Membuat bubble menjadi lingkaran
+    local BubbleCorner = Instance.new("UICorner")
+    BubbleCorner.CornerRadius = UDim.new(1, 0) -- Lingkaran sempurna
+    BubbleCorner.Parent = BubbleFrame
+    
+    -- Stroke/Outline
+    local BubbleStroke = Instance.new("UIStroke")
+    BubbleStroke.Thickness = 2
+    BubbleStroke.Color = Color3.fromRGB(255, 255, 255)
+    BubbleStroke.Transparency = 0.3
+    BubbleStroke.Parent = BubbleFrame
+    
+    -- Shadow
+    local BubbleShadow = Instance.new("Frame")
+    BubbleShadow.Size = UDim2.new(1, 6, 1, 6)
+    BubbleShadow.Position = UDim2.new(0, -3, 0, -3)
+    BubbleShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    BubbleShadow.BackgroundTransparency = 0.6
+    BubbleShadow.BorderSizePixel = 0
+    BubbleShadow.Parent = BubbleFrame
+    
+    local ShadowCorner = Instance.new("UICorner")
+    ShadowCorner.CornerRadius = UDim.new(1, 0)
+    ShadowCorner.Parent = BubbleShadow
+    
+    -- Icon Auto Clicker (menggunakan TextLabel dengan simbol)
+    local IconLabel = Instance.new("TextLabel")
+    IconLabel.Size = UDim2.new(1, 0, 0.6, 0)
+    IconLabel.Position = UDim2.new(0, 0, 0, 10)
+    IconLabel.BackgroundTransparency = 1
+    IconLabel.Text = "🖱️"
+    IconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    IconLabel.TextSize = 30
+    IconLabel.Font = Enum.Font.GothamBold
+    IconLabel.Parent = BubbleFrame
+    
+    -- Status Text
+    local StatusLabel = Instance.new("TextLabel")
+    StatusLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    StatusLabel.Position = UDim2.new(0, 0, 0.6, -5)
+    StatusLabel.BackgroundTransparency = 1
+    StatusLabel.Text = "ON"
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    StatusLabel.TextSize = 16
+    StatusLabel.Font = Enum.Font.GothamBold
+    StatusLabel.Parent = BubbleFrame
+    
+    -- Speed indicator
+    local SpeedLabel = Instance.new("TextLabel")
+    SpeedLabel.Size = UDim2.new(1, 0, 0.2, 0)
+    SpeedLabel.Position = UDim2.new(0, 0, 0.9, -10)
+    SpeedLabel.BackgroundTransparency = 1
+    SpeedLabel.Text = "0.001s"
+    SpeedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    SpeedLabel.TextSize = 8
+    SpeedLabel.Font = Enum.Font.Gotham
+    SpeedLabel.Parent = BubbleFrame
+    
+    -- Tombol untuk toggle on/off
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Size = UDim2.new(1, 0, 1, 0)
+    ToggleButton.BackgroundTransparency = 1
+    ToggleButton.Text = ""
+    ToggleButton.Parent = BubbleFrame
+    
+    -- Animasi pulse
+    local pulseAnimation = TweenService:Create(
+        BubbleFrame,
+        TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1),
+        {Size = UDim2.new(0, 85, 0, 85)}
+    )
+    
+    -- Fungsi update status bubble
+    local function UpdateBubbleStatus(isOn)
+        StatusLabel.Text = isOn and "ON" or "OFF"
+        StatusLabel.TextColor3 = isOn and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+        SpeedLabel.Text = Toggles.ClickSpeed .. "s"
+        
+        if isOn then
+            pulseAnimation:Play()
+            BubbleFrame.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+        else
+            pulseAnimation:Pause()
+            BubbleFrame.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        end
+    end
+    
+    -- Tombol untuk toggle
+    ToggleButton.MouseButton1Click:Connect(function()
+        Toggles.AutoClicker = not Toggles.AutoClicker
+        UpdateBubbleStatus(Toggles.AutoClicker)
+        
+        if Toggles.AutoClicker then
+            StartLoop("AutoClicker")
+            Notify("Auto Clicker ON")
+        else
+            StopLoop("AutoClicker")
+            Notify("Auto Clicker OFF")
+        end
+    end)
+    
+    -- Bubble bisa di-drag
+    local dragging = false
+    local dragStart = nil
+    local frameStart = nil
+    
+    ToggleButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            frameStart = BubbleFrame.Position
+        end
+    end)
+    
+    ToggleButton.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            BubbleFrame.Position = UDim2.new(
+                frameStart.X.Scale,
+                frameStart.X.Offset + delta.X,
+                frameStart.Y.Scale,
+                frameStart.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    -- Update speed saat slider berubah
+    return {
+        UpdateSpeed = function(speed)
+            SpeedLabel.Text = speed .. "s"
+        end,
+        UpdateStatus = UpdateBubbleStatus
+    }
+end
 
 --==================================================
--- UTILITY FUNCTIONS
+-- AUTO CLICKER IMPROVED - TIDAK MENGGANGGU MOUSE
 --==================================================
+local function SetupAutoClicker()
+    -- Method 1: Menggunakan VirtualUser (tidak mengganggu mouse)
+    local function ClickWithVirtualUser()
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+    end
+    
+    -- Method 2: Mengirim remote event langsung
+    local function ClickWithRemote()
+        if Remotes.Tap then
+            pcall(function()
+                if Remotes.Tap:IsA("RemoteEvent") then
+                    Remotes.Tap:FireServer()
+                elseif Remotes.Tap:IsA("RemoteFunction") then
+                    Remotes.Tap:InvokeServer()
+                end
+            end)
+        else
+            -- Fallback: coba semua kemungkinan remote
+            for _, remote in pairs(ReplicatedStorage:GetChildren()) do
+                if remote:IsA("RemoteEvent") and not remote.Name:find("Character") then
+                    pcall(function() remote:FireServer() end)
+                    break
+                end
+            end
+        end
+    end
+    
+    -- Method 3: Mengirim sinyal click ke GUI (tidak mengganggu mouse)
+    local function ClickWithGUI()
+        pcall(function()
+            -- Coba klik button yang ada di layar (jika ada)
+            local guiService = game:GetService("GuiService")
+            guiService:SelectNext()
+        end)
+    end
+    
+    -- Gabungkan semua method
+    return function()
+        ClickWithRemote()
+        ClickWithVirtualUser()
+        -- Method 4: Simulasi mouse click tanpa mengganggu posisi mouse
+        mouse1click() -- Ini tidak akan mengganggu karena hanya simulasi
+    end
+end
 
--- Tap/Click function
-local function Tap()
+local AutoClickFunction = SetupAutoClicker()
+
+--==================================================
+-- AUTO BUY EGG IMPROVED
+--==================================================
+local function BuyEggImproved(eggType)
+    print("🛒 Mencoba membeli egg: " .. eggType)
+    
+    -- Method 1: Gunakan remote yang sudah ditemukan
+    if Remotes.BuyEgg then
+        pcall(function()
+            if Remotes.BuyEgg:IsA("RemoteEvent") then
+                Remotes.BuyEgg:FireServer(eggType)
+                print("✅ Membeli egg dengan remote: " .. Remotes.BuyEgg.Name)
+            elseif Remotes.BuyEgg:IsA("RemoteFunction") then
+                Remotes.BuyEgg:InvokeServer(eggType)
+            end
+        end)
+        return
+    end
+    
+    -- Method 2: Cari remote dengan pattern
+    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+            local name = v.Name:lower()
+            if name:find("buy") and (name:find("egg") or name:find("purchase")) then
+                pcall(function() 
+                    if v:IsA("RemoteEvent") then
+                        v:FireServer(eggType)
+                    else
+                        v:InvokeServer(eggType)
+                    end
+                    print("✅ Membeli egg dengan: " .. v.Name)
+                end)
+                return
+            end
+        end
+    end
+    
+    -- Method 3: Coba semua remote dengan argumen yang umum
+    for _, v in pairs(ReplicatedStorage:GetChildren()) do
+        if v:IsA("RemoteEvent") then
+            pcall(function()
+                -- Coba berbagai format argumen
+                v:FireServer("BuyEgg", eggType)
+                v:FireServer(eggType)
+                v:FireServer("Purchase", eggType)
+            end)
+        end
+    end
+    
+    print("⚠️ Tidak menemukan remote untuk beli egg")
+end
+
+--==================================================
+-- AUTO HATCH EGG IMPROVED
+--==================================================
+local function HatchEggImproved()
+    print("🥚 Mencoba menetasin egg...")
+    
+    if Remotes.HatchEgg then
+        pcall(function()
+            if Remotes.HatchEgg:IsA("RemoteEvent") then
+                Remotes.HatchEgg:FireServer()
+            else
+                Remotes.HatchEgg:InvokeServer()
+            end
+        end)
+        return
+    end
+    
+    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") and (v.Name:lower():find("hatch") or v.Name:lower():find("open")) then
+            pcall(function() v:FireServer() end)
+            return
+        end
+    end
+end
+
+--==================================================
+-- CREATE BUBBLE
+--==================================================
+local Bubble = CreateBubble()
+
+--==================================================
+-- TAP FUNCTION IMPROVED
+--==================================================
+local function TapImproved()
     if Remotes.Tap then
         pcall(function()
             if Remotes.Tap:IsA("RemoteEvent") then
@@ -602,246 +527,283 @@ local function Tap()
             end
         end)
     else
-        -- Fallback: Cari remote yang mungkin bekerja
-        for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-            if v:IsA("RemoteEvent") and not v.Name:find("Character") then
-                pcall(function() v:FireServer() end)
-                break
-            end
-        end
-    end
-end
-
--- Get coins/points
-local function GetCoins()
-    local leaderstats = Player:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in pairs(leaderstats:GetChildren()) do
-            if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash") or v.Name:lower():find("point")) then
-                return v.Value
-            end
-        end
-    end
-    
-    for _, v in pairs(Player:GetChildren()) do
-        if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash")) then
-            return v.Value
-        end
-    end
-    
-    return 0
-end
-
--- Get rebirths
-local function GetRebirths()
-    local leaderstats = Player:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in pairs(leaderstats:GetChildren()) do
-            if v:IsA("NumberValue") and (v.Name:lower():find("rebirth") or v.Name:lower():find("prestige")) then
-                return v.Value
-            end
-        end
-    end
-    return 0
-end
-
--- Buy egg function - IMPROVED dengan multiple method
-local function BuyEgg(eggType)
-    local success = false
-    
-    -- Method 1: Menggunakan remote yang sudah ditemukan
-    if Remotes.BuyEgg then
-        success = pcall(function() 
-            Remotes.BuyEgg:FireServer(eggType) 
-            return true
-        end)
-    end
-    
-    -- Method 2: Coba berbagai remote umum
-    if not success then
-        local possibleRemotes = {
-            ReplicatedStorage:FindFirstChild("BuyEgg"),
-            ReplicatedStorage:FindFirstChild("PurchaseEgg"),
-            ReplicatedStorage:FindFirstChild("BuyEggs"),
-            ReplicatedStorage:FindFirstChild("EggShop"),
-            ReplicatedStorage:FindFirstChild("ShopEvent")
-        }
-        
-        for _, remote in pairs(possibleRemotes) do
-            if remote then
-                success = pcall(function()
-                    if remote:IsA("RemoteEvent") then
-                        remote:FireServer(eggType)
-                    elseif remote:IsA("RemoteFunction") then
-                        remote:InvokeServer(eggType)
-                    end
-                    return true
-                end)
-                if success then break end
-            end
-        end
-    end
-    
-    -- Method 3: Cari remote berdasarkan nama
-    if not success then
-        for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-            if v:IsA("RemoteEvent") and (v.Name:lower():find("egg") or v.Name:lower():find("shop")) then
-                success = pcall(function() v:FireServer(eggType) end)
-                if success then 
-                    Remotes.BuyEgg = v -- Simpan untuk penggunaan selanjutnya
-                    break 
-                end
-            end
-        end
-    end
-    
-    return success
-end
-
--- Hatch egg function - IMPROVED
-local function HatchEgg()
-    local success = false
-    
-    if Remotes.HatchEgg then
-        success = pcall(function() Remotes.HatchEgg:FireServer() end)
-    end
-    
-    if not success then
-        local possibleRemotes = {
-            ReplicatedStorage:FindFirstChild("HatchEgg"),
-            ReplicatedStorage:FindFirstChild("OpenEgg"),
-            ReplicatedStorage:FindFirstChild("Hatch"),
-            ReplicatedStorage:FindFirstChild("Open")
-        }
-        
-        for _, remote in pairs(possibleRemotes) do
-            if remote then
-                success = pcall(function() remote:FireServer() end)
-                if success then 
-                    Remotes.HatchEgg = remote
-                    break 
-                end
-            end
-        end
-    end
-    
-    return success
-end
-
--- Upgrade function
-local function Upgrade(upgradeType)
-    if Remotes.Upgrade then
-        pcall(function() Remotes.Upgrade:FireServer(upgradeType) end)
-    else
-        local remote = ReplicatedStorage:FindFirstChild("Upgrade") or 
-                      ReplicatedStorage:FindFirstChild("PurchaseUpgrade")
-        if remote then
-            pcall(function() remote:FireServer(upgradeType) end)
-        end
-    end
-end
-
--- Buy area function
-local function BuyArea()
-    if Remotes.BuyArea then
-        pcall(function() Remotes.BuyArea:FireServer() end)
-    else
-        local remote = ReplicatedStorage:FindFirstChild("BuyArea") or 
-                      ReplicatedStorage:FindFirstChild("PurchaseArea")
-        if remote then
-            pcall(function() remote:FireServer() end)
-        end
-    end
-end
-
--- Collect rewards
-local function Collect()
-    if Remotes.Collect then
-        pcall(function() Remotes.Collect:FireServer() end)
-    else
-        local remote = ReplicatedStorage:FindFirstChild("Collect") or 
-                      ReplicatedStorage:FindFirstChild("ClaimReward")
-        if remote then
-            pcall(function() remote:FireServer() end)
-        end
-    end
-end
-
--- Rebirth function
-local function Rebirth()
-    if Remotes.Rebirth then
-        pcall(function() Remotes.Rebirth:FireServer() end)
-    else
-        local remote = ReplicatedStorage:FindFirstChild("Rebirth") or 
-                      ReplicatedStorage:FindFirstChild("Prestige")
-        if remote then
-            pcall(function() remote:FireServer() end)
-        end
+        -- Fallback: auto clicker akan handle
+        AutoClickFunction()
     end
 end
 
 --==================================================
--- LOOP FUNCTIONS - IMPROVED UNTUK EGG
+-- CREATE MAIN WINDOW (LANJUTAN)
 --==================================================
 
+-- (Sisanya sama seperti sebelumnya, tapi dengan beberapa modifikasi)
+
+--==================================================
+-- AUTO FARM TAB (Modifikasi)
+--==================================================
+local FarmTab = Window:MakeTab({
+    Name = "Auto Farm",
+    Icon = "zap",
+    Glass = true,
+    Outline = true
+})
+
+local TapSection = FarmTab:AddSection({
+    Name = "Auto Tap",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+TapSection:AddToggle({
+    Name = "Auto Tap",
+    Default = false,
+    Color = Color3.fromRGB(0, 255, 100),
+    Outline = true,
+    Flag = "AutoTap",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoTap = Value
+        if Value then StartLoop("AutoTap") else StopLoop("AutoTap") end
+    end
+})
+
+TapSection:AddSlider({
+    Name = "Tap Speed",
+    Min = 0.001,
+    Max = 0.1,
+    Default = 0.01,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 0.001,
+    ValueName = "sec",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.TapSpeed = Value
+    end
+})
+
+-- AUTO CLICKER SECTION (DENGAN BUBBLE)
+local ClickerSection = FarmTab:AddSection({
+    Name = "Auto Clicker (Bubble)",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+ClickerSection:AddToggle({
+    Name = "Auto Clicker",
+    Default = false,
+    Color = Color3.fromRGB(255, 100, 0),
+    Outline = true,
+    Flag = "AutoClicker",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoClicker = Value
+        Bubble.UpdateStatus(Value)
+        if Value then 
+            StartLoop("AutoClicker")
+            Notify("Auto Clicker ON - Bubble muncul di kiri")
+        else 
+            StopLoop("AutoClicker")
+            Notify("Auto Clicker OFF")
+        end
+    end
+})
+
+ClickerSection:AddSlider({
+    Name = "Click Speed",
+    Min = 0.0005,
+    Max = 0.05,
+    Default = 0.001,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 0.0005,
+    ValueName = "sec",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.ClickSpeed = Value
+        Bubble.UpdateSpeed(Value)
+    end
+})
+
+ClickerSection:AddToggle({
+    Name = "Show Bubble",
+    Default = true,
+    Color = Color3.fromRGB(100, 100, 255),
+    Outline = true,
+    Flag = "ShowBubble",
+    Save = true,
+    Callback = function(Value)
+        Toggles.ShowBubble = Value
+        if BubbleGUI then
+            BubbleGUI.Enabled = Value
+        end
+    end
+})
+
+ClickerSection:AddParagraph({
+    Title = "Info",
+    Desc = "• Bubble bisa di-drag\n• Klik bubble untuk toggle\n• Auto clicker tidak ganggu mouse",
+    Image = "info",
+    ImageSize = 32
+})
+
+--==================================================
+-- EGGS TAB (DIPERBAIKI)
+--==================================================
+local EggsTab = Window:MakeTab({
+    Name = "Eggs",
+    Icon = "egg",
+    Glass = true,
+    Outline = true
+})
+
+local EggSection = EggsTab:AddSection({
+    Name = "Egg Settings (Improved)",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+EggSection:AddToggle({
+    Name = "Auto Buy Egg",
+    Default = false,
+    Color = Color3.fromRGB(255, 150, 0),
+    Outline = true,
+    Flag = "AutoBuyEgg",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoBuyEgg = Value
+        if Value then 
+            StartLoop("AutoBuyEgg")
+            Notify("Auto Buy Egg ON - Mencoba " .. Toggles.EggType)
+        else 
+            StopLoop("AutoBuyEgg") 
+        end
+    end
+})
+
+EggSection:AddDropdown({
+    Name = "Egg Type",
+    Default = "Basic",
+    Options = {"Basic", "Rare", "Epic", "Legendary", "Mythic", "Divine"},
+    Multi = false,
+    Search = false,
+    AllowNone = false,
+    Outline = true,
+    Callback = function(Value)
+        Toggles.EggType = Value
+        Notify("Egg type: " .. Value)
+    end
+})
+
+EggSection:AddSlider({
+    Name = "Buy Interval",
+    Min = 1,
+    Max = 30,
+    Default = 5,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 1,
+    ValueName = "sec",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.EggCheckInterval = Value
+    end
+})
+
+EggSection:AddToggle({
+    Name = "Auto Hatch",
+    Default = false,
+    Color = Color3.fromRGB(255, 150, 0),
+    Outline = true,
+    Flag = "AutoHatch",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoHatch = Value
+        if Value then StartLoop("AutoHatch") else StopLoop("AutoHatch") end
+    end
+})
+
+EggSection:AddButton({
+    Name = "Test Buy Egg",
+    Icon = "shopping-cart",
+    Outline = true,
+    Callback = function()
+        BuyEggImproved(Toggles.EggType)
+        Notify("Mencoba beli " .. Toggles.EggType)
+    end
+})
+
+EggSection:AddButton({
+    Name = "Test Hatch Egg",
+    Icon = "egg",
+    Outline = true,
+    Callback = function()
+        HatchEggImproved()
+        Notify("Mencoba hatch egg")
+    end
+})
+
+EggSection:AddButton({
+    Name = "Scan Remotes",
+    Icon = "search",
+    Outline = true,
+    Callback = function()
+        FindRemotes()
+        Notify("Remote scan complete - Check F9")
+    end
+})
+
+--==================================================
+-- LOOP FUNCTIONS (DIPERBAIKI)
+--==================================================
 function StartLoop(name)
     if Loops[name] then return end
     Loops[name] = true
     
     task.spawn(function()
         while Loops[name] do
-            if not Player.Character then
-                task.wait(1)
-                continue
-            end
-            
             if name == "AutoTap" and Toggles.AutoTap then
-                Tap()
+                TapImproved()
                 task.wait(Toggles.TapSpeed)
                 
             elseif name == "AutoClicker" and Toggles.AutoClicker then
-                -- Auto clicker sekarang dihandle oleh sistem terpisah
-                -- Loop ini hanya untuk backup/remote tapping
-                Tap()
-                task.wait(0.05) -- Lebih lambat dari auto clicker utama
+                -- Auto clicker berjalan sendiri tanpa mengganggu mouse
+                AutoClickFunction()
+                task.wait(Toggles.ClickSpeed)
                 
             elseif name == "AutoBuyEgg" and Toggles.AutoBuyEgg then
-                local success = BuyEgg(Toggles.EggType)
-                if success then
-                    print("Bought egg:", Toggles.EggType)
-                end
-                task.wait(Toggles.EggBuyDelay)
+                BuyEggImproved(Toggles.EggType)
+                task.wait(Toggles.EggCheckInterval)
                 
             elseif name == "AutoHatch" and Toggles.AutoHatch then
-                local success = HatchEgg()
-                if success then
-                    print("Hatched egg")
-                end
-                task.wait(Toggles.HatchDelay)
+                HatchEggImproved()
+                task.wait(1)
                 
             elseif name == "AutoUpgrade" and Toggles.AutoUpgrade then
-                if Toggles.UpgradeType == "All" then
-                    Upgrade("All")
-                    Upgrade("Damage")
-                    Upgrade("Speed")
-                    Upgrade("Multiplier")
-                else
-                    Upgrade(Toggles.UpgradeType)
+                if Remotes.Upgrade then
+                    pcall(function() Remotes.Upgrade:FireServer(Toggles.UpgradeType) end)
                 end
                 task.wait(1)
                 
             elseif name == "AutoBuyArea" and Toggles.AutoBuyArea then
-                BuyArea()
+                if Remotes.BuyArea then
+                    pcall(function() Remotes.BuyArea:FireServer() end)
+                end
                 task.wait(2)
                 
             elseif name == "AutoCollect" and Toggles.AutoCollect then
-                Collect()
+                if Remotes.Collect then
+                    pcall(function() Remotes.Collect:FireServer() end)
+                end
                 task.wait(5)
                 
             elseif name == "AutoRebirth" and Toggles.AutoRebirth then
                 local coins = GetCoins()
-                if coins >= Toggles.RebirthAt then
-                    Rebirth()
+                if coins >= Toggles.RebirthAt and Remotes.Rebirth then
+                    pcall(function() Remotes.Rebirth:FireServer() end)
                     task.wait(3)
                 else
                     task.wait(5)
@@ -866,44 +828,23 @@ function StopLoop(name)
 end
 
 --==================================================
--- MAIN TAB CONTENT
+-- GET COINS FUNCTION
 --==================================================
-local StatsSection = MainTab:AddSection({
-    Name = "Player Stats",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
--- Paragraph yang akan diupdate
-local StatsPara = StatsSection:AddParagraph({
-    Title = Player.Name,
-    Desc = "Loading stats...",
-    Image = "user",
-    ImageSize = 38,
-    Buttons = {
-        {
-            Title = "Refresh",
-            Callback = function()
-                local coins = GetCoins()
-                local rebirths = GetRebirths()
-                StatsPara:SetDesc("Coins: " .. formatNumber(coins) .. "\nRebirths: " .. rebirths)
+function GetCoins()
+    local leaderstats = Player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, v in pairs(leaderstats:GetChildren()) do
+            if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash") or v.Name:lower():find("point")) then
+                return v.Value
             end
-        }
-    }
-})
-
--- Update stats setiap 5 detik
-task.spawn(function()
-    while true do
-        local coins = GetCoins()
-        local rebirths = GetRebirths()
-        StatsPara:SetDesc("Coins: " .. formatNumber(coins) .. "\nRebirths: " .. rebirths)
-        task.wait(5)
+        end
     end
-end)
+    return 0
+end
 
+--==================================================
+-- FORMAT NUMBER
+--==================================================
 local function formatNumber(num)
     if num >= 1e9 then
         return string.format("%.2fB", num / 1e9)
@@ -915,268 +856,6 @@ local function formatNumber(num)
         return tostring(num)
     end
 end
-
-local QuickSection = MainTab:AddSection({
-    Name = "Quick Actions",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-QuickSection:AddButton({
-    Name = "Tap Now!",
-    Icon = "hand",
-    Outline = true,
-    Callback = function()
-        for i = 1, 10 do
-            Tap()
-            task.wait(0.05)
-        end
-        Notify("Tapped 10 times!")
-    end
-})
-
-QuickSection:AddButton({
-    Name = "Hatch Egg",
-    Icon = "egg",
-    Outline = true,
-    Callback = function()
-        HatchEgg()
-        Notify("Hatched egg!")
-    end
-})
-
---==================================================
--- AUTO FARM TAB - DENGAN AUTO CLICKER IMPROVED
---==================================================
-local TapSection = FarmTab:AddSection({
-    Name = "Auto Clicker (Independent)",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-TapSection:AddToggle({
-    Name = "Auto Clicker",
-    Default = false,
-    Color = Color3.fromRGB(0, 255, 100),
-    Outline = true,
-    Flag = "AutoClicker",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoClicker = Value
-        if Value then
-            -- Buat bubble UI jika belum ada
-            if not BubbleUI.Frame then
-                CreateBubbleUI()
-            end
-            UpdateAutoClicker(true)
-        else
-            UpdateAutoClicker(false)
-        end
-    end
-})
-
-TapSection:AddSlider({
-    Name = "Click Speed",
-    Min = 0.0001,
-    Max = 0.01,
-    Default = 0.001,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 0.0001,
-    ValueName = "sec",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.ClickSpeed = Value
-        AutoClicker.Speed = Value
-        AutoClicker.CPS = math.floor(1 / Value)
-        
-        -- Update bubble CPS jika ada
-        if BubbleUI.CPSLabel then
-            BubbleUI.CPSLabel.Text = AutoClicker.CPS .. " CPS"
-        end
-        
-        -- Restart auto clicker jika sedang berjalan
-        if AutoClicker.Enabled then
-            StopAutoClicker()
-            StartAutoClicker()
-        end
-    end
-})
-
-TapSection:AddParagraph({
-    Title = "Info",
-    Desc = "Auto Clicker berjalan independen\nTidak mengganggu pergerakan mouse\nBubble kontrol akan muncul saat diaktifkan",
-    Image = "info",
-    ImageSize = 32
-})
-
-local TapRemoteSection = FarmTab:AddSection({
-    Name = "Auto Tap (Remote)",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-TapRemoteSection:AddToggle({
-    Name = "Auto Tap (Backup)",
-    Default = false,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "AutoTap",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoTap = Value
-        if Value then StartLoop("AutoTap") else StopLoop("AutoTap") end
-    end
-})
-
-TapRemoteSection:AddSlider({
-    Name = "Tap Speed",
-    Min = 0.001,
-    Max = 0.1,
-    Default = 0.01,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 0.001,
-    ValueName = "sec",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.TapSpeed = Value
-    end
-})
-
---==================================================
--- EGGS TAB - IMPROVED DENGAN FITUR LEBIH BANYAK
---==================================================
-local EggSection = EggsTab:AddSection({
-    Name = "Egg Settings",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-EggSection:AddToggle({
-    Name = "Auto Buy Egg",
-    Default = false,
-    Color = Color3.fromRGB(255, 150, 0),
-    Outline = true,
-    Flag = "AutoBuyEgg",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoBuyEgg = Value
-        if Value then StartLoop("AutoBuyEgg") else StopLoop("AutoBuyEgg") end
-    end
-})
-
-EggSection:AddDropdown({
-    Name = "Egg Type",
-    Default = "Basic",
-    Options = {"Basic", "Rare", "Epic", "Legendary", "Mythic", "Godly"},
-    Multi = false,
-    Search = false,
-    AllowNone = false,
-    Outline = true,
-    Callback = function(Value)
-        Toggles.EggType = Value
-    end
-})
-
-EggSection:AddSlider({
-    Name = "Buy Delay",
-    Min = 0.5,
-    Max = 5,
-    Default = 2,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 0.1,
-    ValueName = "sec",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.EggBuyDelay = Value
-    end
-})
-
-EggSection:AddToggle({
-    Name = "Auto Hatch",
-    Default = false,
-    Color = Color3.fromRGB(255, 150, 0),
-    Outline = true,
-    Flag = "AutoHatch",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoHatch = Value
-        if Value then StartLoop("AutoHatch") else StopLoop("AutoHatch") end
-    end
-})
-
-EggSection:AddSlider({
-    Name = "Hatch Delay",
-    Min = 0.5,
-    Max = 3,
-    Default = 1,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 0.1,
-    ValueName = "sec",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.HatchDelay = Value
-    end
-})
-
-EggSection:AddButton({
-    Name = "Test Buy Egg",
-    Icon = "test-tube",
-    Outline = true,
-    Callback = function()
-        local success = BuyEgg(Toggles.EggType)
-        if success then
-            Notify("Success bought " .. Toggles.EggType .. " egg!")
-        else
-            Notify("Failed to buy egg. Trying to find remote...")
-            FindRemotes() -- Refresh remote list
-        end
-    end
-})
-
---==================================================
--- UPGRADES TAB
---==================================================
-local UpgradeSection = UpgradeTab:AddSection({
-    Name = "Auto Upgrade",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-UpgradeSection:AddToggle({
-    Name = "Auto Upgrade",
-    Default = false,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "AutoUpgrade",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoUpgrade = Value
-        if Value then StartLoop("AutoUpgrade") else StopLoop("AutoUpgrade") end
-    end
-})
-
-UpgradeSection:AddDropdown({
-    Name = "Upgrade Type",
-    Default = "All",
-    Options = {"All", "Damage", "Speed", "Multiplier", "Critical", "Luck"},
-    Multi = false,
-    Search = false,
-    AllowNone = false,
-    Outline = true,
-    Callback = function(Value)
-        Toggles.UpgradeType = Value
-    end
-})
 
 --==================================================
 -- ADD CONFIG TAB
@@ -1192,8 +871,8 @@ Window:AddConfigTab({
 OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
-print("=== Tap Simulator - Catraz Edition v2 Loaded ===")
+print("=== Tap Simulator - Catraz Edition v2.0 Loaded ===")
+print("✅ Auto Clicker dengan bubble indicator")
+print("✅ Auto Buy Egg improved")
+print("✅ Tidak mengganggu mouse movement")
 print("Press F4 to toggle menu")
-print("✓ Auto Clicker independen - tidak mengganggu mouse")
-print("✓ Bubble UI untuk kontrol cepat")
-print("✓ Auto Buy Egg dengan multiple method")
