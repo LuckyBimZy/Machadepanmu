@@ -1,6 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 3.0 COMPLETE with White Mode ESP - FIXED VERSION
+-- Adapted from LuckyBimZy & RanZx999
+-- Version: 3.0 COMPLETE
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -295,7 +296,6 @@ local PlayerInfoSection = MainTab:AddSection({
     Outline = true
 })
 
--- Player info dengan tampilan yang lebih jelas
 PlayerInfoSection:AddParagraph({
     Title = "👤 " .. Player.Name,
     Desc = "Display Name: " .. Player.DisplayName .. "\n" ..
@@ -313,7 +313,6 @@ local ServerInfoSection = MainTab:AddSection({
     Outline = true
 })
 
--- Fungsi untuk update server info
 local function updateServerInfo()
     local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
     local players = #Players:GetPlayers()
@@ -389,7 +388,6 @@ local function createPlayerESP(player)
     esp.Box.Transparency = 1
     esp.Box.Filled = false
     
-    -- Name dengan font lebih besar dan putih
     esp.Name.Visible = false
     esp.Name.Color = Color3.fromRGB(255, 255, 255)
     esp.Name.Size = 18
@@ -398,7 +396,6 @@ local function createPlayerESP(player)
     esp.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
     esp.Name.Font = 3
     
-    -- Distance dengan font lebih besar
     esp.Distance.Visible = false
     esp.Distance.Color = Color3.fromRGB(200, 200, 200)
     esp.Distance.Size = 16
@@ -436,114 +433,110 @@ end
 local function updatePlayerESP()
     if not Config.ESP.Enabled then
         for _, esp in pairs(ESPObjects) do
-            for _, obj in pairs(esp) do
-                pcall(function() obj.Visible = false end)
-            end
+            for _, obj in pairs(esp) do obj.Visible = false end
         end
         return
     end
     
     for player, esp in pairs(ESPObjects) do
-        pcall(function()
-            if not player or not player.Parent or not player.Character then
-                removePlayerESP(player)
-                return
-            end
+        if not player or not player.Parent or not player.Character then
+            removePlayerESP(player)
+            continue
+        end
+        
+        if Config.ESP.TeamCheck and isTeammate(player) and not Config.ESP.ShowTeammates then
+            for _, obj in pairs(esp) do obj.Visible = false end
+            continue
+        end
+        
+        local char = player.Character
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        local head = char:FindFirstChild("Head")
+        
+        if not hrp or not hum or not head then
+            for _, obj in pairs(esp) do obj.Visible = false end
+            continue
+        end
+        
+        local distance = (hrp.Position - Camera.CFrame.Position).Magnitude
+        
+        if distance > Config.ESP.MaxDistance then
+            for _, obj in pairs(esp) do obj.Visible = false end
+            continue
+        end
+        
+        local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+        local rootPos = Camera:WorldToViewportPoint(hrp.Position)
+        
+        if not onScreen then
+            for _, obj in pairs(esp) do obj.Visible = false end
+            continue
+        end
+        
+        local boxSize = Vector2.new(2000 / distance, 2500 / distance)
+        local playerColor = getPlayerColor(player)
+        
+        if Config.ESP.Boxes then
+            esp.Box.Size = boxSize
+            esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
+            esp.Box.Color = playerColor
+            esp.Box.Visible = true
+        else
+            esp.Box.Visible = false
+        end
+        
+        if Config.ESP.Names then
+            esp.Name.Text = player.Name .. (isTeammate(player) and " (Team)" or " (Enemy)")
+            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 40)
+            esp.Name.Visible = true
+        else
+            esp.Name.Visible = false
+        end
+        
+        if Config.ESP.Distance then
+            esp.Distance.Text = string.format("[%.0f meters]", distance)
+            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 25)
+            esp.Distance.Visible = true
+        else
+            esp.Distance.Visible = false
+        end
+        
+        if Config.ESP.Health and hum then
+            local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+            local barWidth = 3
+            local barHeight = boxSize.Y
             
-            if Config.ESP.TeamCheck and isTeammate(player) and not Config.ESP.ShowTeammates then
-                for _, obj in pairs(esp) do obj.Visible = false end
-                return
-            end
+            esp.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
+            esp.HealthBarBG.Position = Vector2.new(rootPos.X - boxSize.X / 2 - 5, rootPos.Y - boxSize.Y / 2)
+            esp.HealthBarBG.Visible = true
             
-            local char = player.Character
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            local hum = char:FindFirstChild("Humanoid")
-            local head = char:FindFirstChild("Head")
-            
-            if not hrp or not hum or not head then
-                for _, obj in pairs(esp) do obj.Visible = false end
-                return
-            end
-            
-            local distance = (hrp.Position - Camera.CFrame.Position).Magnitude
-            
-            if distance > Config.ESP.MaxDistance then
-                for _, obj in pairs(esp) do obj.Visible = false end
-                return
-            end
-            
-            local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-            local rootPos = Camera:WorldToViewportPoint(hrp.Position)
-            
-            if not onScreen then
-                for _, obj in pairs(esp) do obj.Visible = false end
-                return
-            end
-            
-            local boxSize = Vector2.new(2000 / distance, 2500 / distance)
-            local playerColor = getPlayerColor(player)
-            
-            if Config.ESP.Boxes then
-                esp.Box.Size = boxSize
-                esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
-                esp.Box.Color = playerColor
-                esp.Box.Visible = true
-            else
-                esp.Box.Visible = false
-            end
-            
-            if Config.ESP.Names then
-                esp.Name.Text = player.Name .. (isTeammate(player) and " (Team)" or " (Enemy)")
-                esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 40)
-                esp.Name.Visible = true
-            else
-                esp.Name.Visible = false
-            end
-            
-            if Config.ESP.Distance then
-                esp.Distance.Text = string.format("[%.0f meters]", distance)
-                esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 25)
-                esp.Distance.Visible = true
-            else
-                esp.Distance.Visible = false
-            end
-            
-            if Config.ESP.Health and hum then
-                local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                local barWidth = 3
-                local barHeight = boxSize.Y
-                
-                esp.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
-                esp.HealthBarBG.Position = Vector2.new(rootPos.X - boxSize.X / 2 - 5, rootPos.Y - boxSize.Y / 2)
-                esp.HealthBarBG.Visible = true
-                
-                local healthColor = Color3.fromRGB(
-                    math.floor(255 * (1 - healthPercent)),
-                    math.floor(255 * healthPercent),
-                    0
-                )
-                esp.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
-                esp.HealthBar.Position = Vector2.new(
-                    rootPos.X - boxSize.X / 2 - 5,
-                    rootPos.Y - boxSize.Y / 2 + barHeight * (1 - healthPercent)
-                )
-                esp.HealthBar.Color = healthColor
-                esp.HealthBar.Visible = true
-            else
-                esp.HealthBarBG.Visible = false
-                esp.HealthBar.Visible = false
-            end
-            
-            if Config.ESP.Tracers then
-                local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                esp.Tracer.From = screenCenter
-                esp.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
-                esp.Tracer.Color = playerColor
-                esp.Tracer.Visible = true
-            else
-                esp.Tracer.Visible = false
-            end
-        end)
+            local healthColor = Color3.fromRGB(
+                math.floor(255 * (1 - healthPercent)),
+                math.floor(255 * healthPercent),
+                0
+            )
+            esp.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
+            esp.HealthBar.Position = Vector2.new(
+                rootPos.X - boxSize.X / 2 - 5,
+                rootPos.Y - boxSize.Y / 2 + barHeight * (1 - healthPercent)
+            )
+            esp.HealthBar.Color = healthColor
+            esp.HealthBar.Visible = true
+        else
+            esp.HealthBarBG.Visible = false
+            esp.HealthBar.Visible = false
+        end
+        
+        if Config.ESP.Tracers then
+            local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+            esp.Tracer.From = screenCenter
+            esp.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
+            esp.Tracer.Color = playerColor
+            esp.Tracer.Visible = true
+        else
+            esp.Tracer.Visible = false
+        end
     end
 end
 
@@ -558,13 +551,11 @@ local function setupPlayerESP(player)
     
     if player.Character then
         task.spawn(function()
-            local success = pcall(function()
-                player.Character:WaitForChild("HumanoidRootPart")
-                task.wait(0.5)
-                if Config.ESP.Enabled then
-                    createPlayerESP(player)
-                end
-            end)
+            player.Character:WaitForChild("HumanoidRootPart")
+            task.wait(0.5)
+            if Config.ESP.Enabled then
+                createPlayerESP(player)
+            end
         end)
     end
 end
@@ -575,9 +566,6 @@ end
 local function createWhiteModeESP(player)
     if player == Player then return end
     if not player.Character then return end
-    
-    -- Hapus yang lama jika ada
-    removeWhiteESP(player)
     
     -- White Highlight untuk karakter (putih)
     local whiteHighlight = Instance.new("Highlight")
@@ -590,7 +578,7 @@ local function createWhiteModeESP(player)
     whiteHighlight.OutlineTransparency = 0
     whiteHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     
-    -- Name tag dengan jarak
+    -- Name tag dengan jarak (seperti di gambar)
     local nameTag = Instance.new("BillboardGui")
     nameTag.Name = "VD_NameTag"
     nameTag.Parent = player.Character
@@ -599,7 +587,7 @@ local function createWhiteModeESP(player)
     nameTag.AlwaysOnTop = true
     nameTag.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
-    -- Background transparan
+    -- Background transparan untuk text
     local textBackground = Instance.new("Frame")
     textBackground.Name = "Background"
     textBackground.Parent = nameTag
@@ -612,7 +600,7 @@ local function createWhiteModeESP(player)
     bgCorner.CornerRadius = UDim.new(0, 4)
     bgCorner.Parent = textBackground
     
-    -- Text label
+    -- Text label untuk nama dan jarak
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
     nameLabel.Parent = textBackground
@@ -627,17 +615,49 @@ local function createWhiteModeESP(player)
     nameLabel.TextScaled = false
     nameLabel.TextWrapped = true
     
+    -- Stroke untuk efek lebih jelas
     local stroke = Instance.new("UIStroke")
     stroke.Parent = nameLabel
     stroke.Color = Color3.fromRGB(0, 0, 0)
     stroke.Thickness = 1.5
     stroke.Transparency = 0.2
     
+    -- Simpan ke tabel untuk tracking
     WhiteESP[player] = {
         Highlight = whiteHighlight,
         NameTag = nameTag,
-        NameLabel = nameLabel
+        NameLabel = nameLabel,
+        Connection = nil
     }
+    
+    -- Update jarak setiap frame
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if not Config.WhiteMode.Enabled then
+            if whiteHighlight then whiteHighlight.Enabled = false end
+            if nameTag then nameTag.Enabled = false end
+            if connection then connection:Disconnect() end
+            return
+        end
+        
+        if not player or not player.Parent or not player.Character then
+            removeWhiteESP(player)
+            if connection then connection:Disconnect() end
+            return
+        end
+        
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        local myHrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+        
+        if hrp and myHrp then
+            local distance = (hrp.Position - myHrp.Position).Magnitude
+            nameLabel.Text = player.Name .. " [" .. math.floor(distance) .. "m]"
+            whiteHighlight.Enabled = true
+            nameTag.Enabled = true
+        end
+    end)
+    
+    WhiteESP[player].Connection = connection
 end
 
 local function removeWhiteESP(player)
@@ -648,49 +668,10 @@ local function removeWhiteESP(player)
         if WhiteESP[player].NameTag then
             pcall(function() WhiteESP[player].NameTag:Destroy() end)
         end
-        WhiteESP[player] = nil
-    end
-end
-
-local function updateWhiteModeESP()
-    if not Config.WhiteMode.Enabled then
-        for player, _ in pairs(WhiteESP) do
-            if WhiteESP[player].Highlight then
-                WhiteESP[player].Highlight.Enabled = false
-            end
-            if WhiteESP[player].NameTag then
-                WhiteESP[player].NameTag.Enabled = false
-            end
+        if WhiteESP[player].Connection then
+            pcall(function() WhiteESP[player].Connection:Disconnect() end)
         end
-        return
-    end
-    
-    for player, esp in pairs(WhiteESP) do
-        pcall(function()
-            if not player or not player.Parent or not player.Character then
-                removeWhiteESP(player)
-                return
-            end
-            
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            local myHrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-            
-            if hrp and myHrp and esp.Highlight and esp.NameLabel then
-                local distance = (hrp.Position - myHrp.Position).Magnitude
-                esp.NameLabel.Text = player.Name .. " [" .. math.floor(distance) .. "m]"
-                esp.Highlight.Enabled = true
-                if esp.NameTag then
-                    esp.NameTag.Enabled = true
-                end
-            else
-                if esp.Highlight then
-                    esp.Highlight.Enabled = false
-                end
-                if esp.NameTag then
-                    esp.NameTag.Enabled = false
-                end
-            end
-        end)
+        WhiteESP[player] = nil
     end
 end
 
@@ -698,6 +679,29 @@ local function enableWhiteMode()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= Player then
             createWhiteModeESP(player)
+        end
+    end
+    
+    Players.PlayerAdded:Connect(function(player)
+        if Config.WhiteMode.Enabled then
+            player.CharacterAdded:Connect(function()
+                task.wait(0.5)
+                if Config.WhiteMode.Enabled and player ~= Player then
+                    createWhiteModeESP(player)
+                end
+            end)
+        end
+    end)
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player then
+            player.CharacterAdded:Connect(function()
+                task.wait(0.5)
+                if Config.WhiteMode.Enabled then
+                    removeWhiteESP(player)
+                    createWhiteModeESP(player)
+                end
+            end)
         end
     end
 end
@@ -708,15 +712,22 @@ local function disableWhiteMode()
     end
 end
 
+-- Initialize ESP for existing players
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= Player then
+        setupPlayerESP(player)
+    end
+end
+
+Players.PlayerAdded:Connect(setupPlayerESP)
+Players.PlayerRemoving:Connect(removePlayerESP)
+
 --==================================================
 -- HIGHLIGHT SYSTEM
 --==================================================
 local function createHighlight(player)
     if player == Player then return end
     if not player.Character then return end
-    
-    -- Hapus yang lama jika ada
-    removeHighlight(player)
     
     local highlight = Instance.new("Highlight")
     highlight.Parent = player.Character
@@ -742,22 +753,37 @@ end
 
 local function removeHighlight(player)
     if Highlights[player] then
-        pcall(function() Highlights[player]:Destroy() end)
+        Highlights[player]:Destroy()
         Highlights[player] = nil
     end
 end
 
-local function enableHighlight()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= Player then
-            createHighlight(player)
+local function updateHighlights()
+    for player, highlight in pairs(Highlights) do
+        if not player or not player.Parent or not player.Character then
+            removeHighlight(player)
+            continue
         end
-    end
-end
-
-local function disableHighlight()
-    for player, _ in pairs(Highlights) do
-        removeHighlight(player)
+        
+        if Config.Highlight.TeamCheck and isTeammate(player) and not Config.Highlight.ShowTeam then
+            highlight.Enabled = false
+            continue
+        else
+            highlight.Enabled = true
+        end
+        
+        if Config.Highlight.TeamCheck then
+            if isTeammate(player) then
+                highlight.FillColor = TeamColor
+                highlight.OutlineColor = TeamColor
+            else
+                highlight.FillColor = EnemyColor
+                highlight.OutlineColor = EnemyColor
+            end
+        else
+            highlight.FillColor = Color3.fromRGB(255, 255, 255)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        end
     end
 end
 
@@ -772,14 +798,12 @@ local function updateWallhack()
         
         wallhackConnection = RunService.RenderStepped:Connect(function()
             for _, v in pairs(Workspace:GetDescendants()) do
-                pcall(function()
-                    if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
-                        if v.Transparency < 0.5 then
-                            v.Material = Enum.Material.ForceField
-                            v.Transparency = 0.5
-                        end
+                if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
+                    if v.Transparency < 0.5 then
+                        v.Material = Enum.Material.ForceField
+                        v.Transparency = 0.5
                     end
-                end)
+                end
             end
         end)
     else
@@ -788,14 +812,11 @@ local function updateWallhack()
             wallhackConnection = nil
         end
         
-        -- Restore original materials
         for _, v in pairs(Workspace:GetDescendants()) do
-            pcall(function()
-                if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
-                    v.Material = Enum.Material.Plastic
-                    v.Transparency = 0
-                end
-            end)
+            if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
+                v.Material = Enum.Material.Plastic
+                v.Transparency = 0
+            end
         end
     end
 end
@@ -814,54 +835,62 @@ local function updateZoomOutView()
     end
 end
 
+if cameraConnection then cameraConnection:Disconnect() end
+cameraConnection = RunService.RenderStepped:Connect(function()
+    updateZoomOutView()
+end)
+
+Workspace.CurrentCameraChanged:Connect(function(newCamera)
+    Camera = newCamera
+    task.wait(0.5)
+    updateZoomOutView()
+end)
+
 --==================================================
 -- GENERATOR ESP
 --==================================================
 local function createGeneratorESP(gen)
     if not gen:IsA("Model") or gen:FindFirstChild("GenESP") then return end
     
-    pcall(function()
-        local folder = Instance.new("Folder", gen)
-        folder.Name = "GenESP"
-        
-        local highlight = Instance.new("Highlight", folder)
-        highlight.Adornee = gen
-        highlight.FillColor = Color3.new(0, 1, 1)
-        highlight.DepthMode = "AlwaysOnTop"
-        
-        local billboard = Instance.new("BillboardGui", folder)
-        billboard.Size = UDim2.new(0, 80, 0, 40)
-        billboard.AlwaysOnTop = true
-        billboard.Adornee = gen:FindFirstChild("HitBox") or gen.PrimaryPart
-        billboard.ExtentsOffset = Vector3.new(0, 3, 0)
-        
-        local textLabel = Instance.new("TextLabel", billboard)
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.TextColor3 = Color3.new(1, 1, 1)
-        textLabel.Font = Enum.Font.SourceSansBold
-        textLabel.TextSize = 14
-        textLabel.Text = "0%"
-        
-        GeneratorESP[gen] = folder
-        
-        -- Update loop
-        task.spawn(function()
-            while gen.Parent and folder.Parent and Config.Generator.ESPEnabled do
-                pcall(function()
-                    local progress = gen:GetAttribute("RepairProgress") or 0
-                    textLabel.Text = math.floor(progress) .. "%"
-                    
-                    if progress >= 100 then
-                        highlight.FillColor = Color3.new(0, 1, 0)
-                    else
-                        highlight.FillColor = Color3.new(0, 1, 1)
-                    end
-                end)
-                task.wait(1)
+    local folder = Instance.new("Folder", gen)
+    folder.Name = "GenESP"
+    
+    local highlight = Instance.new("Highlight", folder)
+    highlight.Adornee = gen
+    highlight.FillColor = Color3.new(0, 1, 1)
+    highlight.DepthMode = "AlwaysOnTop"
+    
+    local billboard = Instance.new("BillboardGui", folder)
+    billboard.Size = UDim2.new(0, 80, 0, 40)
+    billboard.AlwaysOnTop = true
+    billboard.Adornee = gen:FindFirstChild("HitBox") or gen.PrimaryPart
+    billboard.ExtentsOffset = Vector3.new(0, 3, 0)
+    
+    local textLabel = Instance.new("TextLabel", billboard)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 14
+    
+    task.spawn(function()
+        while gen.Parent and folder.Parent do
+            local progress = gen:GetAttribute("RepairProgress") or 0
+            textLabel.Text = math.floor(progress) .. "%"
+            highlight.Enabled = Config.Generator.ESPEnabled
+            textLabel.Visible = Config.Generator.ESPEnabled
+            
+            if progress >= 100 then
+                highlight.FillColor = Color3.new(0, 1, 0)
+            else
+                highlight.FillColor = Color3.new(0, 1, 1)
             end
-        end)
+            
+            task.wait(1)
+        end
     end)
+    
+    GeneratorESP[gen] = folder
 end
 
 --==================================================
@@ -869,21 +898,18 @@ end
 --==================================================
 RunService.RenderStepped:Connect(function()
     if Config.UI.HideSkillCheck then
-        pcall(function()
-            local PlayerGui = Player:FindFirstChild("PlayerGui")
-            if PlayerGui then
-                local targetUI = PlayerGui:FindFirstChild("SkillCheckPromptGui")
-                local targetUICon = PlayerGui:FindFirstChild("SkillCheckPromptGui-con")
-                
-                if targetUI and targetUI.Enabled then
-                    targetUI.Enabled = false
-                end
-                
-                if targetUICon and targetUICon.Enabled then
-                    targetUICon.Enabled = false
-                end
-            end
-        end)
+        local PlayerGui = Player:WaitForChild("PlayerGui")
+        
+        local targetUI = PlayerGui:FindFirstChild("SkillCheckPromptGui")
+        local targetUICon = PlayerGui:FindFirstChild("SkillCheckPromptGui-con")
+        
+        if targetUI and targetUI.Enabled then
+            targetUI.Enabled = false
+        end
+        
+        if targetUICon and targetUICon.Enabled then
+            targetUICon.Enabled = false
+        end
     end
 end)
 
@@ -897,17 +923,18 @@ local function setupAntiFail()
     
     task.spawn(function()
         local success = pcall(function()
-            local mt = getrawmetatable(game)
-            if not mt then return end
+            local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            local Events = ReplicatedStorage:FindFirstChild("Events")
             
-            local oldNamecall = mt.__namecall
-            setreadonly(mt, false)
+            if not Remotes and not Events then
+                return
+            end
             
-            mt.__namecall = newcclosure(function(self, ...)
+            local oldNamecall
+            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                 local method = getnamecallmethod()
                 local args = {...}
                 
-                -- GENERATOR ANTI-FAIL
                 if Config.Generator.AntiFailEnabled then
                     if tostring(self):find("SkillCheckFailEvent") and method == "FireServer" then
                         return nil
@@ -923,7 +950,6 @@ local function setupAntiFail()
                     end
                 end
                 
-                -- HEALING ANTI-FAIL
                 if Config.Healing.AntiFailEnabled then
                     if tostring(self):find("Heal") and tostring(self):find("Fail") and method == "FireServer" then
                         return nil
@@ -938,65 +964,67 @@ local function setupAntiFail()
                 return oldNamecall(self, ...)
             end)
             
-            setreadonly(mt, true)
             AntiFailHooked = true
         end)
     end)
 end
+
+setupAntiFail()
 
 --==================================================
 -- VISUAL SYSTEMS
 --==================================================
 task.spawn(function()
     while true do
-        pcall(function()
-            -- Fullbright
-            if Config.Visual.FullbrightEnabled then
-                Lighting.Brightness = 2
-                Lighting.ClockTime = 14
-                Lighting.GlobalShadows = false
-                Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-            else
-                Lighting.Brightness = originalLighting.Brightness
-                Lighting.ClockTime = originalLighting.ClockTime
-                Lighting.GlobalShadows = originalLighting.GlobalShadows
-                Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
-            end
-            
-            -- No Fog
-            if Config.Visual.NoFogEnabled then
-                Lighting.FogStart = 0
-                Lighting.FogEnd = 100000
-            else
-                Lighting.FogEnd = originalLighting.FogEnd
-                Lighting.FogStart = originalLighting.FogStart or 0
-            end
-            
-            -- Atmosphere
+        if Config.Visual.FullbrightEnabled then
+            Lighting.Brightness = 2
+            Lighting.ClockTime = 14
+            Lighting.GlobalShadows = false
+            Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        else
+            Lighting.Brightness = originalLighting.Brightness
+            Lighting.ClockTime = originalLighting.ClockTime
+            Lighting.GlobalShadows = originalLighting.GlobalShadows
+            Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+        end
+        
+        if Config.Visual.NoFogEnabled then
+            Lighting.FogStart = 0
+            Lighting.FogEnd = 100000
+        else
+            Lighting.FogEnd = originalLighting.FogEnd
+            Lighting.FogStart = originalLighting.FogStart or 0
+        end
+        
+        if Config.Visual.FullbrightEnabled or Config.Visual.NoFogEnabled then
             for _, v in pairs(Lighting:GetChildren()) do
                 if v:IsA("Atmosphere") then
-                    if Config.Visual.FullbrightEnabled or Config.Visual.NoFogEnabled then
-                        v.Density = 0
-                        v.Offset = 0
-                        v.Glare = 0
-                        v.Haze = 0
-                    elseif originalLighting.Atmosphere then
-                        v.Density = originalLighting.Atmosphere.Density or 0.3
-                        v.Offset = originalLighting.Atmosphere.Offset or 0.25
-                        v.Glare = originalLighting.Atmosphere.Glare or 0
-                        v.Haze = originalLighting.Atmosphere.Haze or 0
-                    end
+                    v.Density = 0
+                    v.Offset = 0
+                    v.Glare = 0
+                    v.Haze = 0
                 end
                 
                 if v:IsA("BlurEffect") then
-                    if Config.Visual.FullbrightEnabled then
-                        v.Size = 0
-                    elseif originalLighting.Blur then
-                        v.Size = originalLighting.Blur.Size or 0
-                    end
+                    v.Size = 0
                 end
             end
-        end)
+        else
+            for _, v in pairs(Lighting:GetChildren()) do
+                if v:IsA("Atmosphere") and originalLighting.Atmosphere then
+                    v.Density = originalLighting.Atmosphere.Density or 0.3
+                    v.Offset = originalLighting.Atmosphere.Offset or 0.25
+                    v.Glare = originalLighting.Atmosphere.Glare or 0
+                    v.Haze = originalLighting.Atmosphere.Haze or 0
+                end
+                
+                if v:IsA("BlurEffect") and originalLighting.Blur then
+                    v.Size = originalLighting.Blur.Size or 0
+                end
+            end
+        end
+        
+        updateZoomOutView()
         task.wait(0.5)
     end
 end)
@@ -1007,65 +1035,55 @@ end)
 local noclipConnection = nil
 
 local function updateMovement()
-    pcall(function()
-        local char = Player.Character
-        if not char then return end
-        
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum then return end
-        
-        -- Speed Hack
-        if Config.Movement.SpeedEnabled then
-            hum.WalkSpeed = Config.Movement.SpeedValue
-            ActiveFeatures.Speed = true
-        else
-            hum.WalkSpeed = 16
-            ActiveFeatures.Speed = false
-        end
-        
-        -- Jump Hack
-        if Config.Movement.JumpEnabled then
-            hum.JumpPower = Config.Movement.JumpValue
-            ActiveFeatures.Jump = true
-        else
-            hum.JumpPower = 50
-            ActiveFeatures.Jump = false
-        end
-    end)
+    local char = Player.Character
+    if not char then return end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    
+    if Config.Movement.SpeedEnabled then
+        hum.WalkSpeed = Config.Movement.SpeedValue
+        ActiveFeatures.Speed = true
+    else
+        hum.WalkSpeed = 16
+        ActiveFeatures.Speed = false
+    end
+    
+    if Config.Movement.JumpEnabled then
+        hum.JumpPower = Config.Movement.JumpValue
+        ActiveFeatures.Jump = true
+    else
+        hum.JumpPower = 50
+        ActiveFeatures.Jump = false
+    end
 end
 
--- Infinite Jump
 UserInputService.JumpRequest:Connect(function()
     if Config.Movement.InfiniteJump then
-        pcall(function()
-            local char = Player.Character
-            if char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
-                end
+        local char = Player.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
             end
-        end)
+        end
     end
 end)
 
--- Noclip
 local function enableNoclip()
     if noclipConnection then noclipConnection:Disconnect() end
     
     noclipConnection = RunService.Stepped:Connect(function()
         if not Config.Movement.Noclip then return end
         
-        pcall(function()
-            local char = Player.Character
-            if not char then return end
-            
-            for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
+        local char = Player.Character
+        if not char then return end
+        
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
             end
-        end)
+        end
     end)
 end
 
@@ -1077,16 +1095,14 @@ local function disableNoclip()
     
     task.wait(0.1)
     
-    pcall(function()
-        local char = Player.Character
-        if char then
-            for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    part.CanCollide = true
-                end
+    local char = Player.Character
+    if char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                part.CanCollide = true
             end
         end
-    end)
+    end
 end
 
 --==================================================
@@ -1099,10 +1115,8 @@ local function enableAntiAFK()
     
     antiAFKConnection = RunService.Heartbeat:Connect(function()
         if Config.Misc.AntiAFK then
-            pcall(function()
-                VirtualUser:CaptureController()
-                VirtualUser:ClickButton2(Vector2.new())
-            end)
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
         end
     end)
 end
@@ -1130,68 +1144,14 @@ local function getPlayerList()
 end
 
 --==================================================
--- INITIALIZE ESP FOR EXISTING PLAYERS
---==================================================
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= Player then
-        setupPlayerESP(player)
-    end
-end
-
-Players.PlayerAdded:Connect(setupPlayerESP)
-Players.PlayerRemoving:Connect(removePlayerESP)
-
---==================================================
--- PLAYER JOIN/LEAVE HANDLERS FOR WHITE MODE
---==================================================
-Players.PlayerAdded:Connect(function(player)
-    if Config.WhiteMode.Enabled then
-        player.CharacterAdded:Connect(function()
-            task.wait(0.5)
-            if Config.WhiteMode.Enabled and player ~= Player then
-                createWhiteModeESP(player)
-            end
-        end)
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    removeWhiteESP(player)
-end)
-
---==================================================
--- PLAYER JOIN/LEAVE HANDLERS FOR HIGHLIGHT
---==================================================
-Players.PlayerAdded:Connect(function(player)
-    if Config.Highlight.Enabled then
-        player.CharacterAdded:Connect(function()
-            task.wait(0.5)
-            if Config.Highlight.Enabled and player ~= Player then
-                createHighlight(player)
-            end
-        end)
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    removeHighlight(player)
-end)
-
---==================================================
 -- RUN SERVICE UPDATES
 --==================================================
 RunService.Heartbeat:Connect(function()
     updateMovement()
     updatePlayerESP()
-    updateWhiteModeESP()
-    updateZoomOutView()
-end)
-
--- Camera change handler
-Workspace.CurrentCameraChanged:Connect(function(newCamera)
-    Camera = newCamera
-    task.wait(0.5)
-    updateZoomOutView()
+    if Config.Highlight.Enabled then
+        updateHighlights()
+    end
 end)
 
 -- Generator ESP scanner
@@ -1199,11 +1159,9 @@ task.spawn(function()
     while true do
         if Config.Generator.ESPEnabled then
             for _, obj in pairs(Workspace:GetDescendants()) do
-                pcall(function()
-                    if obj.Name == "Generator" and obj:IsA("Model") then
-                        createGeneratorESP(obj)
-                    end
-                end)
+                if obj.Name == "Generator" and obj:IsA("Model") then
+                    createGeneratorESP(obj)
+                end
             end
         end
         task.wait(3)
@@ -1220,7 +1178,6 @@ local ESPSection = ESPTab:AddSection({
     Outline = true
 })
 
--- Mode 1: White Mode
 ESPSection:AddToggle({
     Name = "WHITE MODE (Like Picture)",
     Default = false,
@@ -1229,19 +1186,9 @@ ESPSection:AddToggle({
     Flag = "WhiteMode",
     Save = true,
     Callback = function(Value)
-        if Value then
-            if Config.ESP.Enabled then
-                Config.ESP.Enabled = false
-                ActiveFeatures.ESP = false
-                for player, _ in pairs(ESPObjects) do
-                    removePlayerESP(player)
-                end
-            end
-            if Config.Highlight.Enabled then
-                Config.Highlight.Enabled = false
-                ActiveFeatures.Highlight = false
-                disableHighlight()
-            end
+        if Value and Config.ESP.Enabled then
+            Config.ESP.Enabled = false
+            ActiveFeatures.ESP = false
         end
         
         Config.WhiteMode.Enabled = Value
@@ -1284,8 +1231,8 @@ ESPSection:AddToggle({
     Callback = function(Value)
         if Value and Config.WhiteMode.Enabled then
             Config.WhiteMode.Enabled = false
-            ActiveFeatures.WhiteMode = false
             disableWhiteMode()
+            ActiveFeatures.WhiteMode = false
         end
         
         Config.ESP.Enabled = Value
@@ -1413,22 +1360,37 @@ HighlightSection:AddToggle({
     Flag = "HighlightEnable",
     Save = true,
     Callback = function(Value)
-        if Value then
-            if Config.WhiteMode.Enabled then
-                Config.WhiteMode.Enabled = false
-                ActiveFeatures.WhiteMode = false
-                disableWhiteMode()
-            end
-        end
-        
         Config.Highlight.Enabled = Value
         ActiveFeatures.Highlight = Value
         
         if Value then
-            enableHighlight()
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= Player then
+                    createHighlight(player)
+                end
+            end
+            
+            Players.PlayerAdded:Connect(function(player)
+                if Config.Highlight.Enabled then
+                    repeat task.wait() until player.Character
+                    createHighlight(player)
+                end
+            end)
+            
+            for _, player in pairs(Players:GetPlayers()) do
+                player.CharacterAdded:Connect(function()
+                    if Config.Highlight.Enabled then
+                        task.wait(0.5)
+                        createHighlight(player)
+                    end
+                end)
+            end
+            
             Notify("✅ Highlight Enabled")
         else
-            disableHighlight()
+            for player, _ in pairs(Highlights) do
+                removeHighlight(player)
+            end
             Notify("❌ Highlight Disabled")
         end
     end
@@ -1441,12 +1403,7 @@ HighlightSection:AddToggle({
     Outline = true,
     Flag = "HighlightTeam",
     Save = true,
-    Callback = function(Value) Config.Highlight.TeamCheck = Value 
-        if Config.Highlight.Enabled then
-            disableHighlight()
-            enableHighlight()
-        end
-    end
+    Callback = function(Value) Config.Highlight.TeamCheck = Value end
 })
 
 HighlightSection:AddToggle({
@@ -1491,7 +1448,7 @@ GenSection:AddToggle({
             Notify("✅ Generator ESP Enabled")
         else
             for gen, folder in pairs(GeneratorESP) do
-                pcall(function() folder:Destroy() end)
+                if folder then folder:Destroy() end
             end
             GeneratorESP = {}
             Notify("❌ Generator ESP Disabled")
@@ -1628,6 +1585,7 @@ VisualSection:AddToggle({
     Callback = function(Value)
         Config.Visual.ZoomOutEnabled = Value
         ActiveFeatures.ZoomOut = Value
+        updateZoomOutView()
         Notify(Value and "✅ Zoom Out View Enabled" or "❌ Zoom Out View Disabled")
     end
 })
@@ -1811,7 +1769,7 @@ end
 
 playerDropdown = TeleportSection:AddDropdown({
     Name = "Select Player",
-    Default = (getPlayerList()[1] or "No players"),
+    Default = getPlayerList()[1] or "No players",
     Options = getPlayerList(),
     Multi = false,
     Search = true,
@@ -1831,10 +1789,8 @@ TeleportSection:AddButton({
         if selectedPlayer and selectedPlayer ~= "No players" then
             local target = Players:FindFirstChild(selectedPlayer)
             if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                pcall(function()
-                    Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-                    Notify("🚀 Teleported to " .. selectedPlayer)
-                end)
+                Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+                Notify("🚀 Teleported to " .. selectedPlayer)
             else
                 Notify("❌ Player not found or invalid")
             end
@@ -1882,10 +1838,8 @@ TeleportSection:AddButton({
     Outline = true,
     Callback = function()
         if SavedPosition then
-            pcall(function()
-                Player.Character.HumanoidRootPart.CFrame = SavedPosition
-                Notify("✅ Teleported to saved position")
-            end)
+            Player.Character.HumanoidRootPart.CFrame = SavedPosition
+            Notify("✅ Teleported to saved position")
         else
             Notify("❌ No saved position found")
         end
@@ -1950,69 +1904,27 @@ task.spawn(function()
         local count = 0
         
         if ActiveFeatures.WhiteMode then 
-            activeList = activeList .. "✅ White Mode ESP (Like Picture)\n"
+            activeList = activeList .. "✅ White Mode ESP (Like Picture)\n"; 
             count = count + 1 
         end
         if ActiveFeatures.ESP then 
-            activeList = activeList .. "✅ Standard ESP\n"
+            activeList = activeList .. "✅ Standard ESP\n"; 
             count = count + 1 
         end
-        if ActiveFeatures.Highlight then 
-            activeList = activeList .. "✅ Highlight\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.GenESP then 
-            activeList = activeList .. "✅ Generator ESP\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.GenAntiFail then 
-            activeList = activeList .. "✅ Anti-Fail Generator\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.HealAntiFail then 
-            activeList = activeList .. "✅ Anti-Fail Healing\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.HideSkillCheck then 
-            activeList = activeList .. "✅ Hide Skill Check\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.Fullbright then 
-            activeList = activeList .. "✅ Fullbright\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.NoFog then 
-            activeList = activeList .. "✅ No Fog\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.Wallhack then 
-            activeList = activeList .. "✅ Wallhack\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.ZoomOut then 
-            activeList = activeList .. "✅ Zoom Out View\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.Speed then 
-            activeList = activeList .. "✅ Speed Hack\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.Jump then 
-            activeList = activeList .. "✅ Jump Hack\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.InfiniteJump then 
-            activeList = activeList .. "✅ Infinite Jump\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.Noclip then 
-            activeList = activeList .. "✅ Noclip\n"
-            count = count + 1 
-        end
-        if ActiveFeatures.AntiAFK then 
-            activeList = activeList .. "✅ Anti AFK\n"
-            count = count + 1 
-        end
+        if ActiveFeatures.Highlight then activeList = activeList .. "✅ Highlight\n"; count = count + 1 end
+        if ActiveFeatures.GenESP then activeList = activeList .. "✅ Generator ESP\n"; count = count + 1 end
+        if ActiveFeatures.GenAntiFail then activeList = activeList .. "✅ Anti-Fail Generator\n"; count = count + 1 end
+        if ActiveFeatures.HealAntiFail then activeList = activeList .. "✅ Anti-Fail Healing\n"; count = count + 1 end
+        if ActiveFeatures.HideSkillCheck then activeList = activeList .. "✅ Hide Skill Check\n"; count = count + 1 end
+        if ActiveFeatures.Fullbright then activeList = activeList .. "✅ Fullbright\n"; count = count + 1 end
+        if ActiveFeatures.NoFog then activeList = activeList .. "✅ No Fog\n"; count = count + 1 end
+        if ActiveFeatures.Wallhack then activeList = activeList .. "✅ Wallhack\n"; count = count + 1 end
+        if ActiveFeatures.ZoomOut then activeList = activeList .. "✅ Zoom Out View\n"; count = count + 1 end
+        if ActiveFeatures.Speed then activeList = activeList .. "✅ Speed Hack\n"; count = count + 1 end
+        if ActiveFeatures.Jump then activeList = activeList .. "✅ Jump Hack\n"; count = count + 1 end
+        if ActiveFeatures.InfiniteJump then activeList = activeList .. "✅ Infinite Jump\n"; count = count + 1 end
+        if ActiveFeatures.Noclip then activeList = activeList .. "✅ Noclip\n"; count = count + 1 end
+        if ActiveFeatures.AntiAFK then activeList = activeList .. "✅ Anti AFK\n"; count = count + 1 end
         
         if count == 0 then
             activeList = "No features active"
@@ -2046,7 +1958,6 @@ MiscSection:AddButton({
     Icon = "x",
     Outline = true,
     Callback = function()
-        -- Cleanup
         for player, _ in pairs(ESPObjects) do
             removePlayerESP(player)
         end
@@ -2057,7 +1968,7 @@ MiscSection:AddButton({
             removeHighlight(player)
         end
         for gen, folder in pairs(GeneratorESP) do
-            pcall(function() folder:Destroy() end)
+            if folder then folder:Destroy() end
         end
         
         if noclipConnection then
@@ -2104,11 +2015,6 @@ Player.CharacterAdded:Connect(function(char)
 end)
 
 --==================================================
--- ANTI-FAIL SETUP
---==================================================
-setupAntiFail()
-
---==================================================
 -- INITIALIZE
 --==================================================
 OrionLib:Init()
@@ -2117,8 +2023,8 @@ Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
 print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.0 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ WHITE MODE ESP - Like Picture (White Highlight + Name + Distance)")
-print("✅ Standard ESP - Boxes, Names, Distance, Health, Tracers")
+print("✅ White Mode ESP - Like Picture (White + Name + Distance)")
+print("✅ Standard ESP - Full features")
 print("✅ Movement Hacks - Speed, Jump, Infinite Jump, Noclip")
 print("✅ Visual - Wallhack, Fullbright, No Fog, Zoom Out View")
 print("✅ Teleport - To Player, Save/Load Position")
