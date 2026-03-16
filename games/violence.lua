@@ -1,6 +1,6 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 3.1 FINAL
+-- Version: 3.0 COMPLETE
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -52,7 +52,8 @@ local Config = {
         Tracers = false,
         TeamCheck = true,
         MaxDistance = 2000,
-        ShowTeammates = false
+        ShowTeammates = false,
+        NameSize = 18 -- Ukuran font nama
     },
     Highlight = {
         Enabled = false,
@@ -73,13 +74,13 @@ local Config = {
         FullbrightEnabled = false,
         NoFogEnabled = false,
         WallhackEnabled = false,
-        InfiniteZoom = false
+        InfiniteZoomEnabled = false
     },
     Movement = {
         SpeedEnabled = false,
-        SpeedValue = 16,
+        SpeedValue = 50,
         JumpEnabled = false,
-        JumpValue = 50,
+        JumpValue = 100,
         InfiniteJump = false,
         Noclip = false
     },
@@ -94,26 +95,44 @@ local Config = {
 --==================================================
 -- ACTIVE FEATURES COUNTER
 --==================================================
-local function GetActiveFeatures()
-    local active = {}
-    
-    if Config.ESP.Enabled then table.insert(active, "ESP") end
-    if Config.Highlight.Enabled then table.insert(active, "Highlight") end
-    if Config.Generator.ESPEnabled then table.insert(active, "GenESP") end
-    if Config.Generator.AntiFailEnabled then table.insert(active, "Anti-Gen") end
-    if Config.Healing.AntiFailEnabled then table.insert(active, "Anti-Heal") end
-    if Config.UI.HideSkillCheck then table.insert(active, "HideSC") end
-    if Config.Visual.FullbrightEnabled then table.insert(active, "Fullbright") end
-    if Config.Visual.NoFogEnabled then table.insert(active, "NoFog") end
-    if Config.Visual.WallhackEnabled then table.insert(active, "Wallhack") end
-    if Config.Visual.InfiniteZoom then table.insert(active, "InfZoom") end
-    if Config.Movement.SpeedEnabled then table.insert(active, "Speed") end
-    if Config.Movement.JumpEnabled then table.insert(active, "Jump") end
-    if Config.Movement.InfiniteJump then table.insert(active, "InfJump") end
-    if Config.Movement.Noclip then table.insert(active, "Noclip") end
-    if Config.Misc.AntiAFK then table.insert(active, "AntiAFK") end
-    
-    return active
+local function GetActiveFeaturesCount()
+    local count = 0
+    if Config.ESP.Enabled then count = count + 1 end
+    if Config.Highlight.Enabled then count = count + 1 end
+    if Config.Generator.ESPEnabled then count = count + 1 end
+    if Config.Generator.AntiFailEnabled then count = count + 1 end
+    if Config.Healing.AntiFailEnabled then count = count + 1 end
+    if Config.UI.HideSkillCheck then count = count + 1 end
+    if Config.Visual.FullbrightEnabled then count = count + 1 end
+    if Config.Visual.NoFogEnabled then count = count + 1 end
+    if Config.Visual.WallhackEnabled then count = count + 1 end
+    if Config.Visual.InfiniteZoomEnabled then count = count + 1 end
+    if Config.Movement.SpeedEnabled then count = count + 1 end
+    if Config.Movement.JumpEnabled then count = count + 1 end
+    if Config.Movement.InfiniteJump then count = count + 1 end
+    if Config.Movement.Noclip then count = count + 1 end
+    if Config.Misc.AntiAFK then count = count + 1 end
+    return count
+end
+
+local function GetActiveFeaturesList()
+    local features = {}
+    if Config.ESP.Enabled then table.insert(features, "ESP") end
+    if Config.Highlight.Enabled then table.insert(features, "Highlight") end
+    if Config.Generator.ESPEnabled then table.insert(features, "Gen ESP") end
+    if Config.Generator.AntiFailEnabled then table.insert(features, "Anti-Fail Gen") end
+    if Config.Healing.AntiFailEnabled then table.insert(features, "Anti-Fail Heal") end
+    if Config.UI.HideSkillCheck then table.insert(features, "Hide Skill") end
+    if Config.Visual.FullbrightEnabled then table.insert(features, "Fullbright") end
+    if Config.Visual.NoFogEnabled then table.insert(features, "No Fog") end
+    if Config.Visual.WallhackEnabled then table.insert(features, "Wallhack") end
+    if Config.Visual.InfiniteZoomEnabled then table.insert(features, "Inf Zoom") end
+    if Config.Movement.SpeedEnabled then table.insert(features, "Speed") end
+    if Config.Movement.JumpEnabled then table.insert(features, "Jump") end
+    if Config.Movement.InfiniteJump then table.insert(features, "Inf Jump") end
+    if Config.Movement.Noclip then table.insert(features, "Noclip") end
+    if Config.Misc.AntiAFK then table.insert(features, "Anti-AFK") end
+    return features
 end
 
 --==================================================
@@ -128,202 +147,20 @@ local originalLighting = {
     OutdoorAmbient = Lighting.OutdoorAmbient
 }
 
---==================================================
--- NOTIFICATION
---==================================================
-local function Notify(msg)
-    OrionLib:MakeNotification({
-        Name = "Violence District",
-        Content = msg,
-        Image = "info",
-        Time = 2.5
-    })
-end
-
---==================================================
--- CREATE MAIN WINDOW - TANPA BACKGROUND PUTIH
---==================================================
-local Window = OrionLib:MakeWindow({
-    Name = "Violence District",
-    Subtext = "ULTIMATE Edition",
-    Version = "v3.1",
-    VersionIcon = "shield",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "VD_ULTIMATE",
-    IntroEnabled = false, -- Matikan intro biar ga ada efek putih
-    IntroText = "",
-    IntroIcon = "",
-    Icon = "",
-    ShowIcon = false,
-    
-    -- Custom Theme & Appearance - Buat lebih transparan
-    ImageBackground = "",
-    ImageTransparency = 1,
-    WindowTransparency = 0.15,
-    
-    -- Floating Toggle Customization
-    ToggleIcon = "",
-    ToggleSize = 40
-})
-
--- Set Theme ke Void biar gelap
-OrionLib.SelectedTheme = "Void"
-
-Notify("Script loaded successfully!")
-
---==================================================
--- CREATE TABS
---==================================================
-local MainTab = Window:MakeTab({
-    Name = "Main",
-    Icon = "home",
-    Glass = true,
-    Outline = false -- Hilangkan outline
-})
-
-local ESPTab = Window:MakeTab({
-    Name = "Player ESP",
-    Icon = "eye",
-    Glass = true,
-    Outline = false
-})
-
-local HighlightTab = Window:MakeTab({
-    Name = "Highlight",
-    Icon = "sparkles",
-    Glass = true,
-    Outline = false
-})
-
-local GeneratorTab = Window:MakeTab({
-    Name = "Generator",
-    Icon = "zap",
-    Glass = true,
-    Outline = false
-})
-
-local HealingTab = Window:MakeTab({
-    Name = "Healing",
-    Icon = "heart",
-    Glass = true,
-    Outline = false
-})
-
-local VisualTab = Window:MakeTab({
-    Name = "Visual",
-    Icon = "sun",
-    Glass = true,
-    Outline = false
-})
-
-local MovementTab = Window:MakeTab({
-    Name = "Movement",
-    Icon = "footprints",
-    Glass = true,
-    Outline = false
-})
-
-local TeleportTab = Window:MakeTab({
-    Name = "Teleport",
-    Icon = "map-pin",
-    Glass = true,
-    Outline = false
-})
-
-local MiscTab = Window:MakeTab({
-    Name = "Misc",
-    Icon = "settings",
-    Glass = true,
-    Outline = false
-})
-
---==================================================
--- MAIN TAB - PLAYER INFO
---==================================================
-local PlayerInfoSection = MainTab:AddSection({
-    Name = "PLAYER INFORMATION",
-    TextSize = 16,
-    Glass = true,
-    Outline = false
-})
-
--- Player info dengan tampilan lebih besar dan jelas
-PlayerInfoSection:AddParagraph({
-    Title = "👤 " .. Player.Name,
-    Desc = "Display: " .. Player.DisplayName .. "\n" ..
-           "ID: " .. Player.UserId .. "\n" ..
-           "Age: " .. Player.AccountAge .. " days\n" ..
-           "Team: " .. (Player.Team and Player.Team.Name or "None"),
-    Image = "user",
-    ImageSize = 40
-})
-
-local ServerInfoSection = MainTab:AddSection({
-    Name = "SERVER INFORMATION",
-    TextSize = 16,
-    Glass = true,
-    Outline = false
-})
-
-local function UpdateServerInfo()
-    local players = Players:GetPlayers()
-    local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() * 100) / 100
-    
-    return "Players: " .. #players .. "/" .. (Players.MaxPlayers or "??") .. "\n" ..
-           "Ping: " .. ping .. "ms\n" ..
-           "Time: " .. os.date("%H:%M:%S")
-end
-
-local ServerInfoPara = ServerInfoSection:AddParagraph({
-    Title = "Server Status",
-    Desc = UpdateServerInfo(),
-    Image = "server",
-    ImageSize = 40,
-    Buttons = {
-        {
-            Title = "⟳ Refresh",
-            Callback = function()
-                ServerInfoPara:SetDesc(UpdateServerInfo())
-            end
-        }
+local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+if atm then
+    originalLighting.Atmosphere = {
+        Density = atm.Density,
+        Offset = atm.Offset,
+        Glare = atm.Glare,
+        Haze = atm.Haze
     }
-})
+end
 
--- Auto refresh server info
-task.spawn(function()
-    while true do
-        task.wait(5)
-        ServerInfoPara:SetDesc(UpdateServerInfo())
-    end
-end)
-
-local ActiveFeaturesSection = MainTab:AddSection({
-    Name = "ACTIVE FEATURES",
-    TextSize = 16,
-    Glass = true,
-    Outline = false
-})
-
-local ActiveFeaturesPara = ActiveFeaturesSection:AddParagraph({
-    Title = "Currently Active",
-    Desc = "None",
-    Image = "activity",
-    ImageSize = 32
-})
-
--- Update active features setiap detik
-task.spawn(function()
-    while true do
-        local active = GetActiveFeatures()
-        if #active > 0 then
-            ActiveFeaturesPara:SetDesc(table.concat(active, " • "))
-        else
-            ActiveFeaturesPara:SetDesc("None")
-        end
-        task.wait(1)
-    end
-end)
+local blur = Lighting:FindFirstChildOfClass("BlurEffect")
+if blur then
+    originalLighting.Blur = { Size = blur.Size }
+end
 
 --==================================================
 -- TEAM CHECK FUNCTION
@@ -343,7 +180,191 @@ local function getPlayerColor(player)
 end
 
 --==================================================
--- PLAYER ESP SYSTEM - DENGAN FONT TEBAL DAN POSISI PRESISI
+-- NOTIFICATION
+--==================================================
+local function Notify(msg)
+    OrionLib:MakeNotification({
+        Name = "Violence District",
+        Content = msg,
+        Image = "info",
+        Time = 2.5
+    })
+end
+
+--==================================================
+-- CREATE MAIN WINDOW
+--==================================================
+local Window = OrionLib:MakeWindow({
+    Name = "Violence District",
+    Subtext = "ULTIMATE Edition",
+    Version = "v3.0",
+    VersionIcon = "shield-check",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "VD_ULTIMATE",
+    IntroEnabled = true,
+    IntroText = "Violence District ULTIMATE",
+    IntroIcon = "rbxassetid://8834748103",
+    Icon = "rbxassetid://8834748103",
+    ShowIcon = true,
+    
+    -- Custom Theme & Appearance
+    ImageBackground = "",
+    ImageTransparency = 0.8,
+    WindowTransparency = 0.05,
+    
+    -- Floating Toggle Customization
+    ToggleIcon = "rbxassetid://105921924721005",
+    ToggleSize = 50
+})
+
+-- Set Theme (Available: "Default", "Ocean", "Void", "Hackerman")
+OrionLib.SelectedTheme = "Ocean"
+
+Notify("Script loaded successfully!")
+
+--==================================================
+-- CREATE TABS
+--==================================================
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "home",
+    Glass = true,
+    Outline = true
+})
+
+local ESPTab = Window:MakeTab({
+    Name = "Player ESP",
+    Icon = "eye",
+    Glass = true,
+    Outline = true
+})
+
+local HighlightTab = Window:MakeTab({
+    Name = "Highlight",
+    Icon = "sparkles",
+    Glass = true,
+    Outline = true
+})
+
+local GeneratorTab = Window:MakeTab({
+    Name = "Generator",
+    Icon = "zap",
+    Glass = true,
+    Outline = true
+})
+
+local HealingTab = Window:MakeTab({
+    Name = "Healing",
+    Icon = "heart",
+    Glass = true,
+    Outline = true
+})
+
+local VisualTab = Window:MakeTab({
+    Name = "Visual",
+    Icon = "sun",
+    Glass = true,
+    Outline = true
+})
+
+local MovementTab = Window:MakeTab({
+    Name = "Movement",
+    Icon = "footprints",
+    Glass = true,
+    Outline = true
+})
+
+local TeleportTab = Window:MakeTab({
+    Name = "Teleport",
+    Icon = "map-pin",
+    Glass = true,
+    Outline = true
+})
+
+local MiscTab = Window:MakeTab({
+    Name = "Misc",
+    Icon = "settings",
+    Glass = true,
+    Outline = true
+})
+
+--==================================================
+-- MAIN TAB - PLAYER INFO
+--==================================================
+local PlayerInfoSection = MainTab:AddSection({
+    Name = "Player Information",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+-- Function to update player info
+local function UpdatePlayerInfo()
+    -- Clear previous content
+    for _, v in pairs(PlayerInfoSection:GetChildren()) do
+        if v:IsA("Frame") or v:IsA("TextLabel") then
+            v:Destroy()
+        end
+    end
+    
+    PlayerInfoSection:AddParagraph({
+        Title = Player.Name,
+        Desc = string.format("Display Name: %s\nUser ID: %d\nAccount Age: %d days\nTeam: %s",
+            Player.DisplayName,
+            Player.UserId,
+            Player.AccountAge,
+            Player.Team and Player.Team.Name or "No Team"
+        ),
+        Image = "user",
+        ImageSize = 48
+    })
+end
+
+UpdatePlayerInfo()
+
+-- Refresh button
+PlayerInfoSection:AddButton({
+    Name = "Refresh Info",
+    Icon = "refresh-cw",
+    Outline = true,
+    Callback = UpdatePlayerInfo
+})
+
+-- Server Info Section
+local ServerInfoSection = MainTab:AddSection({
+    Name = "Server Information",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+local function UpdateServerInfo()
+    local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
+    local players = #Players:GetPlayers()
+    local serverTime = math.floor(workspace.DistributedGameTime)
+    local hours = math.floor(serverTime / 3600)
+    local minutes = math.floor((serverTime % 3600) / 60)
+    local seconds = serverTime % 60
+    
+    ServerInfoSection:AddParagraph({
+        Title = "Server Status",
+        Desc = string.format("Players: %d\nPing: %d ms\nUptime: %02d:%02d:%02d",
+            players,
+            ping,
+            hours,
+            minutes,
+            seconds
+        ),
+        Image = "server",
+        ImageSize = 38
+    })
+end
+
+UpdateServerInfo()
+
+--==================================================
+-- PLAYER ESP SYSTEM (AUTO-DETECT) - DIPERBESAR FONT
 --==================================================
 local ESPObjects = {}
 
@@ -362,37 +383,32 @@ local function createPlayerESP(player)
     
     local esp = ESPObjects[player]
     
-    -- Box settings - posisi presisi
     esp.Box.Visible = false
     esp.Box.Thickness = 2
     esp.Box.Transparency = 1
     esp.Box.Filled = false
-    esp.Box.Color = Color3.fromRGB(255, 255, 255)
     
-    -- Name settings - FONT SANGAT TEBAL DAN BESAR
+    -- Nama dengan font lebih besar dan tebal
     esp.Name.Visible = false
-    esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Putih
-    esp.Name.Size = 22 -- Ukuran font lebih besar
+    esp.Name.Color = Color3.fromRGB(255, 255, 255)
+    esp.Name.Size = 22 -- Ukuran font diperbesar
     esp.Name.Center = true
     esp.Name.Outline = true
     esp.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Name.OutlineTransparency = 0.5
-    esp.Name.Font = 3 -- Font paling tebal (Enum.Font.SourceSansBold)
+    esp.Name.Font = 3 -- Font lebih tebal (3 = GothamBold)
     
-    -- Distance settings
     esp.Distance.Visible = false
-    esp.Distance.Color = Color3.fromRGB(255, 255, 255)
+    esp.Distance.Color = Color3.fromRGB(200, 200, 200)
     esp.Distance.Size = 18
     esp.Distance.Center = true
     esp.Distance.Outline = true
     esp.Distance.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Distance.Font = 3
+    esp.Distance.Font = 2
     
-    -- Health bar settings
     esp.HealthBarBG.Visible = false
-    esp.HealthBarBG.Color = Color3.fromRGB(30, 30, 30)
+    esp.HealthBarBG.Color = Color3.fromRGB(20, 20, 20)
     esp.HealthBarBG.Thickness = 1
-    esp.HealthBarBG.Transparency = 0.5
+    esp.HealthBarBG.Transparency = 0.8
     esp.HealthBarBG.Filled = true
     
     esp.HealthBar.Visible = false
@@ -401,11 +417,9 @@ local function createPlayerESP(player)
     esp.HealthBar.Transparency = 1
     esp.HealthBar.Filled = true
     
-    -- Tracer settings
     esp.Tracer.Visible = false
-    esp.Tracer.Thickness = 1.5
+    esp.Tracer.Thickness = 1
     esp.Tracer.Transparency = 1
-    esp.Tracer.Color = Color3.fromRGB(255, 255, 255)
 end
 
 local function removePlayerESP(player)
@@ -453,22 +467,17 @@ local function updatePlayerESP()
             continue
         end
         
-        local headPos, onScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+        local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
         local rootPos = Camera:WorldToViewportPoint(hrp.Position)
-        local footPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
         
         if not onScreen then
             for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
         
-        -- Hitung ukuran box berdasarkan tinggi karakter
-        local height = math.abs(headPos.Y - footPos.Y)
-        local width = height * 0.6
-        local boxSize = Vector2.new(width, height)
+        local boxSize = Vector2.new(2000 / distance, 2500 / distance)
         local playerColor = getPlayerColor(player)
         
-        -- BOX - posisi presisi mengelilingi karakter
         if Config.ESP.Boxes then
             esp.Box.Size = boxSize
             esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
@@ -478,33 +487,32 @@ local function updatePlayerESP()
             esp.Box.Visible = false
         end
         
-        -- NAMA - di atas kepala dengan font tebal
         if Config.ESP.Names then
             esp.Name.Text = player.Name
-            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 50)
-            esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Putih
+            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 45) -- Dinaikkan karena font lebih besar
+            esp.Name.Color = playerColor
+            esp.Name.Size = 22 -- Font besar
             esp.Name.Visible = true
         else
             esp.Name.Visible = false
         end
         
-        -- JARAK - di bawah kaki
         if Config.ESP.Distance then
             esp.Distance.Text = string.format("[%.0fm]", distance)
-            esp.Distance.Position = Vector2.new(rootPos.X, footPos.Y + 20)
+            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 25)
+            esp.Distance.Size = 18
             esp.Distance.Visible = true
         else
             esp.Distance.Visible = false
         end
         
-        -- HEALTH BAR - di samping kiri box
         if Config.ESP.Health and hum then
             local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-            local barWidth = 4
+            local barWidth = 3
             local barHeight = boxSize.Y
             
             esp.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
-            esp.HealthBarBG.Position = Vector2.new(rootPos.X - boxSize.X / 2 - 8, rootPos.Y - boxSize.Y / 2)
+            esp.HealthBarBG.Position = Vector2.new(rootPos.X - boxSize.X / 2 - 5, rootPos.Y - boxSize.Y / 2)
             esp.HealthBarBG.Visible = true
             
             local healthColor = Color3.fromRGB(
@@ -514,7 +522,7 @@ local function updatePlayerESP()
             )
             esp.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
             esp.HealthBar.Position = Vector2.new(
-                rootPos.X - boxSize.X / 2 - 8,
+                rootPos.X - boxSize.X / 2 - 5,
                 rootPos.Y - boxSize.Y / 2 + barHeight * (1 - healthPercent)
             )
             esp.HealthBar.Color = healthColor
@@ -524,11 +532,10 @@ local function updatePlayerESP()
             esp.HealthBar.Visible = false
         end
         
-        -- TRACER - dari kaki ke tengah layar bawah
         if Config.ESP.Tracers then
             local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
             esp.Tracer.From = screenCenter
-            esp.Tracer.To = Vector2.new(rootPos.X, footPos.Y)
+            esp.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
             esp.Tracer.Color = playerColor
             esp.Tracer.Visible = true
         else
@@ -568,18 +575,136 @@ Players.PlayerAdded:Connect(setupPlayerESP)
 Players.PlayerRemoving:Connect(removePlayerESP)
 
 --==================================================
+-- HIGHLIGHT SYSTEM
+--==================================================
+local Highlights = {}
+
+local function createHighlight(player)
+    if player == Player then return end
+    if not player.Character then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Parent = player.Character
+    highlight.Adornee = player.Character
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    
+    if Config.Highlight.TeamCheck then
+        if isTeammate(player) then
+            highlight.FillColor = TeamColor
+            highlight.OutlineColor = TeamColor
+        else
+            highlight.FillColor = EnemyColor
+            highlight.OutlineColor = EnemyColor
+        end
+    else
+        highlight.FillColor = Color3.fromRGB(255, 255, 255)
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    end
+    
+    Highlights[player] = highlight
+end
+
+local function removeHighlight(player)
+    if Highlights[player] then
+        Highlights[player]:Destroy()
+        Highlights[player] = nil
+    end
+end
+
+local function updateHighlights()
+    for player, highlight in pairs(Highlights) do
+        if not player or not player.Parent or not player.Character then
+            removeHighlight(player)
+            continue
+        end
+        
+        if Config.Highlight.TeamCheck and isTeammate(player) and not Config.Highlight.ShowTeam then
+            highlight.Enabled = false
+            continue
+        else
+            highlight.Enabled = true
+        end
+        
+        if Config.Highlight.TeamCheck then
+            if isTeammate(player) then
+                highlight.FillColor = TeamColor
+                highlight.OutlineColor = TeamColor
+            else
+                highlight.FillColor = EnemyColor
+                highlight.OutlineColor = EnemyColor
+            end
+        else
+            highlight.FillColor = Color3.fromRGB(255, 255, 255)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        end
+    end
+end
+
+--==================================================
+-- GENERATOR ESP
+--==================================================
+local GeneratorESP = {}
+
+local function createGeneratorESP(gen)
+    if not gen:IsA("Model") or gen:FindFirstChild("GenESP") then return end
+    
+    local folder = Instance.new("Folder", gen)
+    folder.Name = "GenESP"
+    
+    local highlight = Instance.new("Highlight", folder)
+    highlight.Adornee = gen
+    highlight.FillColor = Color3.new(0, 1, 1)
+    highlight.DepthMode = "AlwaysOnTop"
+    
+    local billboard = Instance.new("BillboardGui", folder)
+    billboard.Size = UDim2.new(0, 80, 0, 40)
+    billboard.AlwaysOnTop = true
+    billboard.Adornee = gen:FindFirstChild("HitBox") or gen.PrimaryPart
+    billboard.ExtentsOffset = Vector3.new(0, 3, 0)
+    
+    local textLabel = Instance.new("TextLabel", billboard)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 14
+    textLabel.TextStrokeTransparency = 0.5
+    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    
+    task.spawn(function()
+        while gen.Parent and folder.Parent do
+            local progress = gen:GetAttribute("RepairProgress") or 0
+            textLabel.Text = math.floor(progress) .. "%"
+            highlight.Enabled = Config.Generator.ESPEnabled
+            textLabel.Visible = Config.Generator.ESPEnabled
+            
+            if progress >= 100 then
+                highlight.FillColor = Color3.new(0, 1, 0)
+            else
+                highlight.FillColor = Color3.new(0, 1, 1)
+            end
+            
+            task.wait(1)
+        end
+    end)
+    
+    GeneratorESP[gen] = folder
+end
+
+--==================================================
 -- WALLHACK FUNCTION
 --==================================================
-local WallhackConnection = nil
+local wallhackConnection = nil
 
 local function updateWallhack()
-    if WallhackConnection then
-        WallhackConnection:Disconnect()
-        WallhackConnection = nil
+    if wallhackConnection then
+        wallhackConnection:Disconnect()
+        wallhackConnection = nil
     end
     
     if Config.Visual.WallhackEnabled then
-        WallhackConnection = RunService.RenderStepped:Connect(function()
+        wallhackConnection = RunService.RenderStepped:Connect(function()
             for _, v in pairs(Workspace:GetDescendants()) do
                 if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
                     if v.Transparency < 0.5 then
@@ -590,8 +715,9 @@ local function updateWallhack()
             end
         end)
     else
+        -- Restore normal materials
         for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
+            if v:IsA("BasePart") and v.Material == Enum.Material.ForceField then
                 v.Material = Enum.Material.Plastic
                 v.Transparency = 0
             end
@@ -600,23 +726,10 @@ local function updateWallhack()
 end
 
 --==================================================
--- NO FOG FUNCTION
---==================================================
-local function updateNoFog()
-    if Config.Visual.NoFogEnabled then
-        Lighting.FogEnd = 1e9
-        Lighting.FogStart = 0
-    else
-        Lighting.FogEnd = originalLighting.FogEnd
-        Lighting.FogStart = originalLighting.FogStart
-    end
-end
-
---==================================================
--- INFINITE ZOOM FUNCTION
+-- INFINITE ZOOM
 --==================================================
 local function updateInfiniteZoom()
-    if Config.Visual.InfiniteZoom and Camera then
+    if Config.Visual.InfiniteZoomEnabled and Camera then
         Camera.FieldOfView = 120
     elseif Camera then
         Camera.FieldOfView = 70
@@ -624,28 +737,147 @@ local function updateInfiniteZoom()
 end
 
 --==================================================
--- FULLBRIGHT FUNCTION
+-- HIDE SKILLCHECK UI
 --==================================================
-local function updateFullbright()
-    if Config.Visual.FullbrightEnabled then
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 14
-        Lighting.GlobalShadows = false
-        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-    else
-        Lighting.Brightness = originalLighting.Brightness
-        Lighting.ClockTime = originalLighting.ClockTime
-        Lighting.GlobalShadows = originalLighting.GlobalShadows
-        Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+RunService.RenderStepped:Connect(function()
+    if Config.UI.HideSkillCheck then
+        local PlayerGui = Player:WaitForChild("PlayerGui")
+        
+        local targetUI = PlayerGui:FindFirstChild("SkillCheckPromptGui")
+        local targetUICon = PlayerGui:FindFirstChild("SkillCheckPromptGui-con")
+        
+        if targetUI and targetUI.Enabled then
+            targetUI.Enabled = false
+        end
+        
+        if targetUICon and targetUICon.Enabled then
+            targetUICon.Enabled = false
+        end
     end
-end
+end)
 
 --==================================================
--- MOVEMENT SYSTEM
+-- ANTI-FAIL SYSTEM
+--==================================================
+local AntiFailHooked = false
+
+local function setupAntiFail()
+    if AntiFailHooked then return end
+    
+    task.spawn(function()
+        local success = pcall(function()
+            local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            local Events = ReplicatedStorage:FindFirstChild("Events")
+            
+            if not Remotes and not Events then
+                return
+            end
+            
+            local oldNamecall
+            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                -- GENERATOR ANTI-FAIL
+                if Config.Generator.AntiFailEnabled then
+                    if tostring(self):find("SkillCheckFailEvent") and method == "FireServer" then
+                        return nil
+                    end
+                    
+                    if tostring(self):find("SkillCheckResultEvent") and method == "FireServer" then
+                        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                            args[1] = true
+                            return oldNamecall(self, unpack(args))
+                        else
+                            return nil
+                        end
+                    end
+                end
+                
+                -- HEALING ANTI-FAIL
+                if Config.Healing.AntiFailEnabled then
+                    if tostring(self):find("Heal") and tostring(self):find("Fail") and method == "FireServer" then
+                        return nil
+                    end
+                    
+                    if tostring(self):find("Heal") and tostring(self):find("Result") and method == "FireServer" then
+                        args[1] = true
+                        return oldNamecall(self, unpack(args))
+                    end
+                end
+                
+                return oldNamecall(self, ...)
+            end)
+            
+            AntiFailHooked = true
+        end)
+    end)
+end
+
+setupAntiFail()
+
+--==================================================
+-- FULLBRIGHT & NO FOG SYSTEM
+--==================================================
+task.spawn(function()
+    while true do
+        if Config.Visual.FullbrightEnabled or Config.Visual.NoFogEnabled then
+            if Config.Visual.FullbrightEnabled then
+                Lighting.Brightness = 2
+                Lighting.ClockTime = 14
+                Lighting.GlobalShadows = false
+                Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+            end
+            
+            if Config.Visual.NoFogEnabled then
+                Lighting.FogStart = 0
+                Lighting.FogEnd = 100000
+                
+                for _, v in pairs(Lighting:GetChildren()) do
+                    if v:IsA("Atmosphere") then
+                        v.Density = 0
+                        v.Offset = 0
+                        v.Glare = 0
+                        v.Haze = 0
+                    end
+                    
+                    if v:IsA("BlurEffect") then
+                        v.Size = 0
+                    end
+                end
+            end
+        else
+            Lighting.Brightness = originalLighting.Brightness
+            Lighting.ClockTime = originalLighting.ClockTime
+            Lighting.FogEnd = originalLighting.FogEnd
+            Lighting.FogStart = originalLighting.FogStart or 0
+            Lighting.GlobalShadows = originalLighting.GlobalShadows
+            Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+            
+            for _, v in pairs(Lighting:GetChildren()) do
+                if v:IsA("Atmosphere") and originalLighting.Atmosphere then
+                    v.Density = originalLighting.Atmosphere.Density or 0.3
+                    v.Offset = originalLighting.Atmosphere.Offset or 0.25
+                    v.Glare = originalLighting.Atmosphere.Glare or 0
+                    v.Haze = originalLighting.Atmosphere.Haze or 0
+                end
+                
+                if v:IsA("BlurEffect") and originalLighting.Blur then
+                    v.Size = originalLighting.Blur.Size or 0
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+--==================================================
+-- MOVEMENT SYSTEM - LENGKAP
 --==================================================
 local noclipConnection = nil
 local infiniteJumpConnection = nil
 
+-- Speed & Jump update
 local function updateMovement()
     local char = Player.Character
     if not char then return end
@@ -665,23 +897,6 @@ local function updateMovement()
         hum.JumpPower = 50
     end
 end
-
--- Infinite Jump
-if infiniteJumpConnection then
-    infiniteJumpConnection:Disconnect()
-end
-
-infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
-    if Config.Movement.InfiniteJump then
-        local char = Player.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end
-    end
-end)
 
 -- Noclip
 local function enableNoclip()
@@ -719,76 +934,94 @@ local function disableNoclip()
     end
 end
 
+-- Infinite Jump
+local function enableInfiniteJump()
+    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
+    
+    infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
+        if Config.Movement.InfiniteJump then
+            local char = Player.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end
+        end
+    end)
+end
+
+local function disableInfiniteJump()
+    if infiniteJumpConnection then
+        infiniteJumpConnection:Disconnect()
+        infiniteJumpConnection = nil
+    end
+end
+
 --==================================================
--- ANTI AFK SYSTEM
+-- ANTI AFK
 --==================================================
 local antiAFKConnection = nil
 
-local function setupAntiAFK()
+local function enableAntiAFK()
+    if antiAFKConnection then antiAFKConnection:Disconnect() end
+    
+    antiAFKConnection = Player.Idled:Connect(function()
+        if Config.Misc.AntiAFK then
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end
+    end)
+end
+
+local function disableAntiAFK()
     if antiAFKConnection then
         antiAFKConnection:Disconnect()
         antiAFKConnection = nil
     end
-    
-    if Config.Misc.AntiAFK then
-        antiAFKConnection = Player.Idled:Connect(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-    end
 end
 
 --==================================================
--- TELEPORT FUNCTIONS
---==================================================
-local function getPlayerList()
-    local list = {}
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= Player then
-            table.insert(list, player.Name)
-        end
-    end
-    return list
-end
-
-local function teleportToPlayer(playerName)
-    local target = Players:FindFirstChild(playerName)
-    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-        Notify("Teleported to " .. playerName)
-        return true
-    end
-    Notify("Player not found or invalid")
-    return false
-end
-
---==================================================
--- UPDATE LOOP
+-- UPDATE LOOPS
 --==================================================
 RunService.Heartbeat:Connect(function()
     updateMovement()
     updatePlayerESP()
-    updateNoFog()
-    updateFullbright()
     updateInfiniteZoom()
-    updateWallhack()
+    if Config.Highlight.Enabled then
+        updateHighlights()
+    end
+end)
+
+-- Generator ESP scanner
+task.spawn(function()
+    while true do
+        if Config.Generator.ESPEnabled then
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if obj.Name == "Generator" and obj:IsA("Model") then
+                    createGeneratorESP(obj)
+                end
+            end
+        end
+        task.wait(3)
+    end
 end)
 
 --==================================================
 -- ESP TAB
 --==================================================
 local ESPSection = ESPTab:AddSection({
-    Name = "PLAYER ESP SETTINGS",
-    TextSize = 16,
+    Name = "⚡ PLAYER ESP - AUTO DETECT ⚡",
+    TextSize = 20,
     Glass = true,
-    Outline = false
+    Outline = true
 })
 
 ESPSection:AddToggle({
-    Name = "ENABLE ESP",
+    Name = "Enable ESP",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "ESPEnable",
     Save = true,
     Callback = function(Value)
@@ -810,408 +1043,108 @@ ESPSection:AddToggle({
 })
 
 ESPSection:AddToggle({
-    Name = "SHOW BOXES",
+    Name = "Show Boxes",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "ESPBoxes",
     Save = true,
     Callback = function(Value) Config.ESP.Boxes = Value end
 })
 
 ESPSection:AddToggle({
-    Name = "SHOW NAMES (WHITE - BOLD)",
+    Name = "Show Names (Font Besar)",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "ESPNames",
     Save = true,
     Callback = function(Value) Config.ESP.Names = Value end
 })
 
 ESPSection:AddToggle({
-    Name = "SHOW DISTANCE",
+    Name = "Show Distance",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "ESPDistance",
     Save = true,
     Callback = function(Value) Config.ESP.Distance = Value end
 })
 
 ESPSection:AddToggle({
-    Name = "SHOW HEALTH BAR",
+    Name = "Show Health Bar",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "ESPHealth",
     Save = true,
     Callback = function(Value) Config.ESP.Health = Value end
 })
 
 ESPSection:AddToggle({
-    Name = "SHOW TRACERS",
+    Name = "Show Tracers",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "ESPTracers",
     Save = true,
     Callback = function(Value) Config.ESP.Tracers = Value end
 })
 
 ESPSection:AddToggle({
-    Name = "TEAM CHECK",
+    Name = "Team Check (Hide Teammates)",
     Default = true,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "ESPTeamCheck",
     Save = true,
     Callback = function(Value) Config.ESP.TeamCheck = Value end
 })
 
 ESPSection:AddToggle({
-    Name = "SHOW TEAMMATES",
+    Name = "Show Teammates (Override)",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "ESPShowTeam",
     Save = true,
     Callback = function(Value) Config.ESP.ShowTeammates = Value end
 })
 
 ESPSection:AddSlider({
-    Name = "MAX ESP DISTANCE",
+    Name = "Max ESP Distance",
     Min = 500,
     Max = 5000,
     Default = 2000,
     Increment = 100,
     ValueName = "m",
-    Outline = false,
+    Outline = true,
     Callback = function(Value) Config.ESP.MaxDistance = Value end
 })
 
 ESPSection:AddParagraph({
-    Title = "COLOR GUIDE",
-    Desc = "🟢 Teammate\n🔴 Enemy\n⬜ White names",
+    Title = "Color Guide",
+    Desc = "🟢 Green = Teammate\n🔴 Red = Enemy\n📝 Nama dengan font BESAR",
     Image = "info",
-    ImageSize = 32
-})
-
---==================================================
--- MOVEMENT TAB
---==================================================
-local SpeedSection = MovementTab:AddSection({
-    Name = "SPEED HACK",
-    TextSize = 16,
-    Glass = true,
-    Outline = false
-})
-
-SpeedSection:AddToggle({
-    Name = "ENABLE SPEED",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
-    Flag = "SpeedEnable",
-    Save = true,
-    Callback = function(Value)
-        Config.Movement.SpeedEnabled = Value
-    end
-})
-
-SpeedSection:AddSlider({
-    Name = "SPEED VALUE",
-    Min = 16,
-    Max = 200,
-    Default = 50,
-    Increment = 1,
-    ValueName = "WS",
-    Outline = false,
-    Callback = function(Value)
-        Config.Movement.SpeedValue = Value
-    end
-})
-
-local JumpSection = MovementTab:AddSection({
-    Name = "JUMP HACK",
-    TextSize = 16,
-    Glass = true,
-    Outline = false
-})
-
-JumpSection:AddToggle({
-    Name = "ENABLE JUMP",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
-    Flag = "JumpEnable",
-    Save = true,
-    Callback = function(Value)
-        Config.Movement.JumpEnabled = Value
-    end
-})
-
-JumpSection:AddSlider({
-    Name = "JUMP POWER",
-    Min = 50,
-    Max = 300,
-    Default = 100,
-    Increment = 5,
-    ValueName = "JP",
-    Outline = false,
-    Callback = function(Value)
-        Config.Movement.JumpValue = Value
-    end
-})
-
-local ExtraSection = MovementTab:AddSection({
-    Name = "EXTRA MOVEMENT",
-    TextSize = 16,
-    Glass = true,
-    Outline = false
-})
-
-ExtraSection:AddToggle({
-    Name = "INFINITE JUMP",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
-    Flag = "InfiniteJump",
-    Save = true,
-    Callback = function(Value)
-        Config.Movement.InfiniteJump = Value
-    end
-})
-
-ExtraSection:AddToggle({
-    Name = "NOCLIP",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
-    Flag = "Noclip",
-    Save = true,
-    Callback = function(Value)
-        Config.Movement.Noclip = Value
-        if Value then
-            enableNoclip()
-        else
-            disableNoclip()
-        end
-    end
-})
-
---==================================================
--- VISUAL TAB
---==================================================
-local VisualMainSection = VisualTab:AddSection({
-    Name = "VISUAL ENHANCEMENTS",
-    TextSize = 16,
-    Glass = true,
-    Outline = false
-})
-
-VisualMainSection:AddToggle({
-    Name = "WALLHACK",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
-    Flag = "Wallhack",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.WallhackEnabled = Value
-        updateWallhack()
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "FULLBRIGHT",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
-    Flag = "Fullbright",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.FullbrightEnabled = Value
-        updateFullbright()
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "NO FOG",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
-    Flag = "NoFog",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.NoFogEnabled = Value
-        updateNoFog()
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "INFINITE ZOOM",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
-    Flag = "InfiniteZoom",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.InfiniteZoom = Value
-        updateInfiniteZoom()
-    end
-})
-
---==================================================
--- TELEPORT TAB
---==================================================
-local TeleportMainSection = TeleportTab:AddSection({
-    Name = "TELEPORT TO PLAYER",
-    TextSize = 16,
-    Glass = true,
-    Outline = false
-})
-
-local SelectedPlayer = ""
-
-TeleportMainSection:AddDropdown({
-    Name = "SELECT PLAYER",
-    Default = "Select...",
-    Options = getPlayerList(),
-    Multi = false,
-    Search = true,
-    AllowNone = true,
-    Outline = false,
-    Callback = function(Value)
-        SelectedPlayer = Value
-    end
-})
-
-TeleportMainSection:AddButton({
-    Name = "TELEPORT",
-    Icon = "map-pin",
-    Outline = false,
-    Callback = function()
-        if SelectedPlayer and SelectedPlayer ~= "" and SelectedPlayer ~= "Select..." then
-            teleportToPlayer(SelectedPlayer)
-        else
-            Notify("Select a player first!")
-        end
-    end
-})
-
-TeleportMainSection:AddButton({
-    Name = "REFRESH LIST",
-    Icon = "refresh-cw",
-    Outline = false,
-    Callback = function()
-        Notify("Player list refreshed")
-    end
-})
-
-local WaypointSection = TeleportTab:AddSection({
-    Name = "WAYPOINTS",
-    TextSize = 16,
-    Glass = true,
-    Outline = false
-})
-
-WaypointSection:AddButton({
-    Name = "SAVE POSITION",
-    Icon = "save",
-    Outline = false,
-    Callback = function()
-        if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-            Config.Teleport.SavedPosition = Player.Character.HumanoidRootPart.CFrame
-            Notify("Position saved!")
-        end
-    end
-})
-
-WaypointSection:AddButton({
-    Name = "LOAD POSITION",
-    Icon = "upload",
-    Outline = false,
-    Callback = function()
-        if Config.Teleport.SavedPosition then
-            Player.Character.HumanoidRootPart.CFrame = Config.Teleport.SavedPosition
-            Notify("Teleported to saved position")
-        else
-            Notify("No saved position!")
-        end
-    end
-})
-
---==================================================
--- MISC TAB
---==================================================
-local MiscMainSection = MiscTab:AddSection({
-    Name = "UTILITY",
-    TextSize = 16,
-    Glass = true,
-    Outline = false
-})
-
-MiscMainSection:AddToggle({
-    Name = "ANTI AFK",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
-    Flag = "AntiAFK",
-    Save = true,
-    Callback = function(Value)
-        Config.Misc.AntiAFK = Value
-        setupAntiAFK()
-    end
+    ImageSize = 38
 })
 
 --==================================================
 -- HIGHLIGHT TAB
 --==================================================
 local HighlightSection = HighlightTab:AddSection({
-    Name = "HIGHLIGHT",
-    TextSize = 16,
+    Name = "Character Highlight",
+    TextSize = 17,
     Glass = true,
-    Outline = false
+    Outline = true
 })
 
-local Highlights = {}
-
-local function createHighlight(player)
-    if player == Player then return end
-    if not player.Character then return end
-    
-    local highlight = Instance.new("Highlight")
-    highlight.Parent = player.Character
-    highlight.Adornee = player.Character
-    highlight.FillTransparency = 0.5
-    highlight.OutlineTransparency = 0
-    
-    if Config.Highlight.TeamCheck then
-        if isTeammate(player) then
-            highlight.FillColor = TeamColor
-            highlight.OutlineColor = TeamColor
-        else
-            highlight.FillColor = EnemyColor
-            highlight.OutlineColor = EnemyColor
-        end
-    end
-    
-    Highlights[player] = highlight
-end
-
-local function removeHighlight(player)
-    if Highlights[player] then
-        Highlights[player]:Destroy()
-        Highlights[player] = nil
-    end
-end
-
 HighlightSection:AddToggle({
-    Name = "ENABLE HIGHLIGHT",
+    Name = "Enable Highlight",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "HighlightEnable",
     Save = true,
     Callback = function(Value)
@@ -1223,6 +1156,24 @@ HighlightSection:AddToggle({
                     createHighlight(player)
                 end
             end
+            
+            Players.PlayerAdded:Connect(function(player)
+                if Config.Highlight.Enabled then
+                    repeat task.wait() until player.Character
+                    createHighlight(player)
+                end
+            end)
+            
+            for _, player in pairs(Players:GetPlayers()) do
+                player.CharacterAdded:Connect(function()
+                    if Config.Highlight.Enabled then
+                        task.wait(0.5)
+                        createHighlight(player)
+                    end
+                end)
+            end
+            
+            Notify("Highlight Enabled")
         else
             for player, _ in pairs(Highlights) do
                 removeHighlight(player)
@@ -1231,222 +1182,523 @@ HighlightSection:AddToggle({
     end
 })
 
+HighlightSection:AddToggle({
+    Name = "Auto Team Colors",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HighlightTeam",
+    Save = true,
+    Callback = function(Value) Config.Highlight.TeamCheck = Value end
+})
+
+HighlightSection:AddToggle({
+    Name = "Show Team Highlight",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HighlightShowTeam",
+    Save = true,
+    Callback = function(Value) Config.Highlight.ShowTeam = Value end
+})
+
+HighlightSection:AddParagraph({
+    Title = "Color Guide",
+    Desc = "🟢 Green = Teammate\n🔴 Red = Enemy",
+    Image = "info",
+    ImageSize = 38
+})
+
 --==================================================
 -- GENERATOR TAB
 --==================================================
 local GenSection = GeneratorTab:AddSection({
-    Name = "GENERATOR",
-    TextSize = 16,
+    Name = "Generator ESP",
+    TextSize = 17,
     Glass = true,
-    Outline = false
+    Outline = true
 })
 
 GenSection:AddToggle({
-    Name = "ENABLE GENERATOR ESP",
+    Name = "Enable Generator ESP",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "GenESP",
     Save = true,
     Callback = function(Value)
         Config.Generator.ESPEnabled = Value
+        
+        if Value then
+            Notify("Generator ESP Enabled")
+        else
+            for gen, folder in pairs(GeneratorESP) do
+                if folder then folder:Destroy() end
+            end
+            GeneratorESP = {}
+        end
     end
 })
 
+GenSection:AddParagraph({
+    Title = "Color Guide",
+    Desc = "🔵 Cyan = In Progress\n🟢 Green = Complete (100%)",
+    Image = "info",
+    ImageSize = 38
+})
+
+GenSection:AddSection({
+    Name = "Anti-Fail Generator",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
 GenSection:AddToggle({
-    Name = "ANTI-FAIL GENERATOR",
+    Name = "Enable Anti-Fail",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "GenAntiFail",
     Save = true,
     Callback = function(Value)
         Config.Generator.AntiFailEnabled = Value
+        Notify(Value and "Anti-Fail Generator Enabled" or "Anti-Fail Generator Disabled")
     end
+})
+
+GenSection:AddParagraph({
+    Title = "Info",
+    Desc = "✅ Auto-pass generator skill checks\n✅ Hold left click to repair",
+    Image = "info",
+    ImageSize = 38
 })
 
 --==================================================
 -- HEALING TAB
 --==================================================
 local HealSection = HealingTab:AddSection({
-    Name = "HEALING",
-    TextSize = 16,
+    Name = "Anti-Fail Healing",
+    TextSize = 17,
     Glass = true,
-    Outline = false
+    Outline = true
 })
 
 HealSection:AddToggle({
-    Name = "ANTI-FAIL HEALING",
+    Name = "Enable Anti-Fail Heal",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
     Flag = "HealAntiFail",
     Save = true,
     Callback = function(Value)
         Config.Healing.AntiFailEnabled = Value
+        Notify(Value and "Anti-Fail Healing Enabled" or "Anti-Fail Healing Disabled")
+    end
+})
+
+HealSection:AddParagraph({
+    Title = "Info",
+    Desc = "✅ Auto-pass healing skill checks\n✅ Never fail healing",
+    Image = "info",
+    ImageSize = 38
+})
+
+--==================================================
+-- VISUAL TAB - DENGAN WALLHACK, FULLBRIGHT, NO FOG, INFINITE ZOOM
+--==================================================
+local VisualSection = VisualTab:AddSection({
+    Name = "Visual Enhancements",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+VisualSection:AddToggle({
+    Name = "Wallhack (See through walls)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Wallhack",
+    Save = true,
+    Callback = function(Value)
+        Config.Visual.WallhackEnabled = Value
+        updateWallhack()
+        Notify(Value and "Wallhack Enabled" or "Wallhack Disabled")
+    end
+})
+
+VisualSection:AddToggle({
+    Name = "Fullbright (Bright map)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Fullbright",
+    Save = true,
+    Callback = function(Value)
+        Config.Visual.FullbrightEnabled = Value
+        Notify(Value and "Fullbright Enabled" or "Fullbright Disabled")
+    end
+})
+
+VisualSection:AddToggle({
+    Name = "No Fog (Clear view)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "NoFog",
+    Save = true,
+    Callback = function(Value)
+        Config.Visual.NoFogEnabled = Value
+        Notify(Value and "No Fog Enabled" or "No Fog Disabled")
+    end
+})
+
+VisualSection:AddToggle({
+    Name = "Infinite Zoom Out",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "InfiniteZoom",
+    Save = true,
+    Callback = function(Value)
+        Config.Visual.InfiniteZoomEnabled = Value
+        Notify(Value and "Infinite Zoom Enabled" or "Infinite Zoom Disabled")
+    end
+})
+
+VisualSection:AddParagraph({
+    Title = "Visual Features",
+    Desc = "👁️ Wallhack - See through walls\n☀️ Fullbright - Bright map\n🌫️ No Fog - Clear view\n🔍 Infinite Zoom - Zoom out more",
+    Image = "eye",
+    ImageSize = 38
+})
+
+--==================================================
+-- MOVEMENT TAB - LENGKAP DENGAN SEMUA FITUR
+--==================================================
+local MoveSection = MovementTab:AddSection({
+    Name = "⚡ SPEED HACK (16-200) ⚡",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+MoveSection:AddToggle({
+    Name = "Enable Speed Hack",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SpeedEnable",
+    Save = true,
+    Callback = function(Value)
+        Config.Movement.SpeedEnabled = Value
+        if not Value then
+            local char = Player.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then hum.WalkSpeed = 16 end
+            end
+        end
+    end
+})
+
+MoveSection:AddSlider({
+    Name = "Speed Value",
+    Min = 16,
+    Max = 200,
+    Default = 50,
+    Increment = 1,
+    ValueName = "WS",
+    Outline = true,
+    Callback = function(Value)
+        Config.Movement.SpeedValue = Value
+    end
+})
+
+MoveSection:AddSection({
+    Name = "🦘 JUMP HACK (50-300) 🦘",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+MoveSection:AddToggle({
+    Name = "Enable Jump Hack",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "JumpEnable",
+    Save = true,
+    Callback = function(Value)
+        Config.Movement.JumpEnabled = Value
+        if not Value then
+            local char = Player.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then hum.JumpPower = 50 end
+            end
+        end
+    end
+})
+
+MoveSection:AddSlider({
+    Name = "Jump Power",
+    Min = 50,
+    Max = 300,
+    Default = 100,
+    Increment = 5,
+    ValueName = "JP",
+    Outline = true,
+    Callback = function(Value)
+        Config.Movement.JumpValue = Value
+    end
+})
+
+MoveSection:AddSection({
+    Name = "🚀 EXTRA MOVEMENT 🚀",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+MoveSection:AddToggle({
+    Name = "Infinite Jump (Jump in air)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "InfiniteJump",
+    Save = true,
+    Callback = function(Value)
+        Config.Movement.InfiniteJump = Value
+        if Value then
+            enableInfiniteJump()
+            Notify("Infinite Jump Enabled")
+        else
+            disableInfiniteJump()
+            Notify("Infinite Jump Disabled")
+        end
+    end
+})
+
+MoveSection:AddToggle({
+    Name = "Noclip (Walk through walls)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Noclip",
+    Save = true,
+    Callback = function(Value)
+        Config.Movement.Noclip = Value
+        
+        if Value then
+            enableNoclip()
+            Notify("Noclip Enabled - Walk through walls!")
+        else
+            disableNoclip()
+            Notify("Noclip Disabled - Collision restored")
+        end
     end
 })
 
 --==================================================
--- HIDE SKILL CHECK UI
+-- TELEPORT TAB - LENGKAP
 --==================================================
-local UISection = VisualTab:AddSection({
-    Name = "UI SETTINGS",
-    TextSize = 16,
+local TeleportSection = TeleportTab:AddSection({
+    Name = "Teleport to Player",
+    TextSize = 17,
     Glass = true,
-    Outline = false
+    Outline = true
 })
 
-UISection:AddToggle({
-    Name = "HIDE SKILL CHECK",
+-- Function to get player list
+local function GetPlayerList()
+    local list = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player then
+            table.insert(list, player.Name)
+        end
+    end
+    return list
+end
+
+local selectedPlayer = ""
+
+local playerDropdown = TeleportSection:AddDropdown({
+    Name = "Select Player",
+    Default = "None",
+    Options = GetPlayerList(),
+    Multi = false,
+    Search = true,
+    AllowNone = true,
+    Outline = true,
+    Callback = function(Value)
+        selectedPlayer = Value
+    end
+})
+
+TeleportSection:AddButton({
+    Name = "Teleport to Selected Player",
+    Icon = "send",
+    Outline = true,
+    Callback = function()
+        if selectedPlayer and selectedPlayer ~= "None" then
+            local target = Players:FindFirstChild(selectedPlayer)
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+                Notify("Teleported to " .. selectedPlayer)
+            else
+                Notify("Player not found or invalid")
+            end
+        else
+            Notify("Please select a player first")
+        end
+    end
+})
+
+TeleportSection:AddButton({
+    Name = "Refresh Player List",
+    Icon = "refresh-cw",
+    Outline = true,
+    Callback = function()
+        playerDropdown:Refresh(GetPlayerList(), true)
+        Notify("Player list refreshed")
+    end
+})
+
+TeleportSection:AddSection({
+    Name = "Waypoints",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+TeleportSection:AddButton({
+    Name = "Save Current Position",
+    Icon = "save",
+    Outline = true,
+    Callback = function()
+        if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+            Config.Teleport.SavedPosition = Player.Character.HumanoidRootPart.CFrame
+            Notify("Position saved!")
+        end
+    end
+})
+
+TeleportSection:AddButton({
+    Name = "Load Saved Position",
+    Icon = "upload",
+    Outline = true,
+    Callback = function()
+        if Config.Teleport.SavedPosition then
+            Player.Character.HumanoidRootPart.CFrame = Config.Teleport.SavedPosition
+            Notify("Teleported to saved position")
+        else
+            Notify("No saved position found!")
+        end
+    end
+})
+
+--==================================================
+-- MISC TAB - DENGAN ANTI AFK DAN ACTIVE FEATURES COUNTER
+--==================================================
+local MiscSection = MiscTab:AddSection({
+    Name = "Utility",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+MiscSection:AddToggle({
+    Name = "Anti AFK",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
-    Outline = false,
+    Outline = true,
+    Flag = "AntiAFK",
+    Save = true,
+    Callback = function(Value)
+        Config.Misc.AntiAFK = Value
+        if Value then
+            enableAntiAFK()
+            Notify("Anti AFK Enabled")
+        else
+            disableAntiAFK()
+            Notify("Anti AFK Disabled")
+        end
+    end
+})
+
+MiscSection:AddSection({
+    Name = "Hide UI Elements",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+MiscSection:AddToggle({
+    Name = "Hide Skill Check UI",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
     Flag = "HideSkillCheck",
     Save = true,
     Callback = function(Value)
         Config.UI.HideSkillCheck = Value
+        Notify(Value and "Skill Check UI Hidden" or "Skill Check UI Visible")
     end
 })
 
-RunService.RenderStepped:Connect(function()
-    if Config.UI.HideSkillCheck then
-        local PlayerGui = Player:WaitForChild("PlayerGui")
-        local targetUI = PlayerGui:FindFirstChild("SkillCheckPromptGui")
-        local targetUICon = PlayerGui:FindFirstChild("SkillCheckPromptGui-con")
-        
-        if targetUI and targetUI.Enabled then
-            targetUI.Enabled = false
-        end
-        
-        if targetUICon and targetUICon.Enabled then
-            targetUICon.Enabled = false
+-- Active Features Counter (Live Update)
+local ActiveFeaturesSection = MiscTab:AddSection({
+    Name = "📊 ACTIVE FEATURES",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+-- Function to update active features display
+local function UpdateActiveFeatures()
+    -- Clear previous content
+    for _, v in pairs(ActiveFeaturesSection:GetChildren()) do
+        if v:IsA("Frame") or v:IsA("TextLabel") then
+            v:Destroy()
         end
     end
-end)
-
---==================================================
--- GENERATOR ESP SYSTEM
---==================================================
-local GeneratorESP = {}
-
-local function createGeneratorESP(gen)
-    if not gen:IsA("Model") or gen:FindFirstChild("GenESP") then return end
     
-    local folder = Instance.new("Folder", gen)
-    folder.Name = "GenESP"
+    local count = GetActiveFeaturesCount()
+    local features = GetActiveFeaturesList()
     
-    local highlight = Instance.new("Highlight", folder)
-    highlight.Adornee = gen
-    highlight.FillColor = Color3.new(0, 1, 1)
-    highlight.DepthMode = "AlwaysOnTop"
-    
-    local billboard = Instance.new("BillboardGui", folder)
-    billboard.Size = UDim2.new(0, 80, 0, 40)
-    billboard.AlwaysOnTop = true
-    billboard.Adornee = gen:FindFirstChild("HitBox") or gen.PrimaryPart
-    billboard.ExtentsOffset = Vector3.new(0, 3, 0)
-    
-    local textLabel = Instance.new("TextLabel", billboard)
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = Color3.new(1, 1, 1)
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 16
-    
-    task.spawn(function()
-        while gen.Parent and folder.Parent do
-            local progress = gen:GetAttribute("RepairProgress") or 0
-            textLabel.Text = math.floor(progress) .. "%"
-            highlight.Enabled = Config.Generator.ESPEnabled
-            textLabel.Visible = Config.Generator.ESPEnabled
-            
-            if progress >= 100 then
-                highlight.FillColor = Color3.new(0, 1, 0)
-            else
-                highlight.FillColor = Color3.new(0, 1, 1)
-            end
-            
-            task.wait(1)
+    local desc = "Total Active: " .. count .. "\n\n"
+    if count > 0 then
+        desc = desc .. "✅ Active Features:\n"
+        for i, feature in ipairs(features) do
+            desc = desc .. "  • " .. feature .. "\n"
         end
-    end)
+    else
+        desc = desc .. "No features active"
+    end
     
-    GeneratorESP[gen] = folder
+    ActiveFeaturesSection:AddParagraph({
+        Title = "Feature Status",
+        Desc = desc,
+        Image = "activity",
+        ImageSize = 38,
+        Buttons = {
+            {
+                Title = "Refresh",
+                Callback = UpdateActiveFeatures
+            }
+        }
+    })
 end
 
+UpdateActiveFeatures()
+
+-- Auto-refresh every 2 seconds
 task.spawn(function()
     while true do
-        if Config.Generator.ESPEnabled then
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                if obj.Name == "Generator" and obj:IsA("Model") then
-                    createGeneratorESP(obj)
-                end
-            end
-        end
-        task.wait(3)
-    end
-end)
-
---==================================================
--- ANTI-FAIL SYSTEM
---==================================================
-local AntiFailHooked = false
-
-local function setupAntiFail()
-    if AntiFailHooked then return end
-    
-    task.spawn(function()
-        local success = pcall(function()
-            local oldNamecall
-            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-                local method = getnamecallmethod()
-                local args = {...}
-                
-                if Config.Generator.AntiFailEnabled then
-                    if tostring(self):find("SkillCheckFailEvent") and method == "FireServer" then
-                        return nil
-                    end
-                    
-                    if tostring(self):find("SkillCheckResultEvent") and method == "FireServer" then
-                        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-                            args[1] = true
-                            return oldNamecall(self, unpack(args))
-                        else
-                            return nil
-                        end
-                    end
-                end
-                
-                if Config.Healing.AntiFailEnabled then
-                    if tostring(self):find("Heal") and tostring(self):find("Fail") and method == "FireServer" then
-                        return nil
-                    end
-                    
-                    if tostring(self):find("Heal") and tostring(self):find("Result") and method == "FireServer" then
-                        args[1] = true
-                        return oldNamecall(self, unpack(args))
-                    end
-                end
-                
-                return oldNamecall(self, ...)
-            end)
-            
-            AntiFailHooked = true
-        end)
-    end)
-end
-
-setupAntiFail()
-
---==================================================
--- CHARACTER UPDATES
---==================================================
-Player.CharacterAdded:Connect(function(char)
-    Player.Character = char
-    task.wait(1)
-    
-    if Config.Movement.Noclip then
-        enableNoclip()
+        task.wait(2)
+        UpdateActiveFeatures()
     end
 end)
 
@@ -1459,11 +1711,41 @@ Window:AddConfigTab({
 })
 
 --==================================================
+-- CHARACTER UPDATES
+--==================================================
+Player.CharacterAdded:Connect(function(char)
+    Player.Character = char
+    task.wait(1)
+    
+    -- Re-apply features if enabled
+    if Config.Movement.Noclip then
+        enableNoclip()
+    end
+    
+    if Config.Movement.InfiniteJump then
+        enableInfiniteJump()
+    end
+    
+    if Config.Misc.AntiAFK then
+        enableAntiAFK()
+    end
+end)
+
+--==================================================
 -- INITIALIZE
 --==================================================
 OrionLib:Init()
 
-Notify("Press F4 to toggle menu")
+Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.1 🔥")
+print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.0 🔥")
+print("═══════════════════════════════════════════════════════")
+print("✅ Player ESP - Font BESAR & Tebal")
+print("✅ Highlight - Team colors")
+print("✅ Generator ESP - Progress %")
+print("✅ Anti-Fail System - Generator + Healing")
+print("✅ Visual - Wallhack, Fullbright, No Fog, Infinite Zoom")
+print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
+print("✅ Teleport - To Player + Waypoints")
+print("✅ Misc - Anti AFK + Active Features Counter")
 print("═══════════════════════════════════════════════════════")
