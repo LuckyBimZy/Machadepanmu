@@ -1571,6 +1571,3 @@ end
 
 -- Find remotes first
 FindRemotes()
-
--- Start key system
-initKeySystem()
