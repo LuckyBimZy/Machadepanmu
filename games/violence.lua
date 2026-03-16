@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
 -- Premium UI menggunakan Catraz Hub Library
 -- Adapted from LuckyBimZy & RanZx999
--- Version: 3.1 COMPLETE
+-- Version: 3.2 COMPLETE
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -37,8 +37,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 --==================================================
 -- COLORS
 --==================================================
-local TeamColor = Color3.fromRGB(0, 255, 0)
-local EnemyColor = Color3.fromRGB(255, 0, 0)
+local TeamColor = Color3.fromRGB(0, 255, 0)      -- Hijau untuk teammate
+local EnemyColor = Color3.fromRGB(255, 0, 0)      -- Merah untuk enemy
+local NeutralColor = Color3.fromRGB(255, 255, 255) -- Putih untuk neutral (jika team check nonaktif)
 
 --==================================================
 -- CONFIG
@@ -75,7 +76,7 @@ local Config = {
         NoFogEnabled = false,
         WallhackEnabled = false,
         ZoomOutEnabled = false,
-        ZoomOutValue = 120  -- Default zoom value
+        ZoomOutValue = 120
     },
     Movement = {
         SpeedEnabled = false,
@@ -113,7 +114,7 @@ local ActiveFeatures = {
 }
 
 --==================================================
--- SAVE ORIGINAL LIGHTING
+-- SAVE ORIGINAL SETTINGS
 --==================================================
 local originalLighting = {
     Brightness = Lighting.Brightness,
@@ -124,7 +125,7 @@ local originalLighting = {
     OutdoorAmbient = Lighting.OutdoorAmbient
 }
 
-local originalFOV = Camera.FieldOfView  -- Save original FOV
+local originalFOV = Camera.FieldOfView
 
 local atm = Lighting:FindFirstChildOfClass("Atmosphere")
 if atm then
@@ -151,10 +152,14 @@ local function isTeammate(player)
 end
 
 local function getPlayerColor(player)
-    if Config.ESP.TeamCheck and isTeammate(player) then
-        return TeamColor
+    if Config.ESP.TeamCheck then
+        if isTeammate(player) then
+            return TeamColor  -- Hijau untuk teammate
+        else
+            return EnemyColor  -- Merah untuk enemy
+        end
     else
-        return EnemyColor
+        return EnemyColor  -- Default merah jika team check nonaktif
     end
 end
 
@@ -187,7 +192,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
     Subtext = "ULTIMATE Edition",
-    Version = "v3.1",
+    Version = "v3.2",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -198,17 +203,14 @@ local Window = OrionLib:MakeWindow({
     Icon = "rbxassetid://8834748103",
     ShowIcon = true,
     
-    -- Custom Theme & Appearance
     ImageBackground = "",
     ImageTransparency = 0.8,
     WindowTransparency = 0.05,
     
-    -- Floating Toggle Customization
     ToggleIcon = "rbxassetid://105921924721005",
     ToggleSize = 50
 })
 
--- Set Theme
 OrionLib.SelectedTheme = "Ocean"
 
 Notify("Script loaded successfully!")
@@ -289,7 +291,6 @@ local PlayerInfoSection = MainTab:AddSection({
     Outline = true
 })
 
--- Player info dengan tampilan yang lebih jelas
 PlayerInfoSection:AddParagraph({
     Title = "👤 " .. Player.Name,
     Desc = "Display Name: " .. Player.DisplayName .. "\n" ..
@@ -307,7 +308,6 @@ local ServerInfoSection = MainTab:AddSection({
     Outline = true
 })
 
--- Fungsi untuk update server info
 local function updateServerInfo()
     local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
     local players = #Players:GetPlayers()
@@ -351,7 +351,6 @@ local activeFeaturesParagraph = ActiveFeaturesSection:AddParagraph({
     ImageSize = 48
 })
 
--- Update active features setiap 2 detik
 task.spawn(function()
     while true do
         activeFeaturesParagraph:SetDesc("Active Features: " .. updateActiveFeaturesCount() .. "\n" ..
@@ -361,7 +360,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- PLAYER ESP SYSTEM (AUTO-DETECT) - DIPERJELAS
+-- PLAYER ESP SYSTEM
 --==================================================
 local ESPObjects = {}
 
@@ -385,23 +384,23 @@ local function createPlayerESP(player)
     esp.Box.Transparency = 1
     esp.Box.Filled = false
     
-    -- Name dengan font lebih besar dan putih
+    -- Name dengan ukuran normal
     esp.Name.Visible = false
-    esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Putih
-    esp.Name.Size = 18 -- Lebih besar
+    esp.Name.Color = EnemyColor  -- Default merah
+    esp.Name.Size = 16
     esp.Name.Center = true
     esp.Name.Outline = true
     esp.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Name.Font = 3 -- Font lebih tebal
+    esp.Name.Font = 2
     
-    -- Distance dengan font lebih besar
+    -- Distance
     esp.Distance.Visible = false
     esp.Distance.Color = Color3.fromRGB(200, 200, 200)
-    esp.Distance.Size = 16
+    esp.Distance.Size = 14
     esp.Distance.Center = true
     esp.Distance.Outline = true
     esp.Distance.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Distance.Font = 3
+    esp.Distance.Font = 2
     
     esp.HealthBarBG.Visible = false
     esp.HealthBarBG.Color = Color3.fromRGB(20, 20, 20)
@@ -486,16 +485,17 @@ local function updatePlayerESP()
         end
         
         if Config.ESP.Names then
-            esp.Name.Text = player.Name .. (isTeammate(player) and " (Team)" or " (Enemy)")
-            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 40)
+            esp.Name.Text = player.Name
+            esp.Name.Color = playerColor  -- Warna sesuai team
+            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 35)
             esp.Name.Visible = true
         else
             esp.Name.Visible = false
         end
         
         if Config.ESP.Distance then
-            esp.Distance.Text = string.format("[%.0f meters]", distance)
-            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 25)
+            esp.Distance.Text = string.format("[%.0fm]", distance)
+            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 20)
             esp.Distance.Visible = true
         else
             esp.Distance.Visible = false
@@ -559,7 +559,6 @@ local function setupPlayerESP(player)
     end
 end
 
--- Initialize ESP for existing players
 for _, player in pairs(Players:GetPlayers()) do
     if player ~= Player then
         setupPlayerESP(player)
@@ -593,8 +592,8 @@ local function createHighlight(player)
             highlight.OutlineColor = EnemyColor
         end
     else
-        highlight.FillColor = Color3.fromRGB(255, 255, 255)
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.FillColor = EnemyColor
+        highlight.OutlineColor = EnemyColor
     end
     
     Highlights[player] = highlight
@@ -630,8 +629,8 @@ local function updateHighlights()
                 highlight.OutlineColor = EnemyColor
             end
         else
-            highlight.FillColor = Color3.fromRGB(255, 255, 255)
-            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.FillColor = EnemyColor
+            highlight.OutlineColor = EnemyColor
         end
     end
 end
@@ -661,7 +660,6 @@ local function updateWallhack()
             wallhackConnection = nil
         end
         
-        -- Restore original materials
         for _, v in pairs(Workspace:GetDescendants()) do
             if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
                 v.Material = Enum.Material.Plastic
@@ -672,19 +670,16 @@ local function updateWallhack()
 end
 
 --==================================================
--- ZOOM OUT VIEW FUNCTION (IMPROVED)
+-- ZOOM OUT VIEW FUNCTION
 --==================================================
 local zoomConnection = nil
-local originalFOV = Camera.FieldOfView
 
 local function updateZoomOut()
     if Config.Visual.ZoomOutEnabled then
-        -- Smooth transition to zoom out
         if zoomConnection then zoomConnection:Disconnect() end
         
         zoomConnection = RunService.RenderStepped:Connect(function()
             if Camera and Config.Visual.ZoomOutEnabled then
-                -- Lerp for smooth transition
                 local currentFOV = Camera.FieldOfView
                 local targetFOV = Config.Visual.ZoomOutValue
                 local newFOV = currentFOV + (targetFOV - currentFOV) * 0.1
@@ -697,7 +692,6 @@ local function updateZoomOut()
             zoomConnection = nil
         end
         
-        -- Smoothly return to original FOV
         local returnConnection = RunService.RenderStepped:Connect(function()
             if Camera and not Config.Visual.ZoomOutEnabled then
                 local currentFOV = Camera.FieldOfView
@@ -806,7 +800,6 @@ local function setupAntiFail()
                 local method = getnamecallmethod()
                 local args = {...}
                 
-                -- GENERATOR ANTI-FAIL
                 if Config.Generator.AntiFailEnabled then
                     if tostring(self):find("SkillCheckFailEvent") and method == "FireServer" then
                         return nil
@@ -822,7 +815,6 @@ local function setupAntiFail()
                     end
                 end
                 
-                -- HEALING ANTI-FAIL
                 if Config.Healing.AntiFailEnabled then
                     if tostring(self):find("Heal") and tostring(self):find("Fail") and method == "FireServer" then
                         return nil
@@ -845,11 +837,10 @@ end
 setupAntiFail()
 
 --==================================================
--- VISUAL SYSTEMS (FULLBRIGHT, NO FOG)
+-- VISUAL SYSTEMS
 --==================================================
 task.spawn(function()
     while true do
-        -- Fullbright
         if Config.Visual.FullbrightEnabled then
             Lighting.Brightness = 2
             Lighting.ClockTime = 14
@@ -862,7 +853,6 @@ task.spawn(function()
             Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
         end
         
-        -- No Fog
         if Config.Visual.NoFogEnabled then
             Lighting.FogStart = 0
             Lighting.FogEnd = 100000
@@ -871,7 +861,6 @@ task.spawn(function()
             Lighting.FogStart = originalLighting.FogStart or 0
         end
         
-        -- Atmosphere removal for Fullbright
         if Config.Visual.FullbrightEnabled or Config.Visual.NoFogEnabled then
             for _, v in pairs(Lighting:GetChildren()) do
                 if v:IsA("Atmosphere") then
@@ -886,7 +875,6 @@ task.spawn(function()
                 end
             end
         else
-            -- Restore atmosphere
             for _, v in pairs(Lighting:GetChildren()) do
                 if v:IsA("Atmosphere") and originalLighting.Atmosphere then
                     v.Density = originalLighting.Atmosphere.Density or 0.3
@@ -906,7 +894,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- MOVEMENT SYSTEM (COMPLETE)
+-- MOVEMENT SYSTEM
 --==================================================
 local noclipConnection = nil
 
@@ -917,7 +905,6 @@ local function updateMovement()
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum then return end
     
-    -- Speed Hack
     if Config.Movement.SpeedEnabled then
         hum.WalkSpeed = Config.Movement.SpeedValue
         ActiveFeatures.Speed = true
@@ -926,7 +913,6 @@ local function updateMovement()
         ActiveFeatures.Speed = false
     end
     
-    -- Jump Hack
     if Config.Movement.JumpEnabled then
         hum.JumpPower = Config.Movement.JumpValue
         ActiveFeatures.Jump = true
@@ -936,7 +922,6 @@ local function updateMovement()
     end
 end
 
--- Infinite Jump
 UserInputService.JumpRequest:Connect(function()
     if Config.Movement.InfiniteJump then
         local char = Player.Character
@@ -949,7 +934,6 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- Noclip
 local function enableNoclip()
     if noclipConnection then noclipConnection:Disconnect() end
     
@@ -1034,7 +1018,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Generator ESP scanner
 task.spawn(function()
     while true do
         if Config.Generator.ESPEnabled then
@@ -1047,10 +1030,6 @@ task.spawn(function()
         task.wait(3)
     end
 end)
-
---==================================================
--- MAIN TAB CONTENT (sudah dibuat di atas)
---==================================================
 
 --==================================================
 -- ESP TAB
@@ -1100,7 +1079,7 @@ ESPSection:AddToggle({
 })
 
 ESPSection:AddToggle({
-    Name = "Show Names (Large White Text)",
+    Name = "Show Names",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -1140,7 +1119,7 @@ ESPSection:AddToggle({
 })
 
 ESPSection:AddToggle({
-    Name = "Team Check (Hide Teammates)",
+    Name = "Team Check",
     Default = true,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -1172,7 +1151,7 @@ ESPSection:AddSlider({
 
 ESPSection:AddParagraph({
     Title = "Color Guide",
-    Desc = "🟢 Green = Teammate\n🔴 Red = Enemy\n⚪ White Names = All Players",
+    Desc = "🟢 Green = Teammate\n🔴 Red = Enemy",
     Image = "info",
     ImageSize = 38
 })
@@ -1358,7 +1337,7 @@ HealSection:AddParagraph({
 })
 
 --==================================================
--- VISUAL TAB (LENGKAP DENGAN ZOOM OUT VIEW)
+-- VISUAL TAB
 --==================================================
 local VisualSection = VisualTab:AddSection({
     Name = "Visual Enhancements",
@@ -1445,7 +1424,6 @@ VisualSection:AddSlider({
     Callback = function(Value)
         Config.Visual.ZoomOutValue = Value
         if Config.Visual.ZoomOutEnabled then
-            -- Update immediately if enabled
             Camera.FieldOfView = Value
         end
     end
@@ -1489,7 +1467,7 @@ VisualSection:AddParagraph({
 })
 
 --==================================================
--- MOVEMENT TAB (LENGKAP)
+-- MOVEMENT TAB
 --==================================================
 local MoveSection = MovementTab:AddSection({
     Name = "⚡ SPEED HACK (16-200) ⚡",
@@ -1612,7 +1590,7 @@ MoveSection:AddParagraph({
 })
 
 --==================================================
--- TELEPORT TAB (LENGKAP)
+-- TELEPORT TAB
 --==================================================
 local TeleportSection = TeleportTab:AddSection({
     Name = "📍 TELEPORT TO PLAYER 📍",
@@ -1713,7 +1691,7 @@ TeleportSection:AddButton({
 })
 
 --==================================================
--- MISC TAB (DENGAN ANTI AFK)
+-- MISC TAB
 --==================================================
 local MiscSection = MiscTab:AddSection({
     Name = "🛡️ ANTI AFK 🛡️",
@@ -1757,7 +1735,6 @@ MiscSection:AddSection({
     Outline = true
 })
 
--- Live updating active features
 local activeFeaturesList = MiscSection:AddParagraph({
     Title = "Currently Active:",
     Desc = "Loading...",
@@ -1806,7 +1783,7 @@ MiscSection:AddSection({
 
 MiscSection:AddParagraph({
     Title = "Violence District",
-    Desc = "Version: 3.1 ULTIMATE\n" ..
+    Desc = "Version: 3.2 ULTIMATE\n" ..
            "UI: Catraz Hub Library\n" ..
            "Press F4 to toggle menu",
     Image = "info",
@@ -1818,7 +1795,6 @@ MiscSection:AddButton({
     Icon = "x",
     Outline = true,
     Callback = function()
-        -- Cleanup
         for player, _ in pairs(ESPObjects) do
             removePlayerESP(player)
         end
@@ -1845,7 +1821,6 @@ MiscSection:AddButton({
             zoomConnection:Disconnect()
         end
         
-        -- Restore original FOV
         Camera.FieldOfView = originalFOV
         
         Notify("Script Destroyed")
@@ -1870,7 +1845,6 @@ Player.CharacterAdded:Connect(function(char)
     Player.Character = char
     task.wait(1)
     
-    -- Re-apply noclip if enabled
     if Config.Movement.Noclip then
         enableNoclip()
     end
@@ -1883,9 +1857,9 @@ OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.1 🔥")
+print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.2 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ Player ESP - Large White Text")
+print("✅ Player ESP - Team Colors (Green/Red)")
 print("✅ Movement Hacks - Speed, Jump, Infinite Jump, Noclip")
 print("✅ Visual - Wallhack, Fullbright, No Fog, Zoom Out View")
 print("✅ Teleport - To Player, Save/Load Position")
