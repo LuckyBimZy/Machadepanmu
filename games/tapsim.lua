@@ -1,730 +1,212 @@
--- ==================== TAP SIMULATOR ULTIMATE ====================
--- Premium Script dengan fitur lengkap dan UI modern
--- Game ID: 75992362647444
--- Last Updated: March 2026
+-- ==================== TAP SIMULATOR - CATRAZ EDITION ====================
+-- Premium Auto Farm Script untuk Tap Simulator
+-- Author: Adapted for Catraz Hub
+-- Version: 1.0
+
+if _G.TapSimLoaded then 
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Tap Simulator",
+        Text = "Script already loaded!",
+        Duration = 2
+    })
+    return 
+end
+
+_G.TapSimLoaded = true
 
 --==================================================
--- LOAD LIBRARY
+-- LOAD CATRAZ HUB LIBRARY
 --==================================================
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
 
 --==================================================
--- VARIABLES GLOBAL
+-- VARIABLES
 --==================================================
 local Player = game.Players.LocalPlayer
 local Mouse = Player:GetMouse()
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
 
--- Cek apakah sudah terload
-if _G.TapSimLoaded then
-    Library:MakeNotification({
-        Name = "Tap Simulator",
-        Content = "Script sudah berjalan!",
-        Time = 2
-    })
-    return
-end
-_G.TapSimLoaded = true
-
---==================================================
--- KONFIGURASI DEFAULT
---==================================================
-local Settings = {
-    -- Auto Tap
-    AutoTap = false,
-    TapSpeed = 1,
-    TapMethod = "Remote", -- Remote atau Click
-    
-    -- Auto Rebirth
-    AutoRebirth = false,
-    RebirthAt = 100,
-    RebirthMethod = "Auto", -- Auto atau Manual
-    
-    -- Auto Hatch
-    AutoHatch = false,
-    EggType = "Basic Egg",
-    HatchDelay = 0.5,
-    
-    -- Auto Craft
-    AutoCraft = false,
-    CraftPriority = "Gold",
-    CraftDelay = 1,
-    
-    -- Auto Enchant
-    AutoEnchant = false,
-    EnchantDelay = 1,
-    
-    -- Auto Equip
-    AutoEquipBest = false,
-    EquipDelay = 2,
-    
-    -- Auto Delete
-    AutoDeleteCommon = false,
-    DeleteDelay = 3,
-    
-    -- Auto Collect
-    AutoCollect = false,
-    CollectDelay = 2,
-    
-    -- Auto Codes
-    AutoCodes = false,
-    CodesDelay = 60,
-    
-    -- Teleport
-    TeleportToZone = false,
-    TeleportDelay = 5,
-    
-    -- Misc
-    AntiAFK = false,
-    FPSBoost = false,
+-- Cari Remote Events/Functions
+local RemoteEvent = nil
+local Remotes = {
+    Tap = nil,
+    BuyEgg = nil,
+    HatchEgg = nil,
+    BuyArea = nil,
+    Upgrade = nil,
+    Collect = nil,
+    Rebirth = nil
 }
 
---==================================================
--- FUNGSI UTILITY
---==================================================
-local function Notify(msg, time)
-    Library:MakeNotification({
-        Name = "Tap Simulator",
-        Content = msg,
-        Image = "zap",
-        Time = time or 2
-    })
-end
-
-local function GetPlayerStats()
-    local stats = {
-        Clicks = 0,
-        Rebirths = 0,
-        Pets = 0,
-        Level = 1
-    }
-    
-    -- Coba ambil dari leaderstats
-    local leaderstats = Player:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in pairs(leaderstats:GetChildren()) do
-            if v.Name:lower():find("click") or v.Name:lower():find("tap") then
-                stats.Clicks = v.Value
-            elseif v.Name:lower():find("rebirth") then
-                stats.Rebirths = v.Value
-            elseif v.Name:lower():find("level") then
-                stats.Level = v.Value
+-- Fungsi untuk mencari remotes
+local function FindRemotes()
+    -- Cari di ReplicatedStorage
+    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+            local name = v.Name:lower()
+            if name:find("tap") or name:find("click") then
+                Remotes.Tap = v
+            elseif name:find("egg") or name:find("hatch") then
+                Remotes.HatchEgg = v
+            elseif name:find("buy") and (name:find("egg") or name:find("area")) then
+                if name:find("egg") then
+                    Remotes.BuyEgg = v
+                elseif name:find("area") then
+                    Remotes.BuyArea = v
+                end
+            elseif name:find("upgrade") or name:find("power") then
+                Remotes.Upgrade = v
+            elseif name:find("collect") or name:find("claim") then
+                Remotes.Collect = v
+            elseif name:find("rebirth") or name:find("prestige") then
+                Remotes.Rebirth = v
             end
         end
     end
     
-    -- Hitung pets (jika ada folder pets)
-    local petFolder = Player:FindFirstChild("Pets") or Player:FindFirstChild("Inventory")
-    if petFolder then
-        stats.Pets = #petFolder:GetChildren()
-    end
-    
-    return stats
-end
-
-local function FindRemote(name)
-    -- Cari remote event di berbagai lokasi
-    local locations = {
-        ReplicatedStorage,
-        Player:FindFirstChild("PlayerGui"),
-        Workspace
-    }
-    
-    for _, location in pairs(locations) do
-        if location then
-            local remote = location:FindFirstChild(name, true)
-            if remote then return remote end
+    -- Cari di Player scripts
+    for _, v in pairs(Player.PlayerScripts:GetDescendants()) do
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
+            local name = v.Name:lower()
+            if name:find("tap") or name:find("click") and not Remotes.Tap then
+                Remotes.Tap = v
+            end
         end
     end
     
-    -- Cari berdasarkan pola umum
-    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") and (
-            obj.Name:lower():find("tap") or
-            obj.Name:lower():find("click") or
-            obj.Name:lower():find("rebirth") or
-            obj.Name:lower():find("hatch") or
-            obj.Name:lower():find("craft")
-        ) then
-            return obj
-        end
+    print("=== REMOTES FOUND ===")
+    for k, v in pairs(Remotes) do
+        print(k, v and "✓" or "✗")
     end
-    
-    return nil
 end
 
--- Cache remotes
-local Remotes = {
-    Tap = FindRemote("TapEvent") or FindRemote("Click") or FindRemote("Tap"),
-    Rebirth = FindRemote("RebirthEvent") or FindRemote("Rebirth"),
-    Hatch = FindRemote("HatchEvent") or FindRemote("HatchEgg") or FindRemote("Hatch"),
-    Craft = FindRemote("CraftEvent") or FindRemote("CraftPet") or FindRemote("Craft"),
-    Enchant = FindRemote("EnchantEvent") or FindRemote("Enchant"),
-    Equip = FindRemote("EquipEvent") or FindRemote("EquipBest"),
-    Delete = FindRemote("DeletePet") or FindRemote("Delete"),
-    Collect = FindRemote("CollectReward") or FindRemote("Claim"),
-    Code = FindRemote("RedeemCode") or FindRemote("Code"),
+FindRemotes()
+
+-- Toggles
+local Toggles = {
+    -- Auto Farm
+    AutoTap = false,
+    TapSpeed = 0.01,
+    AutoClicker = false,
+    ClickSpeed = 0.001,
+    
+    -- Eggs
+    AutoBuyEgg = false,
+    EggType = "Basic",
+    AutoHatch = false,
+    
+    -- Upgrades
+    AutoUpgrade = false,
+    UpgradeType = "All",
+    AutoBuyArea = false,
+    
+    -- Collection
+    AutoCollect = false,
+    AutoRebirth = false,
+    RebirthAt = 1000,
+    
+    -- Visuals
+    ESP = false,
+    FullBright = false,
+    NoFog = false,
+    
+    -- Misc
+    AntiAFK = false,
+    AutoClaim = false
 }
 
+-- Loops
+local Loops = {}
+
 --==================================================
--- CREATE WINDOW UTAMA
+-- NOTIFICATION
 --==================================================
-local Window = Library:MakeWindow({
-    Name = "Tap Simulator Ultimate",
-    Subtext = "Premium Edition",
-    Version = "v3.0.0",
+local function Notify(msg)
+    OrionLib:MakeNotification({
+        Name = "Tap Simulator",
+        Content = msg,
+        Image = "zap",
+        Time = 2.5
+    })
+end
+
+--==================================================
+-- CREATE MAIN WINDOW
+--==================================================
+local Window = OrionLib:MakeWindow({
+    Name = "Tap Simulator",
+    Subtext = "Auto Farm Premium",
+    Version = "v1.0.0",
     VersionIcon = "zap",
     HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "TapSimConfig",
+    ConfigFolder = "TapSim_Config",
     IntroEnabled = true,
-    IntroText = "Tap Simulator Script",
+    IntroText = "Tap Simulator",
     IntroIcon = "rbxassetid://8834748103",
     Icon = "rbxassetid://8834748103",
     ShowIcon = true,
+    
+    -- Custom Theme
     ImageBackground = "",
     ImageTransparency = 0.8,
     WindowTransparency = 0.05,
+    
+    -- Floating Toggle
     ToggleIcon = "rbxassetid://105921924721005",
     ToggleSize = 50
 })
 
--- Pilih tema (Default, Ocean, Void, Hackerman)
-Library.SelectedTheme = "Ocean"
+-- Set Theme
+OrionLib.SelectedTheme = "Ocean"
 
-Notify("Script berhasil diload! Tekan F4 untuk toggle menu", 3)
+Notify("Script loaded successfully!")
 
 --==================================================
--- TAB UTAMA (DASHBOARD)
+-- CREATE TABS
 --==================================================
 local MainTab = Window:MakeTab({
-    Name = "Dashboard",
+    Name = "Main",
     Icon = "home",
+    PremiumOnly = false,
     Glass = true,
     Outline = true
 })
 
--- Player Info dengan auto-refresh
-local stats = GetPlayerStats()
-local InfoPara = MainTab:AddParagraph({
-    Title = Player.DisplayName,
-    Desc = string.format("Clicks: %s\nRebirths: %s\nPets: %s\nLevel: %s", 
-           stats.Clicks, stats.Rebirths, stats.Pets, stats.Level),
-    Image = "user",
-    ImageSize = 38,
-    Buttons = {
-        {
-            Title = "Refresh",
-            Callback = function()
-                local newStats = GetPlayerStats()
-                InfoPara:SetDesc(string.format("Clicks: %s\nRebirths: %s\nPets: %s\nLevel: %s", 
-                    newStats.Clicks, newStats.Rebirths, newStats.Pets, newStats.Level))
-            end
-        }
-    }
-})
-
--- Status Koneksi
-local function CheckRemotes()
-    local working = {}
-    for name, remote in pairs(Remotes) do
-        if remote then
-            table.insert(working, name)
-        end
-    end
-    return #working > 0 and ("✓ " .. table.concat(working, ", ")) or "✗ No remotes found"
-end
-
-MainTab:AddParagraph({
-    Title = "Connection Status",
-    Desc = CheckRemotes(),
-    Image = "wifi",
-    ImageSize = 38
-})
-
---==================================================
--- TAB AUTO TAP
---==================================================
-local TapTab = Window:MakeTab({
-    Name = "Auto Tap",
-    Icon = "hand",
-    Glass = true,
-    Outline = true
-})
-
-local TapSection = TapTab:AddSection({
-    Name = "Pengaturan Auto Tap",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
-})
-
--- Auto Tap Toggle
-local AutoTapToggle = TapSection:AddToggle({
-    Name = "Auto Tap",
-    Default = Settings.AutoTap,
-    Color = Color3.fromRGB(0, 255, 0),
-    Outline = true,
-    Flag = "AutoTap",
-    Save = true,
-    Callback = function(Value)
-        Settings.AutoTap = Value
-        if Value then
-            Notify("Auto Tap diaktifkan")
-            startAutoTap()
-        else
-            Notify("Auto Tap dimatikan")
-            stopAutoTap()
-        end
-    end
-})
-
--- Metode Tap
-TapSection:AddDropdown({
-    Name = "Metode Tap",
-    Default = "Remote",
-    Options = {"Remote", "Click", "Hybrid"},
-    Multi = false,
-    Search = false,
-    Outline = true,
-    Callback = function(Value)
-        Settings.TapMethod = Value
-        Notify("Metode diubah ke: " .. Value)
-    end
-})
-
--- Kecepatan Tap (ms)
-local TapSpeedSlider = TapSection:AddSlider({
-    Name = "Kecepatan (ms)",
-    Min = 1,
-    Max = 100,
-    Default = Settings.TapSpeed,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 1,
-    ValueName = "ms",
-    Outline = true,
-    Callback = function(Value)
-        Settings.TapSpeed = Value
-    end
-})
-
--- Tombol Test
-TapSection:AddButton({
-    Name = "Test Tap (10x)",
-    Icon = "play",
-    Outline = true,
-    Callback = function()
-        for i = 1, 10 do
-            performTap()
-            task.wait(0.05)
-        end
-        Notify("Test selesai!")
-    end
-})
-
---==================================================
--- TAB REBIRTH
---==================================================
-local RebirthTab = Window:MakeTab({
-    Name = "Rebirth",
-    Icon = "refresh-cw",
-    Glass = true,
-    Outline = true
-})
-
-local RebirthSection = RebirthTab:AddSection({
-    Name = "Auto Rebirth",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
-})
-
--- Auto Rebirth Toggle
-RebirthSection:AddToggle({
-    Name = "Auto Rebirth",
-    Default = Settings.AutoRebirth,
-    Color = Color3.fromRGB(255, 165, 0),
-    Outline = true,
-    Flag = "AutoRebirth",
-    Save = true,
-    Callback = function(Value)
-        Settings.AutoRebirth = Value
-        if Value then
-            Notify("Auto Rebirth diaktifkan")
-            startAutoRebirth()
-        else
-            stopAutoRebirth()
-        end
-    end
-})
-
--- Level untuk Rebirth
-RebirthSection:AddSlider({
-    Name = "Rebirth di Level",
-    Min = 1,
-    Max = 1000,
-    Default = Settings.RebirthAt,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 5,
-    ValueName = "lvl",
-    Outline = true,
-    Callback = function(Value)
-        Settings.RebirthAt = Value
-    end
-})
-
--- Metode Rebirth
-RebirthSection:AddDropdown({
-    Name = "Metode",
-    Default = "Auto",
-    Options = {"Auto", "Manual"},
-    Multi = false,
-    Search = false,
-    Outline = true,
-    Callback = function(Value)
-        Settings.RebirthMethod = Value
-    end
-})
-
--- Tombol Rebirth Manual
-RebirthSection:AddButton({
-    Name = "Rebirth Sekarang",
+local FarmTab = Window:MakeTab({
+    Name = "Auto Farm",
     Icon = "zap",
-    Outline = true,
-    Callback = function()
-        performRebirth()
-    end
-})
-
---==================================================
--- TAB PETS
---==================================================
-local PetsTab = Window:MakeTab({
-    Name = "Pets",
-    Icon = "dog",
     Glass = true,
     Outline = true
 })
 
--- Auto Hatch
-local HatchSection = PetsTab:AddSection({
-    Name = "Auto Hatch",
-    TextSize = 17,
+local EggsTab = Window:MakeTab({
+    Name = "Eggs",
+    Icon = "egg",
     Glass = true,
     Outline = true
 })
 
-HatchSection:AddToggle({
-    Name = "Auto Hatch",
-    Default = Settings.AutoHatch,
-    Color = Color3.fromRGB(147, 112, 219),
-    Outline = true,
-    Flag = "AutoHatch",
-    Save = true,
-    Callback = function(Value)
-        Settings.AutoHatch = Value
-        if Value then startAutoHatch() else stopAutoHatch() end
-    end
-})
-
--- Pilih Egg
-local eggOptions = {"Basic Egg", "Rare Egg", "Epic Egg", "Legendary Egg", "Mythic Egg"}
-HatchSection:AddDropdown({
-    Name = "Tipe Telur",
-    Default = Settings.EggType,
-    Options = eggOptions,
-    Multi = false,
-    Search = true,
-    Outline = true,
-    Callback = function(Value)
-        Settings.EggType = Value
-    end
-})
-
--- Delay Hatch
-HatchSection:AddSlider({
-    Name = "Delay (detik)",
-    Min = 0.1,
-    Max = 5,
-    Default = Settings.HatchDelay,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 0.1,
-    ValueName = "s",
-    Outline = true,
-    Callback = function(Value)
-        Settings.HatchDelay = Value
-    end
-})
-
--- Auto Equip
-local EquipSection = PetsTab:AddSection({
-    Name = "Auto Equip",
-    TextSize = 17,
+local UpgradeTab = Window:MakeTab({
+    Name = "Upgrades",
+    Icon = "trending-up",
     Glass = true,
     Outline = true
 })
 
-EquipSection:AddToggle({
-    Name = "Auto Equip Best Pet",
-    Default = Settings.AutoEquipBest,
-    Color = Color3.fromRGB(50, 205, 50),
-    Outline = true,
-    Flag = "AutoEquip",
-    Save = true,
-    Callback = function(Value)
-        Settings.AutoEquipBest = Value
-        if Value then startAutoEquip() else stopAutoEquip() end
-    end
-})
-
--- Auto Delete
-EquipSection:AddToggle({
-    Name = "Auto Delete Common",
-    Default = Settings.AutoDeleteCommon,
-    Color = Color3.fromRGB(255, 99, 71),
-    Outline = true,
-    Flag = "AutoDelete",
-    Save = true,
-    Callback = function(Value)
-        Settings.AutoDeleteCommon = Value
-        if Value then startAutoDelete() else stopAutoDelete() end
-    end
-})
-
---==================================================
--- TAB CRAFTING
---==================================================
-local CraftTab = Window:MakeTab({
-    Name = "Crafting",
-    Icon = "hammer",
+local VisualsTab = Window:MakeTab({
+    Name = "Visuals",
+    Icon = "eye",
     Glass = true,
     Outline = true
 })
 
--- Auto Craft
-local CraftSection = CraftTab:AddSection({
-    Name = "Auto Craft",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
-})
-
-CraftSection:AddToggle({
-    Name = "Auto Craft",
-    Default = Settings.AutoCraft,
-    Color = Color3.fromRGB(255, 215, 0),
-    Outline = true,
-    Flag = "AutoCraft",
-    Save = true,
-    Callback = function(Value)
-        Settings.AutoCraft = Value
-        if Value then startAutoCraft() else stopAutoCraft() end
-    end
-})
-
--- Priority
-CraftSection:AddDropdown({
-    Name = "Prioritas",
-    Default = Settings.CraftPriority,
-    Options = {"Gold", "Rainbow", "Shiny", "Dark", "All"},
-    Multi = false,
-    Search = false,
-    Outline = true,
-    Callback = function(Value)
-        Settings.CraftPriority = Value
-    end
-})
-
--- Auto Enchant
-local EnchantSection = CraftTab:AddSection({
-    Name = "Auto Enchant",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
-})
-
-EnchantSection:AddToggle({
-    Name = "Auto Enchant",
-    Default = Settings.AutoEnchant,
-    Color = Color3.fromRGB(138, 43, 226),
-    Outline = true,
-    Flag = "AutoEnchant",
-    Save = true,
-    Callback = function(Value)
-        Settings.AutoEnchant = Value
-        if Value then startAutoEnchant() else stopAutoEnchant() end
-    end
-})
-
---==================================================
--- TAB TELEPORT
---==================================================
-local TeleportTab = Window:MakeTab({
-    Name = "Teleport",
-    Icon = "map-pin",
-    Glass = true,
-    Outline = true
-})
-
--- Fungsi scan zone
-local function ScanZones()
-    local zones = {}
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("BasePart") or v:IsA("Model") then
-            local name = v.Name
-            if name:find("Zone") or name:find("World") or name:find("Island") or name:find("Area") then
-                if not zones[name] then
-                    table.insert(zones, name)
-                end
-            end
-        end
-    end
-    
-    -- Fallback jika tidak ditemukan
-    if #zones == 0 then
-        zones = {"World 1", "World 2", "World 3", "World 4", "World 5"}
-    end
-    
-    return zones
-end
-
-local TeleportSection = TeleportTab:AddSection({
-    Name = "Zone Teleporter",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
-})
-
-local zones = ScanZones()
-local zoneDropdown
-
-zoneDropdown = TeleportSection:AddDropdown({
-    Name = "Pilih Zone",
-    Default = zones[1] or "World 1",
-    Options = zones,
-    Multi = false,
-    Search = true,
-    Outline = true,
-    Callback = function(Value)
-        _G.SelectedZone = Value
-    end
-})
-
--- Tombol Teleport
-TeleportSection:AddButton({
-    Name = "Teleport Sekarang",
-    Icon = "send",
-    Outline = true,
-    Callback = function()
-        TeleportToZone(_G.SelectedZone or zones[1])
-    end
-})
-
--- Auto Teleport
-TeleportSection:AddToggle({
-    Name = "Auto Teleport (Loop)",
-    Default = Settings.TeleportToZone,
-    Color = Color3.fromRGB(0, 191, 255),
-    Outline = true,
-    Flag = "AutoTeleport",
-    Save = true,
-    Callback = function(Value)
-        Settings.TeleportToZone = Value
-        if Value then startAutoTeleport() else stopAutoTeleport() end
-    end
-})
-
--- Scan Ulang
-TeleportSection:AddButton({
-    Name = "Scan Ulang Zone",
-    Icon = "refresh-cw",
-    Outline = true,
-    Callback = function()
-        local newZones = ScanZones()
-        zoneDropdown:Refresh(newZones, true)
-        Notify("Zone berhasil di-scan: " .. #newZones .. " ditemukan")
-    end
-})
-
---==================================================
--- TAB COLLECTION
---==================================================
-local CollectTab = Window:MakeTab({
-    Name = "Collection",
-    Icon = "gift",
-    Glass = true,
-    Outline = true
-})
-
--- Auto Collect
-CollectTab:AddToggle({
-    Name = "Auto Collect Rewards",
-    Default = Settings.AutoCollect,
-    Color = Color3.fromRGB(255, 215, 0),
-    Outline = true,
-    Flag = "AutoCollect",
-    Save = true,
-    Callback = function(Value)
-        Settings.AutoCollect = Value
-        if Value then startAutoCollect() else stopAutoCollect() end
-    end
-})
-
--- Auto Codes
-CollectTab:AddToggle({
-    Name = "Auto Redeem Codes",
-    Default = Settings.AutoCodes,
-    Color = Color3.fromRGB(50, 205, 50),
-    Outline = true,
-    Flag = "AutoCodes",
-    Save = true,
-    Callback = function(Value)
-        Settings.AutoCodes = Value
-        if Value then startAutoCodes() else stopAutoCodes() end
-    end
-})
-
--- Daftar Codes
-local CodesList = {
-    "VALENTINES", "SPEEDYTOTEM", "LUCKYTOTEM", "TELEPORT",
-    "russo", "lucky", "tacos", "enchant", "update2026",
-    "rebirth", "hatchboost", "community", "discord"
-}
-
-CollectTab:AddParagraph({
-    Title = "Active Codes (March 2026)",
-    Desc = table.concat(CodesList, "\n• ", 1, 5) .. "\n• ...dan " .. (#CodesList - 5) .. " lainnya",
-    Image = "ticket",
-    ImageSize = 38,
-    Buttons = {
-        {
-            Title = "Copy All",
-            Callback = function()
-                setclipboard(table.concat(CodesList, ", "))
-                Notify("Codes copied to clipboard!")
-            end
-        },
-        {
-            Title = "Redeem All",
-            Callback = function()
-                for _, code in ipairs(CodesList) do
-                    redeemCode(code)
-                    task.wait(1)
-                end
-            end
-        }
-    }
-})
-
---==================================================
--- TAB MISC
---==================================================
 local MiscTab = Window:MakeTab({
     Name = "Misc",
     Icon = "settings",
@@ -732,51 +214,694 @@ local MiscTab = Window:MakeTab({
     Outline = true
 })
 
--- Anti AFK
-MiscTab:AddToggle({
-    Name = "Anti AFK",
-    Default = Settings.AntiAFK,
+--==================================================
+-- UTILITY FUNCTIONS
+--==================================================
+
+-- Tap/Click function
+local function Tap()
+    if Remotes.Tap then
+        pcall(function()
+            if Remotes.Tap:IsA("RemoteEvent") then
+                Remotes.Tap:FireServer()
+            elseif Remotes.Tap:IsA("RemoteFunction") then
+                Remotes.Tap:InvokeServer()
+            end
+        end)
+    else
+        -- Fallback: Simulate click on screen
+        local A_1 = "Click"
+        local Event = game:GetService("ReplicatedStorage"):FindFirstChild("ClickEvent") or 
+                     game:GetService("ReplicatedStorage"):FindFirstChild("MainEvent")
+        if Event then
+            Event:FireServer(A_1)
+        else
+            -- Try to find any remote that might work
+            for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+                if v:IsA("RemoteEvent") and not v.Name:find("Character") then
+                    pcall(function() v:FireServer() end)
+                    break
+                end
+            end
+        end
+    end
+end
+
+-- Get coins/points
+local function GetCoins()
+    -- Coba berbagai cara untuk mendapatkan jumlah coins
+    local leaderstats = Player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, v in pairs(leaderstats:GetChildren()) do
+            if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash") or v.Name:lower():find("point")) then
+                return v.Value
+            end
+        end
+    end
+    
+    -- Cari di player
+    for _, v in pairs(Player:GetChildren()) do
+        if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash")) then
+            return v.Value
+        end
+    end
+    
+    return 0
+end
+
+-- Get rebirths
+local function GetRebirths()
+    local leaderstats = Player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, v in pairs(leaderstats:GetChildren()) do
+            if v:IsA("NumberValue") and (v.Name:lower():find("rebirth") or v.Name:lower():find("prestige")) then
+                return v.Value
+            end
+        end
+    end
+    return 0
+end
+
+-- Buy egg function
+local function BuyEgg(eggType)
+    if Remotes.BuyEgg then
+        pcall(function() Remotes.BuyEgg:FireServer(eggType) end)
+    else
+        -- Coba remote umum
+        local remote = ReplicatedStorage:FindFirstChild("BuyEgg") or 
+                      ReplicatedStorage:FindFirstChild("PurchaseEgg")
+        if remote then
+            pcall(function() remote:FireServer(eggType) end)
+        end
+    end
+end
+
+-- Hatch egg function
+local function HatchEgg()
+    if Remotes.HatchEgg then
+        pcall(function() Remotes.HatchEgg:FireServer() end)
+    else
+        local remote = ReplicatedStorage:FindFirstChild("HatchEgg") or 
+                      ReplicatedStorage:FindFirstChild("OpenEgg")
+        if remote then
+            pcall(function() remote:FireServer() end)
+        end
+    end
+end
+
+-- Upgrade function
+local function Upgrade(upgradeType)
+    if Remotes.Upgrade then
+        pcall(function() Remotes.Upgrade:FireServer(upgradeType) end)
+    else
+        local remote = ReplicatedStorage:FindFirstChild("Upgrade") or 
+                      ReplicatedStorage:FindFirstChild("PurchaseUpgrade")
+        if remote then
+            pcall(function() remote:FireServer(upgradeType) end)
+        end
+    end
+end
+
+-- Buy area function
+local function BuyArea()
+    if Remotes.BuyArea then
+        pcall(function() Remotes.BuyArea:FireServer() end)
+    else
+        local remote = ReplicatedStorage:FindFirstChild("BuyArea") or 
+                      ReplicatedStorage:FindFirstChild("PurchaseArea")
+        if remote then
+            pcall(function() remote:FireServer() end)
+        end
+    end
+end
+
+-- Collect rewards
+local function Collect()
+    if Remotes.Collect then
+        pcall(function() Remotes.Collect:FireServer() end)
+    else
+        local remote = ReplicatedStorage:FindFirstChild("Collect") or 
+                      ReplicatedStorage:FindFirstChild("ClaimReward")
+        if remote then
+            pcall(function() remote:FireServer() end)
+        end
+    end
+end
+
+-- Rebirth function
+local function Rebirth()
+    if Remotes.Rebirth then
+        pcall(function() Remotes.Rebirth:FireServer() end)
+    else
+        local remote = ReplicatedStorage:FindFirstChild("Rebirth") or 
+                      ReplicatedStorage:FindFirstChild("Prestige")
+        if remote then
+            pcall(function() remote:FireServer() end)
+        end
+    end
+end
+
+-- Find eggs in workspace
+local function FindEggs()
+    local eggs = {}
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name:lower():find("egg") and v:IsA("BasePart") and v.Transparency < 1 then
+            table.insert(eggs, v)
+        elseif v:IsA("Model") and v.Name:lower():find("egg") and v.PrimaryPart then
+            table.insert(eggs, v.PrimaryPart)
+        end
+    end
+    return eggs
+end
+
+-- Egg ESP
+local function UpdateEggESP()
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name:lower():find("egg") then
+            if v:IsA("BasePart") and Toggles.ESP then
+                -- Add highlight to eggs
+                local highlight = v:FindFirstChild("EggHighlight")
+                if not highlight then
+                    highlight = Instance.new("Highlight")
+                    highlight.Name = "EggHighlight"
+                    highlight.Parent = v
+                    highlight.FillColor = Color3.fromRGB(255, 0, 255)
+                    highlight.OutlineColor = Color3.new(1, 1, 1)
+                    highlight.FillTransparency = 0.3
+                end
+            else
+                local highlight = v:FindFirstChild("EggHighlight")
+                if highlight then highlight:Destroy() end
+            end
+        end
+    end
+end
+
+--==================================================
+-- LOOP FUNCTIONS
+--==================================================
+
+function StartLoop(name)
+    if Loops[name] then return end
+    Loops[name] = true
+    
+    task.spawn(function()
+        while Loops[name] do
+            if name == "AutoTap" and Toggles.AutoTap then
+                Tap()
+                task.wait(Toggles.TapSpeed)
+                
+            elseif name == "AutoClicker" and Toggles.AutoClicker then
+                -- Simulate mouse click
+                mouse1click()
+                task.wait(Toggles.ClickSpeed)
+                
+            elseif name == "AutoBuyEgg" and Toggles.AutoBuyEgg then
+                BuyEgg(Toggles.EggType)
+                task.wait(1)
+                
+            elseif name == "AutoHatch" and Toggles.AutoHatch then
+                HatchEgg()
+                task.wait(0.5)
+                
+            elseif name == "AutoUpgrade" and Toggles.AutoUpgrade then
+                if Toggles.UpgradeType == "All" then
+                    -- Try to upgrade everything
+                    Upgrade("All")
+                    Upgrade("Damage")
+                    Upgrade("Speed")
+                    Upgrade("Multiplier")
+                else
+                    Upgrade(Toggles.UpgradeType)
+                end
+                task.wait(1)
+                
+            elseif name == "AutoBuyArea" and Toggles.AutoBuyArea then
+                BuyArea()
+                task.wait(2)
+                
+            elseif name == "AutoCollect" and Toggles.AutoCollect then
+                Collect()
+                task.wait(5)
+                
+            elseif name == "AutoRebirth" and Toggles.AutoRebirth then
+                local coins = GetCoins()
+                if coins >= Toggles.RebirthAt then
+                    Rebirth()
+                    task.wait(3)
+                else
+                    task.wait(5)
+                end
+                
+            elseif name == "AutoClaim" and Toggles.AutoClaim then
+                -- Claim daily rewards etc
+                local claimRemote = ReplicatedStorage:FindFirstChild("ClaimDaily") or 
+                                   ReplicatedStorage:FindFirstChild("DailyReward")
+                if claimRemote then
+                    pcall(function() claimRemote:FireServer() end)
+                end
+                task.wait(60) -- Check every minute
+            end
+            
+            task.wait()
+        end
+    end)
+end
+
+function StopLoop(name)
+    Loops[name] = false
+end
+
+--==================================================
+-- MAIN TAB CONTENT
+--==================================================
+local StatsSection = MainTab:AddSection({
+    Name = "Player Stats",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+-- Paragraph yang akan diupdate
+local StatsPara = StatsSection:AddParagraph({
+    Title = Player.Name,
+    Desc = "Loading stats...",
+    Image = "user",
+    ImageSize = 38,
+    Buttons = {
+        {
+            Title = "Refresh",
+            Callback = function()
+                local coins = GetCoins()
+                local rebirths = GetRebirths()
+                StatsPara:SetDesc("Coins: " .. formatNumber(coins) .. "\nRebirths: " .. rebirths)
+            end
+        }
+    }
+})
+
+-- Update stats setiap 5 detik
+task.spawn(function()
+    while true do
+        local coins = GetCoins()
+        local rebirths = GetRebirths()
+        StatsPara:SetDesc("Coins: " .. formatNumber(coins) .. "\nRebirths: " .. rebirths)
+        task.wait(5)
+    end
+end)
+
+local function formatNumber(num)
+    if num >= 1e9 then
+        return string.format("%.2fB", num / 1e9)
+    elseif num >= 1e6 then
+        return string.format("%.2fM", num / 1e6)
+    elseif num >= 1e3 then
+        return string.format("%.2fK", num / 1e3)
+    else
+        return tostring(num)
+    end
+end
+
+local QuickSection = MainTab:AddSection({
+    Name = "Quick Actions",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+QuickSection:AddButton({
+    Name = "Tap Now!",
+    Icon = "hand",
+    Outline = true,
+    Callback = function()
+        for i = 1, 10 do
+            Tap()
+            task.wait(0.05)
+        end
+        Notify("Tapped 10 times!")
+    end
+})
+
+QuickSection:AddButton({
+    Name = "Hatch Egg",
+    Icon = "egg",
+    Outline = true,
+    Callback = function()
+        HatchEgg()
+        Notify("Hatched egg!")
+    end
+})
+
+--==================================================
+-- AUTO FARM TAB
+--==================================================
+local TapSection = FarmTab:AddSection({
+    Name = "Auto Tap",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+TapSection:AddToggle({
+    Name = "Auto Tap",
+    Default = false,
+    Color = Color3.fromRGB(0, 255, 100),
+    Outline = true,
+    Flag = "AutoTap",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoTap = Value
+        if Value then StartLoop("AutoTap") else StopLoop("AutoTap") end
+    end
+})
+
+TapSection:AddSlider({
+    Name = "Tap Speed",
+    Min = 0.001,
+    Max = 0.1,
+    Default = 0.01,
     Color = Color3.fromRGB(255, 255, 255),
+    Increment = 0.001,
+    ValueName = "sec",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.TapSpeed = Value
+    end
+})
+
+TapSection:AddToggle({
+    Name = "Auto Clicker",
+    Default = false,
+    Color = Color3.fromRGB(0, 255, 100),
+    Outline = true,
+    Flag = "AutoClicker",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoClicker = Value
+        if Value then StartLoop("AutoClicker") else StopLoop("AutoClicker") end
+    end
+})
+
+TapSection:AddSlider({
+    Name = "Click Speed",
+    Min = 0.0001,
+    Max = 0.01,
+    Default = 0.001,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 0.0001,
+    ValueName = "sec",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.ClickSpeed = Value
+    end
+})
+
+local CollectSection = FarmTab:AddSection({
+    Name = "Auto Collection",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+CollectSection:AddToggle({
+    Name = "Auto Collect Rewards",
+    Default = false,
+    Color = Color3.fromRGB(0, 255, 100),
+    Outline = true,
+    Flag = "AutoCollect",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoCollect = Value
+        if Value then StartLoop("AutoCollect") else StopLoop("AutoCollect") end
+    end
+})
+
+CollectSection:AddToggle({
+    Name = "Auto Claim Daily",
+    Default = false,
+    Color = Color3.fromRGB(0, 255, 100),
+    Outline = true,
+    Flag = "AutoClaim",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoClaim = Value
+        if Value then StartLoop("AutoClaim") else StopLoop("AutoClaim") end
+    end
+})
+
+--==================================================
+-- EGGS TAB
+--==================================================
+local EggSection = EggsTab:AddSection({
+    Name = "Egg Settings",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+EggSection:AddToggle({
+    Name = "Auto Buy Egg",
+    Default = false,
+    Color = Color3.fromRGB(255, 150, 0),
+    Outline = true,
+    Flag = "AutoBuyEgg",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoBuyEgg = Value
+        if Value then StartLoop("AutoBuyEgg") else StopLoop("AutoBuyEgg") end
+    end
+})
+
+EggSection:AddDropdown({
+    Name = "Egg Type",
+    Default = "Basic",
+    Options = {"Basic", "Rare", "Epic", "Legendary", "Mythic"},
+    Multi = false,
+    Search = false,
+    AllowNone = false,
+    Outline = true,
+    Callback = function(Value)
+        Toggles.EggType = Value
+    end
+})
+
+EggSection:AddToggle({
+    Name = "Auto Hatch",
+    Default = false,
+    Color = Color3.fromRGB(255, 150, 0),
+    Outline = true,
+    Flag = "AutoHatch",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoHatch = Value
+        if Value then StartLoop("AutoHatch") else StopLoop("AutoHatch") end
+    end
+})
+
+EggSection:AddButton({
+    Name = "Find Eggs",
+    Icon = "search",
+    Outline = true,
+    Callback = function()
+        local eggs = FindEggs()
+        Notify("Found " .. #eggs .. " eggs!")
+    end
+})
+
+--==================================================
+-- UPGRADES TAB
+--==================================================
+local UpgradeSection = UpgradeTab:AddSection({
+    Name = "Auto Upgrade",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+UpgradeSection:AddToggle({
+    Name = "Auto Upgrade",
+    Default = false,
+    Color = Color3.fromRGB(0, 150, 255),
+    Outline = true,
+    Flag = "AutoUpgrade",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoUpgrade = Value
+        if Value then StartLoop("AutoUpgrade") else StopLoop("AutoUpgrade") end
+    end
+})
+
+UpgradeSection:AddDropdown({
+    Name = "Upgrade Type",
+    Default = "All",
+    Options = {"All", "Damage", "Speed", "Multiplier", "Critical"},
+    Multi = false,
+    Search = false,
+    AllowNone = false,
+    Outline = true,
+    Callback = function(Value)
+        Toggles.UpgradeType = Value
+    end
+})
+
+local AreaSection = UpgradeTab:AddSection({
+    Name = "Area",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+AreaSection:AddToggle({
+    Name = "Auto Buy Area",
+    Default = false,
+    Color = Color3.fromRGB(0, 150, 255),
+    Outline = true,
+    Flag = "AutoBuyArea",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoBuyArea = Value
+        if Value then StartLoop("AutoBuyArea") else StopLoop("AutoBuyArea") end
+    end
+})
+
+local RebirthSection = UpgradeTab:AddSection({
+    Name = "Rebirth",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+RebirthSection:AddToggle({
+    Name = "Auto Rebirth",
+    Default = false,
+    Color = Color3.fromRGB(255, 50, 50),
+    Outline = true,
+    Flag = "AutoRebirth",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoRebirth = Value
+        if Value then StartLoop("AutoRebirth") else StopLoop("AutoRebirth") end
+    end
+})
+
+RebirthSection:AddSlider({
+    Name = "Rebirth At",
+    Min = 100,
+    Max = 1000000,
+    Default = 1000,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 100,
+    ValueName = "coins",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.RebirthAt = Value
+    end
+})
+
+--==================================================
+-- VISUALS TAB
+--==================================================
+local ESPSection = VisualsTab:AddSection({
+    Name = "ESP",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+ESPSection:AddToggle({
+    Name = "Egg ESP",
+    Default = false,
+    Color = Color3.fromRGB(255, 0, 255),
+    Outline = true,
+    Flag = "EggESP",
+    Save = true,
+    Callback = function(Value)
+        Toggles.ESP = Value
+        UpdateEggESP()
+    end
+})
+
+local LightingSection = VisualsTab:AddSection({
+    Name = "Lighting",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+LightingSection:AddToggle({
+    Name = "Full Bright",
+    Default = false,
+    Color = Color3.fromRGB(255, 255, 0),
+    Outline = true,
+    Flag = "FullBright",
+    Save = true,
+    Callback = function(Value)
+        Toggles.FullBright = Value
+        if Value then
+            Lighting.Brightness = 2
+            Lighting.GlobalShadows = false
+            Lighting.Ambient = Color3.new(1, 1, 1)
+        else
+            Lighting.Brightness = 1
+            Lighting.GlobalShadows = true
+            Lighting.Ambient = Color3.new(0, 0, 0)
+        end
+    end
+})
+
+LightingSection:AddToggle({
+    Name = "No Fog",
+    Default = false,
+    Color = Color3.fromRGB(255, 255, 0),
+    Outline = true,
+    Flag = "NoFog",
+    Save = true,
+    Callback = function(Value)
+        Toggles.NoFog = Value
+        Lighting.FogEnd = Value and 1e9 or 100000
+    end
+})
+
+--==================================================
+-- MISC TAB
+--==================================================
+local MiscSection = MiscTab:AddSection({
+    Name = "Miscellaneous",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+MiscSection:AddToggle({
+    Name = "Anti AFK",
+    Default = false,
+    Color = Color3.fromRGB(100, 100, 255),
     Outline = true,
     Flag = "AntiAFK",
     Save = true,
     Callback = function(Value)
-        Settings.AntiAFK = Value
+        Toggles.AntiAFK = Value
         if Value then
             Player.Idled:Connect(function()
                 VirtualUser:CaptureController()
                 VirtualUser:ClickButton2(Vector2.new())
             end)
-            Notify("Anti-AFK diaktifkan")
         end
     end
 })
 
--- FPS Boost
-MiscTab:AddToggle({
-    Name = "FPS Boost",
-    Default = Settings.FPSBoost,
-    Color = Color3.fromRGB(0, 255, 0),
-    Outline = true,
-    Flag = "FPSBoost",
-    Save = true,
-    Callback = function(Value)
-        Settings.FPSBoost = Value
-        if Value then
-            -- Settings for FPS boost
-            game:GetService("RunService"):Set3dRenderingEnabled(false)
-            workspace.DescendantAdded:Connect(function()
-                task.wait()
-            end)
-            Notify("FPS Boost diaktifkan")
-        else
-            game:GetService("RunService"):Set3dRenderingEnabled(true)
-        end
-    end
-})
-
--- Rejoin
-MiscTab:AddButton({
+MiscSection:AddButton({
     Name = "Rejoin Server",
     Icon = "refresh-cw",
     Outline = true,
@@ -785,407 +910,96 @@ MiscTab:AddButton({
     end
 })
 
--- Server Hop
-MiscTab:AddButton({
+MiscSection:AddButton({
     Name = "Server Hop",
     Icon = "globe",
     Outline = true,
     Callback = function()
-        local x = {}
-        for _, v in pairs(game:GetService("HttpService"):JSONDecode(game:HttpGetAsync("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100")).data) do
-            if v.playing < v.maxPlayers and v.id ~= game.JobId then
-                table.insert(x, v.id)
-            end
+        local HttpService = game:GetService("HttpService")
+        local TeleportService = game:GetService("TeleportService")
+        local placeId = game.PlaceId
+        
+        -- Get list of servers
+        local function getServers()
+            local servers = {}
+            local cursor = ""
+            repeat
+                local success, result = pcall(function()
+                    return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?limit=100" .. (cursor ~= "" and "&cursor=" .. cursor or "")))
+                end)
+                if success then
+                    for _, server in ipairs(result.data) do
+                        if server.playing < server.maxPlayers then
+                            table.insert(servers, server.id)
+                        end
+                    end
+                    cursor = result.nextPageCursor
+                else
+                    break
+                end
+            until not cursor
+            return servers
         end
-        if #x > 0 then
-            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, x[math.random(1, #x)], Player)
+        
+        local servers = getServers()
+        if #servers > 0 then
+            -- Pilih server random yang tidak penuh
+            local randomServer = servers[math.random(1, #servers)]
+            TeleportService:TeleportToPlaceInstance(placeId, randomServer, Player)
+        else
+            Notify("No servers available!")
         end
     end
 })
 
+MiscSection:AddButton({
+    Name = "Close GUI",
+    Icon = "x",
+    Outline = true,
+    Callback = function()
+        OrionLib:Destroy()
+        _G.TapSimLoaded = false
+    end
+})
+
+-- Server Info
+local ServerSection = MiscTab:AddSection({
+    Name = "Server Info",
+    TextSize = 17,
+    Folded = false,
+    Glass = true,
+    Outline = true
+})
+
+local function GetServerPlayers()
+    local count = 0
+    for _, v in pairs(Players:GetPlayers()) do
+        count = count + 1
+    end
+    return count .. "/" .. game.Players.MaxPlayers
+end
+
+ServerSection:AddParagraph({
+    Title = "Server Status",
+    Desc = "Players: " .. GetServerPlayers() .. "\nPing: " .. math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) .. "ms",
+    Image = "server",
+    ImageSize = 38
+})
+
 --==================================================
--- TAB CONFIG
+-- ADD CONFIG TAB
 --==================================================
 Window:AddConfigTab({
     Name = "Settings",
-    Icon = "sliders"
+    Icon = "settings"
 })
 
 --==================================================
--- FUNGSI UTAMA
+-- INITIALIZE
 --==================================================
+OrionLib:Init()
 
--- Auto Tap
-local tapConnection
-function performTap()
-    if Settings.TapMethod == "Remote" and Remotes.Tap then
-        pcall(function()
-            Remotes.Tap:FireServer()
-        end)
-    elseif Settings.TapMethod == "Click" then
-        mouse1click()
-    elseif Settings.TapMethod == "Hybrid" then
-        if Remotes.Tap then
-            pcall(function() Remotes.Tap:FireServer() end)
-        end
-        mouse1click()
-    end
-end
-
-function startAutoTap()
-    if tapConnection then tapConnection:Disconnect() end
-    tapConnection = RunService.Heartbeat:Connect(function()
-        if Settings.AutoTap then
-            performTap()
-            task.wait(Settings.TapSpeed / 1000)
-        end
-    end)
-end
-
-function stopAutoTap()
-    if tapConnection then
-        tapConnection:Disconnect()
-        tapConnection = nil
-    end
-end
-
--- Auto Rebirth
-local rebirthConnection
-function performRebirth()
-    if Remotes.Rebirth then
-        pcall(function()
-            Remotes.Rebirth:FireServer()
-            Notify("Rebirth dilakukan!")
-        end)
-    else
-        -- Coba cari GUI Rebirth
-        local gui = Player.PlayerGui:FindFirstChildWhichIsA("ScreenGui", true)
-        if gui then
-            local btn = gui:FindFirstChild("RebirthButton", true)
-            if btn and btn:IsA("TextButton") then
-                btn:Click()
-            end
-        end
-    end
-end
-
-function startAutoRebirth()
-    if rebirthConnection then rebirthConnection:Disconnect() end
-    rebirthConnection = RunService.Heartbeat:Connect(function()
-        if Settings.AutoRebirth then
-            local stats = GetPlayerStats()
-            if stats.Level >= Settings.RebirthAt then
-                performRebirth()
-                task.wait(1)
-            end
-        end
-    end)
-end
-
-function stopAutoRebirth()
-    if rebirthConnection then
-        rebirthConnection:Disconnect()
-        rebirthConnection = nil
-    end
-end
-
--- Auto Hatch
-local hatchConnection
-function performHatch()
-    if Remotes.Hatch then
-        pcall(function()
-            Remotes.Hatch:FireServer(Settings.EggType)
-        end)
-    end
-end
-
-function startAutoHatch()
-    if hatchConnection then hatchConnection:Disconnect() end
-    hatchConnection = RunService.Heartbeat:Connect(function()
-        if Settings.AutoHatch then
-            performHatch()
-            task.wait(Settings.HatchDelay)
-        end
-    end)
-end
-
-function stopAutoHatch()
-    if hatchConnection then
-        hatchConnection:Disconnect()
-        hatchConnection = nil
-    end
-end
-
--- Auto Craft
-local craftConnection
-function performCraft()
-    if Remotes.Craft then
-        pcall(function()
-            Remotes.Craft:FireServer(Settings.CraftPriority)
-        end)
-    end
-end
-
-function startAutoCraft()
-    if craftConnection then craftConnection:Disconnect() end
-    craftConnection = RunService.Heartbeat:Connect(function()
-        if Settings.AutoCraft then
-            performCraft()
-            task.wait(Settings.CraftDelay)
-        end
-    end)
-end
-
-function stopAutoCraft()
-    if craftConnection then
-        craftConnection:Disconnect()
-        craftConnection = nil
-    end
-end
-
--- Auto Enchant
-local enchantConnection
-function performEnchant()
-    if Remotes.Enchant then
-        pcall(function()
-            Remotes.Enchant:FireServer()
-        end)
-    end
-end
-
-function startAutoEnchant()
-    if enchantConnection then enchantConnection:Disconnect() end
-    enchantConnection = RunService.Heartbeat:Connect(function()
-        if Settings.AutoEnchant then
-            performEnchant()
-            task.wait(Settings.EnchantDelay)
-        end
-    end)
-end
-
-function stopAutoEnchant()
-    if enchantConnection then
-        enchantConnection:Disconnect()
-        enchantConnection = nil
-    end
-end
-
--- Auto Equip
-local equipConnection
-function performEquip()
-    if Remotes.Equip then
-        pcall(function()
-            Remotes.Equip:FireServer("Best")
-        end)
-    end
-end
-
-function startAutoEquip()
-    if equipConnection then equipConnection:Disconnect() end
-    equipConnection = RunService.Heartbeat:Connect(function()
-        if Settings.AutoEquipBest then
-            performEquip()
-            task.wait(Settings.EquipDelay)
-        end
-    end)
-end
-
-function stopAutoEquip()
-    if equipConnection then
-        equipConnection:Disconnect()
-        equipConnection = nil
-    end
-end
-
--- Auto Delete
-local deleteConnection
-function performDelete()
-    if Remotes.Delete then
-        pcall(function()
-            Remotes.Delete:FireServer("Common")
-        end)
-    end
-end
-
-function startAutoDelete()
-    if deleteConnection then deleteConnection:Disconnect() end
-    deleteConnection = RunService.Heartbeat:Connect(function()
-        if Settings.AutoDeleteCommon then
-            performDelete()
-            task.wait(Settings.DeleteDelay)
-        end
-    end)
-end
-
-function stopAutoDelete()
-    if deleteConnection then
-        deleteConnection:Disconnect()
-        deleteConnection = nil
-    end
-end
-
--- Auto Collect
-local collectConnection
-function performCollect()
-    if Remotes.Collect then
-        pcall(function()
-            Remotes.Collect:FireServer()
-        end)
-    end
-end
-
-function startAutoCollect()
-    if collectConnection then collectConnection:Disconnect() end
-    collectConnection = RunService.Heartbeat:Connect(function()
-        if Settings.AutoCollect then
-            performCollect()
-            task.wait(Settings.CollectDelay)
-        end
-    end)
-end
-
-function stopAutoCollect()
-    if collectConnection then
-        collectConnection:Disconnect()
-        collectConnection = nil
-    end
-end
-
--- Auto Codes
-local codesConnection
-function redeemCode(code)
-    if Remotes.Code then
-        pcall(function()
-            Remotes.Code:FireServer(code)
-            print("Redeeming code: " .. code)
-        end)
-    end
-end
-
-function startAutoCodes()
-    if codesConnection then codesConnection:Disconnect() end
-    local codeIndex = 1
-    codesConnection = RunService.Heartbeat:Connect(function()
-        if Settings.AutoCodes then
-            if codeIndex > #CodesList then codeIndex = 1 end
-            redeemCode(CodesList[codeIndex])
-            codeIndex = codeIndex + 1
-            task.wait(Settings.CodesDelay)
-        end
-    end)
-end
-
-function stopAutoCodes()
-    if codesConnection then
-        codesConnection:Disconnect()
-        codesConnection = nil
-    end
-end
-
--- Teleport
-function TeleportToZone(zoneName)
-    if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
-        Notify("Character not found!")
-        return
-    end
-    
-    local found = false
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v.Name == zoneName then
-            local targetPos
-            if v:IsA("BasePart") then
-                targetPos = v.Position
-            elseif v:IsA("Model") and v.PrimaryPart then
-                targetPos = v.PrimaryPart.Position
-            end
-            
-            if targetPos then
-                Player.Character.HumanoidRootPart.CFrame = CFrame.new(targetPos.X, targetPos.Y + 5, targetPos.Z)
-                found = true
-                Notify("Teleported to " .. zoneName)
-                break
-            end
-        end
-    end
-    
-    if not found then
-        -- Fallback to spawn
-        local spawn = Workspace:FindFirstChild("SpawnLocation") or Workspace:FindFirstChild("Spawn")
-        if spawn then
-            Player.Character.HumanoidRootPart.CFrame = spawn.CFrame + Vector3.new(0, 5, 0)
-            Notify("Zone not found, teleported to spawn")
-        end
-    end
-end
-
--- Auto Teleport
-local teleportConnection
-function startAutoTeleport()
-    if teleportConnection then teleportConnection:Disconnect() end
-    local zoneIndex = 1
-    teleportConnection = RunService.Heartbeat:Connect(function()
-        if Settings.TeleportToZone and zones and #zones > 0 then
-            if zoneIndex > #zones then zoneIndex = 1 end
-            TeleportToZone(zones[zoneIndex])
-            zoneIndex = zoneIndex + 1
-            task.wait(Settings.TeleportDelay)
-        end
-    end)
-end
-
-function stopAutoTeleport()
-    if teleportConnection then
-        teleportConnection:Disconnect()
-        teleportConnection = nil
-    end
-end
-
---==================================================
--- CLEANUP FUNCTION
---==================================================
-local function Cleanup()
-    stopAutoTap()
-    stopAutoRebirth()
-    stopAutoHatch()
-    stopAutoCraft()
-    stopAutoEnchant()
-    stopAutoEquip()
-    stopAutoDelete()
-    stopAutoCollect()
-    stopAutoCodes()
-    stopAutoTeleport()
-end
-
---==================================================
--- INITIALIZATION
---==================================================
-Library:Init()
-
--- Auto-refresh player info setiap 5 detik
-task.spawn(function()
-    while true do
-        task.wait(5)
-        local newStats = GetPlayerStats()
-        InfoPara:SetDesc(string.format("Clicks: %s\nRebirths: %s\nPets: %s\nLevel: %s", 
-            newStats.Clicks, newStats.Rebirths, newStats.Pets, newStats.Level))
-    end
-end)
-
--- Handle character respawn
-Player.CharacterAdded:Connect(function()
-    task.wait(2)
-    if Settings.AutoTap then startAutoTap() end
-    if Settings.AutoRebirth then startAutoRebirth() end
-end)
-
--- Cleanup on unload
-game:GetService("CoreGui").ChildRemoved:Connect(function(child)
-    if child.Name == "TapSimulator" then
-        Cleanup()
-        _G.TapSimLoaded = false
-    end
-end)
-
-Notify("Script siap digunakan! Tekan F4 untuk toggle menu", 3)
-print("=== Tap Simulator Ultimate v3.0 ===")
-print("Fitur lengkap dengan UI premium!")
+Notify("Press F4 or click floating button to toggle menu")
+print("=== Tap Simulator - Catraz Edition Loaded ===")
+print("Press F4 to toggle menu")
+print("Auto Farm features ready!")
