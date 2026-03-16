@@ -1,1236 +1,525 @@
--- ==================== TAP SIMULATOR - PREMIUM EDITION ====================
--- Advanced Auto Farm Script dengan Remote Wrapper Professional
--- Author: Enhanced Version
--- Version: 2.0.0
+-- Nexus System - No Key Required Version
+local players = game:GetService("Players")
+local tweenService = game:GetService("TweenService")
+local userInput = game:GetService("UserInputService")
 
-if _G.TapSimLoaded then 
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Tap Simulator",
-        Text = "Script already loaded!",
-        Duration = 2
-    })
-    return 
-end
+local player = players.LocalPlayer
 
-_G.TapSimLoaded = true
-
---==================================================
--- LOAD CATRAZ HUB LIBRARY
---==================================================
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
-
---==================================================
--- ADVANCED REMOTE WRAPPER SYSTEM
---==================================================
-local Network = {}
-local Remotes = {}
-
-do
-    -- Optimized Remote Wrapper with caching and error handling
-    -- Credit to @amazonek for base wrapper
-    
-    local Success, Result = pcall(function()
-        local GetEventHandler = nil
-        local GetFunctionHandler = nil
-        local EquipBestFunc = nil
-        
-        -- Scan GC for network functions (optimized)
-        for _, object in next, getgc(true) do
-            if type(object) == "function" and islclosure(object) and not isexecutorclosure(object) then
-                local source = debug.info(object, "s") or ""
-                local functionName = debug.info(object, "n")
-                local upvalues = getupvalues(object)
-                
-                if source:find("Modules.Network") then
-                    if functionName == "GetEventHandler" and #upvalues >= 5 and typeof(upvalues[1]) == "table" then
-                        GetEventHandler = object
-                    elseif functionName == "GetFunctionHandler" and #upvalues >= 5 and typeof(upvalues[1]) == "table" then
-                        GetFunctionHandler = object
-                    end
-                elseif source:find("Inventory.Pets") and functionName == "equipBest" and not getgenv().equipbestFunc then
-                    EquipBestFunc = object
-                    getgenv().equipbestFunc = object
-                end
-            end
-        end
-
-        if not GetEventHandler or not GetFunctionHandler then
-            return nil, "Network functions not found"
-        end
-
-        -- Get remote tables
-        local EventRemotes = getupvalues(GetEventHandler)[1]
-        local FunctionRemotes = getupvalues(GetFunctionHandler)[1]
-        
-        -- Name remotes for easier access
-        for remoteName, remoteInfo in next, EventRemotes do
-            if remoteInfo.Remote then
-                remoteInfo.Remote.Name = remoteName
-            end
-        end
-
-        for remoteName, remoteInfo in next, FunctionRemotes do
-            if remoteInfo.Remote then
-                remoteInfo.Remote.Name = remoteName
-            end
-        end
-        
-        -- Get remote folder
-        local RemoteFolder = game:GetService("ReplicatedStorage"):FindFirstChild(game.JobId)
-        if not RemoteFolder then
-            RemoteFolder = Instance.new("Folder")
-            RemoteFolder.Name = game.JobId
-            RemoteFolder.Parent = game:GetService("ReplicatedStorage")
-        end
-        
-        return {
-            EventRemotes = EventRemotes,
-            FunctionRemotes = FunctionRemotes,
-            RemoteFolder = RemoteFolder,
-            EquipBestFunc = EquipBestFunc
-        }
-    end)
-    
-    if not Success or not Result then
-        warn("Remote Wrapper initialization failed:", Result)
-        -- Fallback to basic remote finding
-        Network.Fallback = true
-    else
-        Network.Data = Result
-        Network.Fallback = false
-    end
-end
-
--- Enhanced Network:FireServer with caching and validation
-function Network:FireServer(eventName: string, ...: any)
-    local args = {...}
-    
-    -- Try primary method first
-    if not self.Fallback and self.Data and self.Data.RemoteFolder then
-        local remote = self.Data.RemoteFolder:FindFirstChild(eventName, true)
-        if remote then
-            local success, err = pcall(function()
-                remote:FireServer(unpack(args))
-            end)
-            if success then return true end
-            warn("Remote fire failed:", err)
-        end
-    end
-    
-    -- Fallback: Search in ReplicatedStorage
-    local remote = game:GetService("ReplicatedStorage"):FindFirstChild(eventName, true)
-    if remote and remote:IsA("RemoteEvent") then
-        pcall(function() remote:FireServer(unpack(args)) end)
-        return true
-    end
-    
-    -- Last resort: Search all descendants
-    for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-        if v:IsA("RemoteEvent") and v.Name:lower():find(eventName:lower()) then
-            pcall(function() v:FireServer(unpack(args)) end)
-            return true
-        end
-    end
-    
-    return false
-end
-
--- Enhanced Network:InvokeServer
-function Network:InvokeServer(eventName: string, ...: any)
-    local args = {...}
-    
-    if not self.Fallback and self.Data and self.Data.RemoteFolder then
-        local remote = self.Data.RemoteFolder:FindFirstChild(eventName, true)
-        if remote and remote:IsA("RemoteFunction") then
-            local success, result = pcall(function()
-                return remote:InvokeServer(unpack(args))
-            end)
-            if success then return result end
-        end
-    end
-    
-    -- Fallback search
-    local remote = game:GetService("ReplicatedStorage"):FindFirstChild(eventName, true)
-    if remote and remote:IsA("RemoteFunction") then
-        return pcall(function() return remote:InvokeServer(unpack(args)) end)
-    end
-    
-    return nil
-end
-
--- Get remote with caching
-function Network:GetRemote(eventName: string)
-    -- Check cache
-    if Remotes[eventName] then
-        return Remotes[eventName]
-    end
-    
-    -- Try primary
-    if not self.Fallback and self.Data and self.Data.RemoteFolder then
-        local remote = self.Data.RemoteFolder:FindFirstChild(eventName, true)
-        if remote then
-            Remotes[eventName] = remote
-            return remote
-        end
-    end
-    
-    -- Search in ReplicatedStorage
-    local remote = game:GetService("ReplicatedStorage"):FindFirstChild(eventName, true)
-    if remote then
-        Remotes[eventName] = remote
-        return remote
-    end
-    
-    return nil
-end
-
--- Equip best pet function
-function Network:EquipBestPet()
-    if self.Data and self.Data.EquipBestFunc then
-        pcall(self.Data.EquipBestFunc)
-        return true
-    end
-    return false
-end
-
--- Get all available remotes
-function Network:GetAllRemotes()
-    local remotes = {}
-    
-    -- From primary source
-    if self.Data and self.Data.EventRemotes then
-        for name, _ in pairs(self.Data.EventRemotes) do
-            table.insert(remotes, name)
-        end
-    end
-    
-    if self.Data and self.Data.FunctionRemotes then
-        for name, _ in pairs(self.Data.FunctionRemotes) do
-            table.insert(remotes, name)
-        end
-    end
-    
-    -- From ReplicatedStorage
-    for _, v in pairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
-        if (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) and not table.find(remotes, v.Name) then
-            table.insert(remotes, v.Name)
-        end
-    end
-    
-    return remotes
-end
-
---==================================================
--- VARIABLES
---==================================================
-local Player = game.Players.LocalPlayer
-local Mouse = Player:GetMouse()
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
-
--- Stats tracking
-local Stats = {
-    TotalTaps = 0,
-    EggsHatched = 0,
-    CoinsEarned = 0,
-    StartTime = os.time(),
-    Sessions = {}
+-- Color Constants
+local colors = {
+    BORDER_DIM = Color3.fromRGB(5, 5, 5),
+    NEON_GREEN = Color3.fromRGB(0, 255, 0),
+    NEON_RED = Color3.fromRGB(255, 0, 0),
+    NEON_AMBER = Color3.fromRGB(255, 191, 0),
+    NEON_BLUE = Color3.fromRGB(0, 157, 255),
+    BG_VOID = Color3.fromRGB(15, 15, 15),
+    BG_PANEL = Color3.fromRGB(25, 25, 25),
+    BG_INPUT = Color3.fromRGB(35, 35, 35),
+    TEXT_DIM = Color3.fromRGB(150, 150, 150),
+    TEXT_MID = Color3.fromRGB(200, 200, 200),
+    TEXT_BRIGHT = Color3.fromRGB(255, 255, 255),
+    SUCCESS = Color3.fromRGB(0, 255, 0),
+    ERROR = Color3.fromRGB(255, 0, 0)
 }
 
--- Toggles dengan struktur lebih baik
-local Toggles = {
-    -- Auto Farm
-    AutoTap = {Enabled = false, Speed = 0.01, MultiTap = 1},
-    AutoClicker = {Enabled = false, Speed = 0.001},
-    
-    -- Eggs
-    AutoBuyEgg = {Enabled = false, Type = "Basic", Amount = 1},
-    AutoHatch = {Enabled = false, Delay = 0.5},
-    
-    -- Upgrades
-    AutoUpgrade = {Enabled = false, Type = "All", Priority = "Damage"},
-    AutoBuyArea = {Enabled = false, Area = "Next"},
-    
-    -- Collection
-    AutoCollect = {Enabled = false, Interval = 5},
-    AutoRebirth = {Enabled = false, At = 1000, Type = "Auto"},
-    AutoClaim = {Enabled = false},
-    
-    -- Pets
-    AutoEquipBest = {Enabled = false, Interval = 10},
-    AutoMerge = {Enabled = false},
-    
-    -- Visuals
-    ESP = {Enabled = false, Color = Color3.fromRGB(255, 0, 255)},
-    FullBright = {Enabled = false},
-    NoFog = {Enabled = false},
-    
-    -- Misc
-    AntiAFK = {Enabled = false},
-    AutoReconnect = {Enabled = false},
-    FPSBoost = {Enabled = false}
-}
+-- Success Callback
+local ON_SUCCESS = function()
+    print("NEXUS // SYSTEM LOADED SUCCESSFULLY - WELCOME!")
+    -- Tambahkan script utama kalian di sini
+    -- Contoh: loadstring(game:HttpGet("https://raw.githubusercontent.com/.../main/script.lua"))()
+end
 
--- Loops
-local Loops = {}
-local Cache = {
-    Coins = 0,
-    Rebirths = 0,
-    LastUpdate = 0,
-    Remotes = {}
-}
+-- Utility Functions
+local function tweenObject(obj, properties, duration, easingStyle, easingDirection)
+    local tween = tweenService:Create(obj, 
+        TweenInfo.new(duration or 0.3, 
+        easingStyle or Enum.EasingStyle.Quint, 
+        easingDirection or Enum.EasingDirection.Out), 
+        properties)
+    tween:Play()
+    return tween
+end
 
---==================================================
--- NOTIFICATION
---==================================================
-local function Notify(msg, type)
-    OrionLib:MakeNotification({
-        Name = "Tap Simulator " .. (type or ""),
-        Content = msg,
-        Image = type == "Error" and "alert-circle" or "zap",
-        Time = 2.5
+local function createInstance(class, properties)
+    local instance = Instance.new(class)
+    for prop, value in pairs(properties or {}) do
+        pcall(function()
+            instance[prop] = value
+        end)
+    end
+    if properties and properties.Parent then
+        instance.Parent = properties.Parent
+    end
+    return instance
+end
+
+local function createUIPadding(amount)
+    return createInstance("UIPadding", {
+        PaddingTop = UDim.new(0, amount or 6),
+        PaddingBottom = UDim.new(0, amount or 6),
+        PaddingLeft = UDim.new(0, amount or 6),
+        PaddingRight = UDim.new(0, amount or 6)
     })
 end
 
---==================================================
--- CREATE MAIN WINDOW
---==================================================
-local Window = OrionLib:MakeWindow({
-    Name = "Tap Simulator",
-    Subtext = "Premium Edition v2.0",
-    Version = "v2.0.0",
-    VersionIcon = "zap",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "TapSim_Premium",
-    IntroEnabled = true,
-    IntroText = "Tap Simulator Premium",
-    IntroIcon = "rbxassetid://8834748103",
-    Icon = "rbxassetid://8834748103",
-    ShowIcon = true,
-    ImageBackground = "",
-    ImageTransparency = 0.8,
-    WindowTransparency = 0.05,
-    ToggleIcon = "rbxassetid://105921924721005",
-    ToggleSize = 50
+local function createStroke(parent, color, thickness, transparency)
+    return createInstance("UIStroke", {
+        Color = color or colors.BORDER_DIM,
+        Thickness = thickness or 1,
+        Transparency = transparency or 0,
+        Enabled = true,
+        Parent = parent
+    })
+end
+
+local function typewriterEffect(textLabel, text, delay, color)
+    textLabel.Text = ""
+    if color then
+        textLabel.TextColor3 = color
+    end
+    for i = 1, #text do
+        if not textLabel or not textLabel.Parent then return end
+        textLabel.Text = text:sub(1, i)
+        task.wait(delay or 0.05)
+    end
+end
+
+local function generateSessionID()
+    local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    local result = ""
+    for i = 1, 8 do
+        result = result .. chars:sub(math.random(1, #chars), math.random(1, #chars))
+    end
+    return result
+end
+
+-- Cleanup existing GUI
+pcall(function()
+    if game:GetService("CoreGui"):FindFirstChild("NexusSystem") then
+        game:GetService("CoreGui"):FindFirstChild("NexusSystem"):Destroy()
+    end
+end)
+
+pcall(function()
+    if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("NexusSystem") then
+        player.PlayerGui.NexusSystem:Destroy()
+    end
+end)
+
+-- Create Main GUI
+local screenGui = createInstance("ScreenGui", {
+    Name = "NexusSystem",
+    DisplayOrder = 10,
+    ResetOnSpawn = true,
+    IgnoreGuiInset = false,
+    ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 })
 
-OrionLib.SelectedTheme = "Ocean"
-
-Notify("Script loaded successfully! Remote Wrapper: " .. (Network.Fallback and "Fallback Mode" or "Advanced Mode"))
-
---==================================================
--- CREATE TABS
---==================================================
-local MainTab = Window:MakeTab({Name = "Main", Icon = "home", Glass = true, Outline = true})
-local FarmTab = Window:MakeTab({Name = "Auto Farm", Icon = "zap", Glass = true, Outline = true})
-local EggsTab = Window:MakeTab({Name = "Eggs", Icon = "egg", Glass = true, Outline = true})
-local PetsTab = Window:MakeTab({Name = "Pets", Icon = "dog", Glass = true, Outline = true})
-local UpgradeTab = Window:MakeTab({Name = "Upgrades", Icon = "trending-up", Glass = true, Outline = true})
-local VisualsTab = Window:MakeTab({Name = "Visuals", Icon = "eye", Glass = true, Outline = true})
-local DebugTab = Window:MakeTab({Name = "Debug", Icon = "bug", Glass = true, Outline = true})
-local MiscTab = Window:MakeTab({Name = "Misc", Icon = "settings", Glass = true, Outline = true})
-
---==================================================
--- ADVANCED UTILITY FUNCTIONS
---==================================================
-
--- Format numbers
-local function FormatNumber(num)
-    if num >= 1e12 then
-        return string.format("%.2fT", num / 1e12)
-    elseif num >= 1e9 then
-        return string.format("%.2fB", num / 1e9)
-    elseif num >= 1e6 then
-        return string.format("%.2fM", num / 1e6)
-    elseif num >= 1e3 then
-        return string.format("%.2fK", num / 1e3)
-    else
-        return tostring(math.floor(num))
-    end
+local success, parent = pcall(function()
+    screenGui.Parent = game:GetService("CoreGui")
+end)
+if not success then
+    screenGui.Parent = player:WaitForChild("PlayerGui")
 end
 
--- Get coins dengan multiple methods
-local function GetCoins()
-    -- Try cached value first (update every 2 seconds)
-    if os.time() - Cache.LastUpdate < 2 then
-        return Cache.Coins
-    end
-    
-    -- Method 1: leaderstats
-    local leaderstats = Player:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in pairs(leaderstats:GetChildren()) do
-            if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash") or v.Name:lower():find("point")) then
-                Cache.Coins = v.Value
-                Cache.LastUpdate = os.time()
-                return v.Value
-            end
-        end
-    end
-    
-    -- Method 2: Player values
-    for _, v in pairs(Player:GetChildren()) do
-        if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash")) then
-            Cache.Coins = v.Value
-            Cache.LastUpdate = os.time()
-            return v.Value
-        end
-    end
-    
-    -- Method 3: Try to get from remote
-    local coinRemote = Network:GetRemote("GetCoins") or Network:GetRemote("GetStats")
-    if coinRemote then
-        local result = Network:InvokeServer(coinRemote.Name)
-        if result and type(result) == "number" then
-            Cache.Coins = result
-            Cache.LastUpdate = os.time()
-            return result
-        end
-    end
-    
-    return Cache.Coins
-end
-
--- Get rebirths
-local function GetRebirths()
-    local leaderstats = Player:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in pairs(leaderstats:GetChildren()) do
-            if v:IsA("NumberValue") and (v.Name:lower():find("rebirth") or v.Name:lower():find("prestige")) then
-                return v.Value
-            end
-        end
-    end
-    return 0
-end
-
--- Enhanced tap function
-local function Tap(multiTap)
-    multiTap = multiTap or 1
-    
-    -- Try multiple tap methods
-    local methods = {
-        function() Network:FireServer("Tap", true, nil, true) end,
-        function() Network:FireServer("Click") end,
-        function() Network:FireServer("PlayerTap") end,
-        function() Network:FireServer("TapEvent") end,
-        function() mouse1click() end
-    }
-    
-    for i = 1, multiTap do
-        for _, method in ipairs(methods) do
-            local success = pcall(method)
-            if success then
-                Stats.TotalTaps = Stats.TotalTaps + 1
-                break
-            end
-        end
-        if multiTap > 1 then task.wait(0.001) end
-    end
-end
-
--- Buy egg dengan berbagai tipe
-local function BuyEgg(eggType, amount)
-    amount = amount or 1
-    
-    local eggTypes = {
-        Basic = {"BuyEgg", "Basic", "PurchaseEgg"},
-        Rare = {"BuyRareEgg", "Rare"},
-        Epic = {"BuyEpicEgg", "Epic"},
-        Legendary = {"BuyLegendaryEgg", "Legendary"},
-        Mythic = {"BuyMythicEgg", "Mythic"}
-    }
-    
-    local selected = eggTypes[eggType] or eggTypes.Basic
-    
-    for i = 1, amount do
-        for _, remoteName in ipairs(selected) do
-            local success = Network:FireServer(remoteName)
-            if success then
-                Stats.EggsHatched = Stats.EggsHatched + 1
-                break
-            end
-        end
-        if amount > 1 then task.wait(0.1) end
-    end
-end
-
--- Hatch egg
-local function HatchEgg()
-    local methods = {
-        function() Network:FireServer("HatchEgg") end,
-        function() Network:FireServer("OpenEgg") end,
-        function() Network:FireServer("Hatch") end
-    }
-    
-    for _, method in ipairs(methods) do
-        local success = pcall(method)
-        if success then return true end
-    end
-    return false
-end
-
--- Upgrade dengan priority
-local function Upgrade(upgradeType, priority)
-    local upgrades = {
-        Damage = {"UpgradeDamage", "DamageUpgrade", "BuyDamage"},
-        Speed = {"UpgradeSpeed", "SpeedUpgrade", "BuySpeed"},
-        Multiplier = {"UpgradeMultiplier", "MultiUpgrade"},
-        Critical = {"UpgradeCritical", "CritUpgrade"},
-        All = {"UpgradeAll", "MassUpgrade"}
-    }
-    
-    local selected = upgrades[upgradeType] or upgrades[priority] or upgrades.Damage
-    
-    for _, remoteName in ipairs(selected) do
-        local success = Network:FireServer(remoteName)
-        if success then return true end
-    end
-    return false
-end
-
--- Buy area
-local function BuyArea(areaType)
-    areaType = areaType or "Next"
-    
-    local methods = {
-        function() Network:FireServer("BuyArea", areaType) end,
-        function() Network:FireServer("PurchaseArea") end,
-        function() Network:FireServer("UnlockArea") end
-    }
-    
-    for _, method in ipairs(methods) do
-        local success = pcall(method)
-        if success then return true end
-    end
-    return false
-end
-
--- Collect rewards
-local function Collect()
-    local methods = {
-        function() Network:FireServer("Collect") end,
-        function() Network:FireServer("ClaimReward") end,
-        function() Network:FireServer("GetRewards") end
-    }
-    
-    for _, method in ipairs(methods) do
-        pcall(method)
-    end
-end
-
--- Rebirth
-local function Rebirth()
-    local methods = {
-        function() Network:FireServer("Rebirth") end,
-        function() Network:FireServer("Prestige") end,
-        function() Network:FireServer("Reset") end
-    }
-    
-    for _, method in ipairs(methods) do
-        local success = pcall(method)
-        if success then return true end
-    end
-    return false
-end
-
--- Get pet list
-local function GetPets()
-    local pets = {}
-    
-    -- Try to get from inventory
-    local inventory = Player:FindFirstChild("Inventory") or Player:FindFirstChild("Pets")
-    if inventory then
-        for _, v in pairs(inventory:GetChildren()) do
-            if v:IsA("Folder") or v:IsA("Configuration") then
-                table.insert(pets, v.Name)
-            end
-        end
-    end
-    
-    return pets
-end
-
--- Merge pets
-local function MergePets()
-    Network:FireServer("MergePets")
-    Network:FireServer("CombinePets")
-end
-
---==================================================
--- LOOP MANAGEMENT
---==================================================
-
-function StartLoop(name, func, interval)
-    if Loops[name] then return end
-    
-    Loops[name] = true
-    task.spawn(function()
-        while Loops[name] do
-            local success, err = pcall(func)
-            if not success then
-                warn("Loop error [" .. name .. "]:", err)
-            end
-            task.wait(interval or 0.1)
-        end
-    end)
-end
-
-function StopLoop(name)
-    Loops[name] = false
-end
-
---==================================================
--- MAIN TAB CONTENT
---==================================================
-local StatsSection = MainTab:AddSection({Name = "Player Stats", TextSize = 17, Glass = true, Outline = true})
-
-local StatsPara = StatsSection:AddParagraph({
-    Title = Player.Name,
-    Desc = "Loading stats...",
-    Image = "user",
-    ImageSize = 38,
-    Buttons = {
-        {
-            Title = "Refresh",
-            Callback = function()
-                local coins = GetCoins()
-                local rebirths = GetRebirths()
-                StatsPara:SetDesc(string.format(
-                    "Coins: %s\nRebirths: %s\nTaps: %s\nEggs: %s\nSession: %s",
-                    FormatNumber(coins),
-                    FormatNumber(rebirths),
-                    FormatNumber(Stats.TotalTaps),
-                    Stats.EggsHatched,
-                    os.date("%H:%M:%S", os.time() - Stats.StartTime)
-                ))
-            end
-        }
-    }
+-- Background
+local background = createInstance("Frame", {
+    Name = "Background",
+    Size = UDim2.new(1, 0, 1, 0),
+    Position = UDim2.new(0, 0, 0, 0),
+    BackgroundColor3 = colors.BG_VOID,
+    BackgroundTransparency = 0.2,
+    BorderSizePixel = 0,
+    ZIndex = 1,
+    Parent = screenGui
 })
 
--- Auto-update stats
+-- Glow Effect
+local glowEffect = createInstance("Frame", {
+    Name = "GlowEffect",
+    Size = UDim2.new(1, 0, 0, 60),
+    Position = UDim2.new(0, 0, -0.1, 0),
+    BackgroundColor3 = colors.NEON_GREEN,
+    BackgroundTransparency = 0.95,
+    BorderSizePixel = 0,
+    ZIndex = 2,
+    Parent = background
+})
+
+-- Glow animation
 task.spawn(function()
-    while true do
-        local coins = GetCoins()
-        local rebirths = GetRebirths()
-        StatsPara:SetDesc(string.format(
-            "Coins: %s\nRebirths: %s\nTaps: %s\nEggs: %s\nSession: %s",
-            FormatNumber(coins),
-            FormatNumber(rebirths),
-            FormatNumber(Stats.TotalTaps),
-            Stats.EggsHatched,
-            os.date("%H:%M:%S", os.time() - Stats.StartTime)
-        ))
+    while screenGui and screenGui.Parent do
+        glowEffect.Position = UDim2.new(0, 0, -0.1, 0)
+        tweenObject(glowEffect, {
+            Position = UDim2.new(0, 0, 1.1, 0)
+        }, 4, Enum.EasingStyle.Linear)
+        task.wait(5)
+    end
+end)
+
+-- Main Frame
+local mainFrame = createInstance("Frame", {
+    Name = "MainFrame",
+    Size = UDim2.new(0, 450, 0, 350),
+    Position = UDim2.new(0.5, -225, 0.5, -175),
+    BackgroundColor3 = colors.BG_PANEL,
+    BackgroundTransparency = 0,
+    BorderSizePixel = 0,
+    ClipsDescendants = true,
+    ZIndex = 10,
+    Parent = screenGui
+})
+createUIPadding(mainFrame, 6)
+local mainStroke = createStroke(mainFrame, colors.NEON_GREEN, 1, 0.5)
+
+-- Top Bar
+local topBar = createInstance("Frame", {
+    Name = "TopBar",
+    Size = UDim2.new(1, 0, 0, 40),
+    Position = UDim2.new(0, 0, 0, 0),
+    BackgroundColor3 = Color3.fromRGB(8, 8, 18),
+    BackgroundTransparency = 0,
+    BorderSizePixel = 0,
+    ZIndex = 11,
+    Parent = mainFrame
+})
+createUIPadding(topBar, 6)
+
+-- Top Bar Elements
+createInstance("TextLabel", {
+    Name = "TopBarLine",
+    Text = "══════════════════════════",
+    Size = UDim2.new(1, 0, 0, 10),
+    Position = UDim2.new(0, 0, 1, -10),
+    BackgroundColor3 = Color3.fromRGB(8, 10, 18),
+    BackgroundTransparency = 0,
+    BorderSizePixel = 0,
+    TextColor3 = colors.TEXT_DIM,
+    TextScaled = true,
+    Font = Enum.Font.Code,
+    ZIndex = 12,
+    Parent = topBar
+})
+
+createInstance("TextLabel", {
+    Name = "TopBarGlow",
+    Text = "▂",
+    Size = UDim2.new(1, 0, 0, 1),
+    Position = UDim2.new(0, 0, 1, -1),
+    BackgroundColor3 = colors.NEON_GREEN,
+    BackgroundTransparency = 0.5,
+    BorderSizePixel = 0,
+    ZIndex = 21,
+    Parent = topBar
+})
+
+-- Title
+createInstance("TextLabel", {
+    Name = "Title",
+    Text = "⚡ NEXUS // LOADER",
+    Size = UDim2.new(1, -40, 1, 0),
+    Position = UDim2.new(0, 20, 0, 0),
+    BackgroundTransparency = 1,
+    TextColor3 = colors.NEON_GREEN,
+    TextScaled = true,
+    Font = Enum.Font.Code,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    ZIndex = 14,
+    Parent = topBar
+})
+
+-- Close Button
+local closeButton = createInstance("TextButton", {
+    Name = "CloseButton",
+    Size = UDim2.new(0, 30, 0, 30),
+    Position = UDim2.new(1, -38, 0, -15),
+    BackgroundColor3 = colors.NEON_RED,
+    BackgroundTransparency = 0.8,
+    BorderSizePixel = 0,
+    Text = "×",
+    TextColor3 = colors.NEON_RED,
+    TextScaled = true,
+    Font = Enum.Font.Code,
+    AutoButtonColor = false,
+    ZIndex = 22,
+    Parent = topBar
+})
+createUIPadding(closeButton, 4)
+
+-- Close Button Events
+closeButton.MouseEnter:Connect(function()
+    tweenObject(closeButton, {
+        BackgroundTransparency = 0.3,
+        TextColor3 = Color3.fromRGB(255, 100, 100)
+    }, 0.15)
+end)
+
+closeButton.MouseLeave:Connect(function()
+    tweenObject(closeButton, {
+        BackgroundTransparency = 0.8,
+        TextColor3 = colors.NEON_RED
+    }, 0.15)
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    tweenObject(mainFrame, {
+        Size = UDim2.new(0, 450, 0, 40)
+    }, 0.3, Enum.EasingStyle.Quint)
+    tweenObject(background, {
+        BackgroundTransparency = 1
+    }, 0.3)
+    task.wait(0.35)
+    screenGui:Destroy()
+end)
+
+-- Dragging Functionality
+local dragging = false
+local dragInput, dragStart, startPos
+
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+topBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+userInput.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X, 
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- Content Frame
+local contentFrame = createInstance("Frame", {
+    Name = "ContentFrame",
+    Size = UDim2.new(1, -40, 1, -60),
+    Position = UDim2.new(0, 20, 0, 50),
+    BackgroundColor3 = colors.BG_INPUT,
+    BackgroundTransparency = 0,
+    BorderSizePixel = 0,
+    ClipsDescendants = true,
+    ZIndex = 12,
+    Parent = mainFrame
+})
+createUIPadding(contentFrame, 15)
+createStroke(contentFrame, colors.BORDER_DIM, 1, 0)
+
+-- Welcome Text
+local welcomeLabel = createInstance("TextLabel", {
+    Name = "WelcomeLabel",
+    Size = UDim2.new(1, 0, 0, 30),
+    BackgroundTransparency = 1,
+    Text = "",
+    TextColor3 = colors.NEON_GREEN,
+    TextScaled = true,
+    Font = Enum.Font.Code,
+    TextXAlignment = Enum.TextXAlignment.Center,
+    ZIndex = 13,
+    Parent = contentFrame
+})
+
+-- Status Label
+local statusLabel = createInstance("TextLabel", {
+    Name = "StatusLabel",
+    Size = UDim2.new(1, 0, 0, 60),
+    Position = UDim2.new(0, 0, 0, 40),
+    BackgroundTransparency = 1,
+    Text = "",
+    TextColor3 = colors.TEXT_MID,
+    TextScaled = true,
+    Font = Enum.Font.Code,
+    TextXAlignment = Enum.TextXAlignment.Center,
+    TextYAlignment = Enum.TextYAlignment.Center,
+    ZIndex = 13,
+    Parent = contentFrame
+})
+
+-- Loading Bar
+local loadingBar = createInstance("Frame", {
+    Name = "LoadingBar",
+    Size = UDim2.new(1, 0, 0, 4),
+    Position = UDim2.new(0, 0, 0, 120),
+    BackgroundColor3 = colors.BG_PANEL,
+    BackgroundTransparency = 0,
+    BorderSizePixel = 0,
+    ClipsDescendants = true,
+    ZIndex = 13,
+    Parent = contentFrame
+})
+createStroke(loadingBar, colors.BORDER_DIM, 1, 0.5)
+
+local loadingBarFill = createInstance("Frame", {
+    Name = "LoadingBarFill",
+    Size = UDim2.new(0, 0, 1, 0),
+    BackgroundColor3 = colors.NEON_GREEN,
+    BackgroundTransparency = 0,
+    BorderSizePixel = 0,
+    ZIndex = 14,
+    Parent = loadingBar
+})
+
+-- Session Info
+local sessionLabel = createInstance("TextLabel", {
+    Name = "SessionLabel",
+    Size = UDim2.new(1, 0, 0, 40),
+    Position = UDim2.new(0, 0, 0, 140),
+    BackgroundTransparency = 1,
+    Text = "SESSION: " .. generateSessionID(),
+    TextColor3 = colors.TEXT_DIM,
+    TextScaled = true,
+    Font = Enum.Font.Code,
+    TextXAlignment = Enum.TextXAlignment.Center,
+    ZIndex = 13,
+    Parent = contentFrame
+})
+
+-- User Info
+local userLabel = createInstance("TextLabel", {
+    Name = "UserLabel",
+    Size = UDim2.new(1, 0, 0, 30),
+    Position = UDim2.new(0, 0, 0, 190),
+    BackgroundTransparency = 1,
+    Text = "USER: " .. player.Name,
+    TextColor3 = colors.TEXT_DIM,
+    TextScaled = true,
+    Font = Enum.Font.Code,
+    TextXAlignment = Enum.TextXAlignment.Center,
+    ZIndex = 13,
+    Parent = contentFrame
+})
+
+-- Load Button
+local loadButton = createInstance("TextButton", {
+    Name = "LoadButton",
+    Size = UDim2.new(0.6, 0, 0, 40),
+    Position = UDim2.new(0.2, 0, 0, 240),
+    BackgroundColor3 = Color3.fromRGB(0, 40, 22),
+    BackgroundTransparency = 0,
+    BorderSizePixel = 0,
+    Text = "▶ LOAD SCRIPT",
+    TextColor3 = colors.NEON_GREEN,
+    TextScaled = true,
+    Font = Enum.Font.Code,
+    AutoButtonColor = false,
+    ZIndex = 14,
+    Parent = contentFrame
+})
+createUIPadding(loadButton, 8)
+local loadButtonStroke = createStroke(loadButton, colors.NEON_GREEN, 1, 0.3)
+
+-- Load Button Events
+loadButton.MouseEnter:Connect(function()
+    tweenObject(loadButton, {
+        BackgroundColor3 = Color3.fromRGB(0, 60, 35)
+    }, 0.15)
+    tweenObject(loadButtonStroke, {
+        Transparency = 0
+    }, 0.15)
+end)
+
+loadButton.MouseLeave:Connect(function()
+    tweenObject(loadButton, {
+        BackgroundColor3 = Color3.fromRGB(0, 40, 22)
+    }, 0.15)
+    tweenObject(loadButtonStroke, {
+        Transparency = 0.3
+    }, 0.15)
+end)
+
+-- Load Button Click
+loadButton.MouseButton1Click:Connect(function()
+    -- Disable button during loading
+    loadButton.Text = "⏳ LOADING..."
+    loadButton.Active = false
+    
+    -- Start loading animation
+    tweenObject(loadingBarFill, {
+        Size = UDim2.new(1, 0, 1, 0)
+    }, 2, Enum.EasingStyle.Quad)
+    
+    -- Update status
+    statusLabel.TextColor3 = colors.NEON_AMBER
+    typewriterEffect(statusLabel, "INITIALIZING SYSTEM...", 0.03, colors.NEON_AMBER)
+    
+    task.wait(1)
+    
+    typewriterEffect(statusLabel, "LOADING MODULES...", 0.03, colors.NEON_AMBER)
+    
+    task.wait(1)
+    
+    typewriterEffect(statusLabel, "✓ SYSTEM READY", 0.03, colors.SUCCESS)
+    
+    -- Success animation
+    loadButton.Text = "✓ LOADED"
+    loadButton.TextColor3 = colors.SUCCESS
+    loadButtonStroke.Color = colors.SUCCESS
+    loadingBarFill.BackgroundColor3 = colors.SUCCESS
+    
+    task.wait(0.5)
+    
+    -- Close GUI
+    tweenObject(mainFrame, {
+        Size = UDim2.new(0, 450, 0, 40)
+    }, 0.3, Enum.EasingStyle.Quint)
+    tweenObject(background, {
+        BackgroundTransparency = 1
+    }, 0.3)
+    
+    task.wait(0.35)
+    screenGui:Destroy()
+    
+    -- Execute main script
+    ON_SUCCESS()
+end)
+
+-- Startup Animation
+task.spawn(function()
+    mainFrame.BackgroundTransparency = 0
+    mainFrame.Size = UDim2.new(0, 450, 0, 40)
+    mainFrame.Position = UDim2.new(0.5, -225, 0.5, -175)
+    
+    task.wait(0.1)
+    
+    tweenObject(mainFrame, {
+        Size = UDim2.new(0, 450, 0, 350)
+    }, 0.5, Enum.EasingStyle.Quint)
+    
+    task.wait(0.5)
+    
+    typewriterEffect(welcomeLabel, "⚡ WELCOME TO NEXUS ⚡", 0.03, colors.NEON_GREEN)
+    
+    task.wait(0.3)
+    
+    typewriterEffect(statusLabel, "SYSTEM READY - CLICK LOAD TO CONTINUE", 0.03, colors.TEXT_MID)
+end)
+
+-- Display Order Animation
+task.spawn(function()
+    while screenGui and screenGui.Parent do
+        screenGui.DisplayOrder = 999
         task.wait(2)
     end
 end)
 
-local QuickSection = MainTab:AddSection({Name = "Quick Actions", TextSize = 17, Glass = true, Outline = true})
-
-QuickSection:AddButton({
-    Name = "Tap 100x",
-    Icon = "hand",
-    Outline = true,
-    Callback = function()
-        for i = 1, 100 do
-            Tap(5) -- Multi-tap 5x each iteration
-            task.wait(0.01)
-        end
-        Notify("Tapped 500 times!")
-    end
-})
-
-QuickSection:AddButton({
-    Name = "Hatch 10 Eggs",
-    Icon = "egg",
-    Outline = true,
-    Callback = function()
-        for i = 1, 10 do
-            HatchEgg()
-            task.wait(0.1)
-        end
-        Notify("Hatched 10 eggs!")
-    end
-})
-
-QuickSection:AddButton({
-    Name = "Equip Best Pet",
-    Icon = "star",
-    Outline = true,
-    Callback = function()
-        Network:EquipBestPet()
-        Notify("Best pet equipped!")
-    end
-})
-
---==================================================
--- AUTO FARM TAB
---==================================================
-local TapSection = FarmTab:AddSection({Name = "Auto Tap", TextSize = 17, Glass = true, Outline = true})
-
-TapSection:AddToggle({
-    Name = "Auto Tap",
-    Default = false,
-    Color = Color3.fromRGB(0, 255, 100),
-    Outline = true,
-    Flag = "AutoTap",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoTap.Enabled = Value
-        if Value then 
-            StartLoop("AutoTap", function()
-                Tap(Toggles.AutoTap.MultiTap)
-            end, Toggles.AutoTap.Speed)
-        else 
-            StopLoop("AutoTap")
-        end
-    end
-})
-
-TapSection:AddSlider({
-    Name = "Tap Speed (sec)",
-    Min = 0.001,
-    Max = 0.1,
-    Default = 0.01,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 0.001,
-    ValueName = "sec",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoTap.Speed = Value
-    end
-})
-
-TapSection:AddSlider({
-    Name = "Multi-Tap",
-    Min = 1,
-    Max = 20,
-    Default = 1,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 1,
-    ValueName = "x",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoTap.MultiTap = Value
-    end
-})
-
-local CollectSection = FarmTab:AddSection({Name = "Auto Collection", TextSize = 17, Glass = true, Outline = true})
-
-CollectSection:AddToggle({
-    Name = "Auto Collect",
-    Default = false,
-    Color = Color3.fromRGB(0, 255, 100),
-    Outline = true,
-    Flag = "AutoCollect",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoCollect.Enabled = Value
-        if Value then 
-            StartLoop("AutoCollect", Collect, Toggles.AutoCollect.Interval)
-        else 
-            StopLoop("AutoCollect")
-        end
-    end
-})
-
-CollectSection:AddSlider({
-    Name = "Collect Interval",
-    Min = 1,
-    Max = 30,
-    Default = 5,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 1,
-    ValueName = "sec",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoCollect.Interval = Value
-    end
-})
-
---==================================================
--- EGGS TAB
---==================================================
-local EggSection = EggsTab:AddSection({Name = "Egg Settings", TextSize = 17, Glass = true, Outline = true})
-
-EggSection:AddToggle({
-    Name = "Auto Buy Egg",
-    Default = false,
-    Color = Color3.fromRGB(255, 150, 0),
-    Outline = true,
-    Flag = "AutoBuyEgg",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoBuyEgg.Enabled = Value
-        if Value then 
-            StartLoop("AutoBuyEgg", function()
-                BuyEgg(Toggles.AutoBuyEgg.Type, Toggles.AutoBuyEgg.Amount)
-            end, 1)
-        else 
-            StopLoop("AutoBuyEgg")
-        end
-    end
-})
-
-EggSection:AddDropdown({
-    Name = "Egg Type",
-    Default = "Basic",
-    Options = {"Basic", "Rare", "Epic", "Legendary", "Mythic"},
-    Multi = false,
-    Search = false,
-    AllowNone = false,
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoBuyEgg.Type = Value
-    end
-})
-
-EggSection:AddSlider({
-    Name = "Buy Amount",
-    Min = 1,
-    Max = 10,
-    Default = 1,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 1,
-    ValueName = "eggs",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoBuyEgg.Amount = Value
-    end
-})
-
-EggSection:AddToggle({
-    Name = "Auto Hatch",
-    Default = false,
-    Color = Color3.fromRGB(255, 150, 0),
-    Outline = true,
-    Flag = "AutoHatch",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoHatch.Enabled = Value
-        if Value then 
-            StartLoop("AutoHatch", HatchEgg, Toggles.AutoHatch.Delay)
-        else 
-            StopLoop("AutoHatch")
-        end
-    end
-})
-
-EggSection:AddSlider({
-    Name = "Hatch Delay",
-    Min = 0.1,
-    Max = 2,
-    Default = 0.5,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 0.1,
-    ValueName = "sec",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoHatch.Delay = Value
-    end
-})
-
---==================================================
--- PETS TAB
---==================================================
-local PetSection = PetsTab:AddSection({Name = "Pet Management", TextSize = 17, Glass = true, Outline = true})
-
-PetSection:AddToggle({
-    Name = "Auto Equip Best",
-    Default = false,
-    Color = Color3.fromRGB(255, 100, 255),
-    Outline = true,
-    Flag = "AutoEquipBest",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoEquipBest.Enabled = Value
-        if Value then 
-            StartLoop("AutoEquipBest", Network.EquipBestPet, Toggles.AutoEquipBest.Interval)
-        else 
-            StopLoop("AutoEquipBest")
-        end
-    end
-})
-
-PetSection:AddSlider({
-    Name = "Equip Interval",
-    Min = 5,
-    Max = 60,
-    Default = 10,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 5,
-    ValueName = "sec",
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoEquipBest.Interval = Value
-    end
-})
-
-PetSection:AddToggle({
-    Name = "Auto Merge",
-    Default = false,
-    Color = Color3.fromRGB(255, 100, 255),
-    Outline = true,
-    Flag = "AutoMerge",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoMerge.Enabled = Value
-        if Value then 
-            StartLoop("AutoMerge", MergePets, 30)
-        else 
-            StopLoop("AutoMerge")
-        end
-    end
-})
-
-PetSection:AddButton({
-    Name = "Show Pets",
-    Icon = "list",
-    Outline = true,
-    Callback = function()
-        local pets = GetPets()
-        local msg = "Pets: " .. (#pets > 0 and table.concat(pets, ", ") or "None")
-        Notify(msg)
-    end
-})
-
---==================================================
--- UPGRADES TAB
---==================================================
-local UpgradeSection = UpgradeTab:AddSection({Name = "Auto Upgrade", TextSize = 17, Glass = true, Outline = true})
-
-UpgradeSection:AddToggle({
-    Name = "Auto Upgrade",
-    Default = false,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "AutoUpgrade",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoUpgrade.Enabled = Value
-        if Value then 
-            StartLoop("AutoUpgrade", function()
-                Upgrade(Toggles.AutoUpgrade.Type, Toggles.AutoUpgrade.Priority)
-            end, 1)
-        else 
-            StopLoop("AutoUpgrade")
-        end
-    end
-})
-
-UpgradeSection:AddDropdown({
-    Name = "Upgrade Type",
-    Default = "All",
-    Options = {"All", "Damage", "Speed", "Multiplier", "Critical"},
-    Multi = false,
-    Search = false,
-    AllowNone = false,
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoUpgrade.Type = Value
-    end
-})
-
-UpgradeSection:AddDropdown({
-    Name = "Priority",
-    Default = "Damage",
-    Options = {"Damage", "Speed", "Multiplier", "Critical"},
-    Multi = false,
-    Search = false,
-    AllowNone = false,
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoUpgrade.Priority = Value
-    end
-})
-
-local AreaSection = UpgradeTab:AddSection({Name = "Area", TextSize = 17, Glass = true, Outline = true})
-
-AreaSection:AddToggle({
-    Name = "Auto Buy Area",
-    Default = false,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "AutoBuyArea",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoBuyArea.Enabled = Value
-        if Value then 
-            StartLoop("AutoBuyArea", function()
-                BuyArea(Toggles.AutoBuyArea.Area)
-            end, 2)
-        else 
-            StopLoop("AutoBuyArea")
-        end
-    end
-})
-
-AreaSection:AddDropdown({
-    Name = "Area Type",
-    Default = "Next",
-    Options = {"Next", "Cheapest", "Best"},
-    Multi = false,
-    Search = false,
-    AllowNone = false,
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoBuyArea.Area = Value
-    end
-})
-
-local RebirthSection = UpgradeTab:AddSection({Name = "Rebirth", TextSize = 17, Glass = true, Outline = true})
-
-RebirthSection:AddToggle({
-    Name = "Auto Rebirth",
-    Default = false,
-    Color = Color3.fromRGB(255, 50, 50),
-    Outline = true,
-    Flag = "AutoRebirth",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoRebirth.Enabled = Value
-        if Value then 
-            StartLoop("AutoRebirth", function()
-                local coins = GetCoins()
-                if coins >= Toggles.AutoRebirth.At then
-                    Rebirth()
-                end
-            end, 3)
-        else 
-            StopLoop("AutoRebirth")
-        end
-    end
-})
-
-RebirthSection:AddSlider({
-    Name = "Rebirth At",
-    Min = 100,
-    Max = 10000000,
-    Default = 1000,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 100,
-    ValueName = FormatNumber(GetCoins()),
-    Outline = true,
-    Callback = function(Value)
-        Toggles.AutoRebirth.At = Value
-    end
-})
-
---==================================================
--- DEBUG TAB
---==================================================
-local RemoteSection = DebugTab:AddSection({Name = "Remote Explorer", TextSize = 17, Glass = true, Outline = true})
-
-RemoteSection:AddButton({
-    Name = "Scan Remotes",
-    Icon = "search",
-    Outline = true,
-    Callback = function()
-        local remotes = Network:GetAllRemotes()
-        local msg = "Found " .. #remotes .. " remotes"
-        Notify(msg)
-        
-        -- Create dropdown with remotes
-        local remoteDropdown = RemoteSection:AddDropdown({
-            Name = "Remote List",
-            Default = remotes[1] or "None",
-            Options = #remotes > 0 and remotes or {"None"},
-            Multi = false,
-            Search = true,
-            Outline = true,
-            Callback = function(Value)
-                Cache.SelectedRemote = Value
-            end
-        })
-    end
-})
-
-RemoteSection:AddTextbox({
-    Name = "Remote Name",
-    Default = "",
-    TextDisappear = true,
-    Outline = true,
-    Callback = function(Value)
-        Cache.CustomRemote = Value
-    end
-})
-
-RemoteSection:AddButton({
-    Name = "Fire Remote",
-    Icon = "zap",
-    Outline = true,
-    Callback = function()
-        local remoteName = Cache.SelectedRemote or Cache.CustomRemote
-        if remoteName then
-            Network:FireServer(remoteName)
-            Notify("Fired: " .. remoteName)
-        end
-    end
-})
-
-local NetworkSection = DebugTab:AddSection({Name = "Network Status", TextSize = 17, Glass = true, Outline = true})
-
-NetworkSection:AddParagraph({
-    Title = "Wrapper Status",
-    Desc = "Mode: " .. (Network.Fallback and "Fallback ⚠️" or "Advanced ✅") .. "\nPing: " .. math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) .. "ms",
-    Image = "activity",
-    ImageSize = 38
-})
-
---==================================================
--- MISC TAB
---==================================================
-local MiscSection = MiscTab:AddSection({Name = "Miscellaneous", TextSize = 17, Glass = true, Outline = true})
-
-MiscSection:AddToggle({
-    Name = "Anti AFK",
-    Default = false,
-    Color = Color3.fromRGB(100, 100, 255),
-    Outline = true,
-    Flag = "AntiAFK",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AntiAFK.Enabled = Value
-        if Value then
-            local connection
-            connection = RunService.Stepped:Connect(function()
-                if Toggles.AntiAFK.Enabled then
-                    VirtualUser:CaptureController()
-                    VirtualUser:ClickButton2(Vector2.new())
-                else
-                    connection:Disconnect()
-                end
-            end)
-        end
-    end
-})
-
-MiscSection:AddToggle({
-    Name = "Auto Reconnect",
-    Default = false,
-    Color = Color3.fromRGB(100, 100, 255),
-    Outline = true,
-    Flag = "AutoReconnect",
-    Save = true,
-    Callback = function(Value)
-        Toggles.AutoReconnect.Enabled = Value
-    end
-})
-
-MiscSection:AddToggle({
-    Name = "FPS Boost",
-    Default = false,
-    Color = Color3.fromRGB(100, 100, 255),
-    Outline = true,
-    Flag = "FPSBoost",
-    Save = true,
-    Callback = function(Value)
-        Toggles.FPSBoost.Enabled = Value
-        if Value then
-            Lighting.GlobalShadows = false
-            Lighting.FogEnd = 9e9
-            workspace.Terrain.WaterWaveSize = 0
-            workspace.Terrain.WaterWaveSpeed = 0
-            settings().Rendering.QualityLevel = 1
-        else
-            Lighting.GlobalShadows = true
-            settings().Rendering.QualityLevel = 21
-        end
-    end
-})
-
-local ServerSection = MiscTab:AddSection({Name = "Server", TextSize = 17, Glass = true, Outline = true})
-
-ServerSection:AddButton({
-    Name = "Rejoin Server",
-    Icon = "refresh-cw",
-    Outline = true,
-    Callback = function()
-        game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
-    end
-})
-
-ServerSection:AddButton({
-    Name = "Server Hop",
-    Icon = "globe",
-    Outline = true,
-    Callback = function()
-        local HttpService = game:GetService("HttpService")
-        local TeleportService = game:GetService("TeleportService")
-        local placeId = game.PlaceId
-        
-        local function getServers()
-            local servers = {}
-            local cursor = ""
-            repeat
-                local success, result = pcall(function()
-                    return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?limit=100" .. (cursor ~= "" and "&cursor=" .. cursor or "")))
-                end)
-                if success then
-                    for _, server in ipairs(result.data) do
-                        if server.playing < server.maxPlayers then
-                            table.insert(servers, server.id)
-                        end
-                    end
-                    cursor = result.nextPageCursor
-                else
-                    break
-                end
-            until not cursor
-            return servers
-        end
-        
-        local servers = getServers()
-        if #servers > 0 then
-            local randomServer = servers[math.random(1, #servers)]
-            TeleportService:TeleportToPlaceInstance(placeId, randomServer, Player)
-        else
-            Notify("No servers available!", "Error")
-        end
-    end
-})
-
-ServerSection:AddButton({
-    Name = "Close GUI",
-    Icon = "x",
-    Outline = true,
-    Callback = function()
-        OrionLib:Destroy()
-        _G.TapSimLoaded = false
-    end
-})
-
--- Auto reconnect handler
-if Toggles.AutoReconnect.Enabled then
-    game:GetService("CoreGui").ChildRemoved:Connect(function(child)
-        if child.Name == "RobloxPromptGui" then
-            task.wait(5)
-            game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
-        end
-    end)
-end
-
---==================================================
--- CONFIG TAB
---==================================================
-Window:AddConfigTab({
-    Name = "Settings",
-    Icon = "settings"
-})
-
---==================================================
--- INITIALIZE
---==================================================
-OrionLib:Init()
-
-Notify("Premium script loaded! Remote System: " .. (Network.Fallback and "Basic Mode" or "Advanced Mode"))
-print("=== Tap Simulator Premium v2.0 ===")
-print("✅ Remote Wrapper: " .. (Network.Fallback and "Fallback" or "Advanced"))
-print("✅ Features: Auto Farm, Eggs, Pets, Upgrades")
-print("✅ Press F4 to toggle menu")
+print("NEXUS SYSTEM LOADED SUCCESSFULLY - NO KEY REQUIRED")
