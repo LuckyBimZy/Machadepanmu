@@ -1,525 +1,1247 @@
--- Nexus System - No Key Required Version
-local players = game:GetService("Players")
-local tweenService = game:GetService("TweenService")
-local userInput = game:GetService("UserInputService")
+-- ==================== TAP SIMULATOR - CATRAZ EDITION (ENHANCED) ====================
+-- Premium Auto Farm Script untuk Tap Simulator
+-- Author: Adapted for Catraz Hub
+-- Version: 2.0 (Enhanced)
 
-local player = players.LocalPlayer
+if _G.TapSimLoaded then 
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Tap Simulator",
+        Text = "Script already loaded!",
+        Duration = 2
+    })
+    return 
+end
 
--- Color Constants
-local colors = {
-    BORDER_DIM = Color3.fromRGB(5, 5, 5),
-    NEON_GREEN = Color3.fromRGB(0, 255, 0),
-    NEON_RED = Color3.fromRGB(255, 0, 0),
-    NEON_AMBER = Color3.fromRGB(255, 191, 0),
-    NEON_BLUE = Color3.fromRGB(0, 157, 255),
-    BG_VOID = Color3.fromRGB(15, 15, 15),
-    BG_PANEL = Color3.fromRGB(25, 25, 25),
-    BG_INPUT = Color3.fromRGB(35, 35, 35),
-    TEXT_DIM = Color3.fromRGB(150, 150, 150),
-    TEXT_MID = Color3.fromRGB(200, 200, 200),
-    TEXT_BRIGHT = Color3.fromRGB(255, 255, 255),
-    SUCCESS = Color3.fromRGB(0, 255, 0),
-    ERROR = Color3.fromRGB(255, 0, 0)
+_G.TapSimLoaded = true
+
+--==================================================
+-- LOAD CATRAZ HUB LIBRARY
+--==================================================
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
+
+--==================================================
+-- VARIABLES
+--==================================================
+local Player = game.Players.LocalPlayer
+local Mouse = Player:GetMouse()
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
+local GuiService = game:GetService("GuiService")
+
+-- Toggles
+local Toggles = {
+    -- Auto Farm
+    AutoTap = false,
+    TapSpeed = 0.01,
+    AutoClicker = false,
+    ClickSpeed = 0.001,
+    ClickMethod = "Mouse", -- Mouse, Virtual, Remote
+    
+    -- Eggs
+    AutoBuyEgg = false,
+    EggType = "Basic",
+    AutoHatch = false,
+    EggBuyDelay = 1,
+    
+    -- Upgrades
+    AutoUpgrade = false,
+    UpgradeType = "All",
+    AutoBuyArea = false,
+    
+    -- Collection
+    AutoCollect = false,
+    AutoRebirth = false,
+    RebirthAt = 1000,
+    
+    -- Visuals
+    ESP = false,
+    FullBright = false,
+    NoFog = false,
+    
+    -- Misc
+    AntiAFK = false,
+    AutoClaim = false
 }
 
--- Success Callback
-local ON_SUCCESS = function()
-    print("NEXUS // SYSTEM LOADED SUCCESSFULLY - WELCOME!")
-    -- Tambahkan script utama kalian di sini
-    -- Contoh: loadstring(game:HttpGet("https://raw.githubusercontent.com/.../main/script.lua"))()
+-- Loops
+local Loops = {}
+local ClickConnection = nil
+
+--==================================================
+-- DETECT GAME MECHANICS
+--==================================================
+
+-- Deteksi elemen game yang bisa di-click
+local ClickableElements = {
+    Buttons = {},
+    GUIs = {},
+    Parts = {}
+}
+
+local function DetectClickableElements()
+    -- Cari tombol di layar
+    for _, v in pairs(CoreGui:GetDescendants()) do
+        if v:IsA("TextButton") or v:IsA("ImageButton") then
+            if v.Active and v.Visible and v.AbsoluteSize.X > 0 then
+                local name = v.Name:lower()
+                if name:find("tap") or name:find("click") or name:find("egg") or name:find("buy") then
+                    table.insert(ClickableElements.Buttons, v)
+                end
+            end
+        end
+    end
+    
+    -- Cari part yang bisa di-click di workspace
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("BasePart") and v:FindFirstChildWhichIsA("ClickDetector") then
+            table.insert(ClickableElements.Parts, v)
+        elseif v:IsA("Model") and v:FindFirstChild("ClickDetector") then
+            table.insert(ClickableElements.Parts, v)
+        end
+    end
+    
+    print("=== CLICKABLE ELEMENTS FOUND ===")
+    print("Buttons: " .. #ClickableElements.Buttons)
+    print("Parts: " .. #ClickableElements.Parts)
 end
 
--- Utility Functions
-local function tweenObject(obj, properties, duration, easingStyle, easingDirection)
-    local tween = tweenService:Create(obj, 
-        TweenInfo.new(duration or 0.3, 
-        easingStyle or Enum.EasingStyle.Quint, 
-        easingDirection or Enum.EasingDirection.Out), 
-        properties)
-    tween:Play()
-    return tween
+-- Cari Remote Events dengan lebih teliti
+local Remotes = {
+    Tap = nil,
+    BuyEgg = nil,
+    HatchEgg = nil,
+    BuyArea = nil,
+    Upgrade = nil,
+    Collect = nil,
+    Rebirth = nil,
+    Click = nil,
+    Purchase = nil
+}
+
+local function FindRemotes()
+    -- Metode 1: Scan semua descendants
+    local allDescendants = {}
+    for _, container in pairs({ReplicatedStorage, Player.PlayerScripts, game:GetService("ScriptContext")}) do
+        for _, v in pairs(container:GetDescendants()) do
+            if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("UnreliableRemoteEvent") then
+                table.insert(allDescendants, v)
+            end
+        end
+    end
+    
+    -- Analisis nama remote
+    for _, v in pairs(allDescendants) do
+        local name = v.Name:lower()
+        
+        -- Tap/Click related
+        if name:find("tap") or name:find("click") or name:find("hit") or name:find("damage") then
+            if not Remotes.Tap then Remotes.Tap = v end
+            if name:find("click") and not Remotes.Click then Remotes.Click = v end
+        end
+        
+        -- Egg related
+        if name:find("egg") or name:find("hatch") or name:find("open") then
+            if name:find("buy") or name:find("purchase") then
+                if not Remotes.BuyEgg then Remotes.BuyEgg = v end
+            elseif name:find("hatch") or name:find("open") then
+                if not Remotes.HatchEgg then Remotes.HatchEgg = v end
+            end
+        end
+        
+        -- Purchase related
+        if name:find("buy") or name:find("purchase") then
+            if not Remotes.Purchase then Remotes.Purchase = v end
+            if name:find("area") and not Remotes.BuyArea then Remotes.BuyArea = v end
+        end
+        
+        -- Upgrade related
+        if name:find("upgrade") or name:find("boost") then
+            if not Remotes.Upgrade then Remotes.Upgrade = v end
+        end
+        
+        -- Collect/Claim related
+        if name:find("collect") or name:find("claim") or name:find("reward") then
+            if not Remotes.Collect then Remotes.Collect = v end
+        end
+        
+        -- Rebirth related
+        if name:find("rebirth") or name:find("prestige") or name:find("reset") then
+            if not Remotes.Rebirth then Remotes.Rebirth = v end
+        end
+    end
+    
+    -- Metode 2: Hook ke events (jika executor mendukung)
+    local success, hookFunc = pcall(function()
+        return hookfunction or replaceclosure or function() end
+    end)
+    
+    if success then
+        print("Advanced remote detection available")
+    end
+    
+    print("=== REMOTES FOUND ===")
+    for k, v in pairs(Remotes) do
+        print(k, v and "✓" or "✗")
+    end
 end
 
-local function createInstance(class, properties)
-    local instance = Instance.new(class)
-    for prop, value in pairs(properties or {}) do
+--==================================================
+-- ENHANCED CLICK METHODS
+--==================================================
+
+-- Method 1: Mouse Click Simulation
+local function MouseClick()
+    mouse1click()
+    mouse1release()
+end
+
+-- Method 2: Virtual Input Manager
+local function VirtualClick()
+    VirtualInputManager:SendMouseButtonEvent(
+        Mouse.X, Mouse.Y, 0, true, game, 0
+    )
+    task.wait(0.01)
+    VirtualInputManager:SendMouseButtonEvent(
+        Mouse.X, Mouse.Y, 0, false, game, 0
+    )
+end
+
+-- Method 3: Remote Event Spam
+local function RemoteClick()
+    if Remotes.Click then
         pcall(function()
-            instance[prop] = value
-        end)
-    end
-    if properties and properties.Parent then
-        instance.Parent = properties.Parent
-    end
-    return instance
-end
-
-local function createUIPadding(amount)
-    return createInstance("UIPadding", {
-        PaddingTop = UDim.new(0, amount or 6),
-        PaddingBottom = UDim.new(0, amount or 6),
-        PaddingLeft = UDim.new(0, amount or 6),
-        PaddingRight = UDim.new(0, amount or 6)
-    })
-end
-
-local function createStroke(parent, color, thickness, transparency)
-    return createInstance("UIStroke", {
-        Color = color or colors.BORDER_DIM,
-        Thickness = thickness or 1,
-        Transparency = transparency or 0,
-        Enabled = true,
-        Parent = parent
-    })
-end
-
-local function typewriterEffect(textLabel, text, delay, color)
-    textLabel.Text = ""
-    if color then
-        textLabel.TextColor3 = color
-    end
-    for i = 1, #text do
-        if not textLabel or not textLabel.Parent then return end
-        textLabel.Text = text:sub(1, i)
-        task.wait(delay or 0.05)
-    end
-end
-
-local function generateSessionID()
-    local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    local result = ""
-    for i = 1, 8 do
-        result = result .. chars:sub(math.random(1, #chars), math.random(1, #chars))
-    end
-    return result
-end
-
--- Cleanup existing GUI
-pcall(function()
-    if game:GetService("CoreGui"):FindFirstChild("NexusSystem") then
-        game:GetService("CoreGui"):FindFirstChild("NexusSystem"):Destroy()
-    end
-end)
-
-pcall(function()
-    if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("NexusSystem") then
-        player.PlayerGui.NexusSystem:Destroy()
-    end
-end)
-
--- Create Main GUI
-local screenGui = createInstance("ScreenGui", {
-    Name = "NexusSystem",
-    DisplayOrder = 10,
-    ResetOnSpawn = true,
-    IgnoreGuiInset = false,
-    ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-})
-
-local success, parent = pcall(function()
-    screenGui.Parent = game:GetService("CoreGui")
-end)
-if not success then
-    screenGui.Parent = player:WaitForChild("PlayerGui")
-end
-
--- Background
-local background = createInstance("Frame", {
-    Name = "Background",
-    Size = UDim2.new(1, 0, 1, 0),
-    Position = UDim2.new(0, 0, 0, 0),
-    BackgroundColor3 = colors.BG_VOID,
-    BackgroundTransparency = 0.2,
-    BorderSizePixel = 0,
-    ZIndex = 1,
-    Parent = screenGui
-})
-
--- Glow Effect
-local glowEffect = createInstance("Frame", {
-    Name = "GlowEffect",
-    Size = UDim2.new(1, 0, 0, 60),
-    Position = UDim2.new(0, 0, -0.1, 0),
-    BackgroundColor3 = colors.NEON_GREEN,
-    BackgroundTransparency = 0.95,
-    BorderSizePixel = 0,
-    ZIndex = 2,
-    Parent = background
-})
-
--- Glow animation
-task.spawn(function()
-    while screenGui and screenGui.Parent do
-        glowEffect.Position = UDim2.new(0, 0, -0.1, 0)
-        tweenObject(glowEffect, {
-            Position = UDim2.new(0, 0, 1.1, 0)
-        }, 4, Enum.EasingStyle.Linear)
-        task.wait(5)
-    end
-end)
-
--- Main Frame
-local mainFrame = createInstance("Frame", {
-    Name = "MainFrame",
-    Size = UDim2.new(0, 450, 0, 350),
-    Position = UDim2.new(0.5, -225, 0.5, -175),
-    BackgroundColor3 = colors.BG_PANEL,
-    BackgroundTransparency = 0,
-    BorderSizePixel = 0,
-    ClipsDescendants = true,
-    ZIndex = 10,
-    Parent = screenGui
-})
-createUIPadding(mainFrame, 6)
-local mainStroke = createStroke(mainFrame, colors.NEON_GREEN, 1, 0.5)
-
--- Top Bar
-local topBar = createInstance("Frame", {
-    Name = "TopBar",
-    Size = UDim2.new(1, 0, 0, 40),
-    Position = UDim2.new(0, 0, 0, 0),
-    BackgroundColor3 = Color3.fromRGB(8, 8, 18),
-    BackgroundTransparency = 0,
-    BorderSizePixel = 0,
-    ZIndex = 11,
-    Parent = mainFrame
-})
-createUIPadding(topBar, 6)
-
--- Top Bar Elements
-createInstance("TextLabel", {
-    Name = "TopBarLine",
-    Text = "══════════════════════════",
-    Size = UDim2.new(1, 0, 0, 10),
-    Position = UDim2.new(0, 0, 1, -10),
-    BackgroundColor3 = Color3.fromRGB(8, 10, 18),
-    BackgroundTransparency = 0,
-    BorderSizePixel = 0,
-    TextColor3 = colors.TEXT_DIM,
-    TextScaled = true,
-    Font = Enum.Font.Code,
-    ZIndex = 12,
-    Parent = topBar
-})
-
-createInstance("TextLabel", {
-    Name = "TopBarGlow",
-    Text = "▂",
-    Size = UDim2.new(1, 0, 0, 1),
-    Position = UDim2.new(0, 0, 1, -1),
-    BackgroundColor3 = colors.NEON_GREEN,
-    BackgroundTransparency = 0.5,
-    BorderSizePixel = 0,
-    ZIndex = 21,
-    Parent = topBar
-})
-
--- Title
-createInstance("TextLabel", {
-    Name = "Title",
-    Text = "⚡ NEXUS // LOADER",
-    Size = UDim2.new(1, -40, 1, 0),
-    Position = UDim2.new(0, 20, 0, 0),
-    BackgroundTransparency = 1,
-    TextColor3 = colors.NEON_GREEN,
-    TextScaled = true,
-    Font = Enum.Font.Code,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    ZIndex = 14,
-    Parent = topBar
-})
-
--- Close Button
-local closeButton = createInstance("TextButton", {
-    Name = "CloseButton",
-    Size = UDim2.new(0, 30, 0, 30),
-    Position = UDim2.new(1, -38, 0, -15),
-    BackgroundColor3 = colors.NEON_RED,
-    BackgroundTransparency = 0.8,
-    BorderSizePixel = 0,
-    Text = "×",
-    TextColor3 = colors.NEON_RED,
-    TextScaled = true,
-    Font = Enum.Font.Code,
-    AutoButtonColor = false,
-    ZIndex = 22,
-    Parent = topBar
-})
-createUIPadding(closeButton, 4)
-
--- Close Button Events
-closeButton.MouseEnter:Connect(function()
-    tweenObject(closeButton, {
-        BackgroundTransparency = 0.3,
-        TextColor3 = Color3.fromRGB(255, 100, 100)
-    }, 0.15)
-end)
-
-closeButton.MouseLeave:Connect(function()
-    tweenObject(closeButton, {
-        BackgroundTransparency = 0.8,
-        TextColor3 = colors.NEON_RED
-    }, 0.15)
-end)
-
-closeButton.MouseButton1Click:Connect(function()
-    tweenObject(mainFrame, {
-        Size = UDim2.new(0, 450, 0, 40)
-    }, 0.3, Enum.EasingStyle.Quint)
-    tweenObject(background, {
-        BackgroundTransparency = 1
-    }, 0.3)
-    task.wait(0.35)
-    screenGui:Destroy()
-end)
-
--- Dragging Functionality
-local dragging = false
-local dragInput, dragStart, startPos
-
-topBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-       input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainFrame.Position
-
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
+            if Remotes.Click:IsA("RemoteEvent") then
+                Remotes.Click:FireServer()
+            elseif Remotes.Click:IsA("RemoteFunction") then
+                Remotes.Click:InvokeServer()
             end
         end)
     end
-end)
-
-topBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or 
-       input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
+    
+    if Remotes.Tap then
+        pcall(function()
+            if Remotes.Tap:IsA("RemoteEvent") then
+                Remotes.Tap:FireServer()
+            elseif Remotes.Tap:IsA("RemoteFunction") then
+                Remotes.Tap:InvokeServer()
+            end
+        end)
     end
-end)
+end
 
-userInput.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(
-            startPos.X.Scale, 
-            startPos.X.Offset + delta.X, 
-            startPos.Y.Scale, 
-            startPos.Y.Offset + delta.Y
-        )
+-- Method 4: Find and Click GUI Button
+local function FindAndClickButton()
+    local bestButton = nil
+    local bestScore = 0
+    
+    for _, btn in pairs(ClickableElements.Buttons) do
+        if btn.Visible and btn.Active then
+            local score = 0
+            local name = btn.Name:lower()
+            
+            if name:find("tap") or name:find("click") then score = score + 10 end
+            if name:find("main") or name:find("big") then score = score + 5 end
+            if btn.AbsoluteSize.X > 100 then score = score + 3 end
+            
+            if score > bestScore then
+                bestScore = score
+                bestButton = btn
+            end
+        end
     end
-end)
+    
+    if bestButton then
+        -- Simulate button click
+        local pos = bestButton.AbsolutePosition + bestButton.AbsoluteSize / 2
+        VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, game, 0)
+        task.wait(0.01)
+        VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 0)
+        return true
+    end
+    return false
+end
 
--- Content Frame
-local contentFrame = createInstance("Frame", {
-    Name = "ContentFrame",
-    Size = UDim2.new(1, -40, 1, -60),
-    Position = UDim2.new(0, 20, 0, 50),
-    BackgroundColor3 = colors.BG_INPUT,
-    BackgroundTransparency = 0,
-    BorderSizePixel = 0,
-    ClipsDescendants = true,
-    ZIndex = 12,
-    Parent = mainFrame
+-- Method 5: ClickDetector trigger
+local function TriggerClickDetectors()
+    for _, part in pairs(ClickableElements.Parts) do
+        local detector = part:FindFirstChildWhichIsA("ClickDetector") or 
+                        (part:IsA("Model") and part:FindFirstChild("ClickDetector"))
+        if detector then
+            fireclickdetector(detector)
+            return true
+        end
+    end
+    return false
+end
+
+-- Main click function with multiple methods
+local function PerformClick(method)
+    method = method or Toggles.ClickMethod
+    
+    if method == "Mouse" then
+        MouseClick()
+    elseif method == "Virtual" then
+        VirtualClick()
+    elseif method == "Remote" then
+        RemoteClick()
+    elseif method == "Button" then
+        FindAndClickButton()
+    elseif method == "Detector" then
+        TriggerClickDetectors()
+    else
+        -- Try all methods
+        RemoteClick()
+        task.wait(0.001)
+        MouseClick()
+        task.wait(0.001)
+        VirtualClick()
+        task.wait(0.001)
+        FindAndClickButton()
+        task.wait(0.001)
+        TriggerClickDetectors()
+    end
+end
+
+--==================================================
+-- ENHANCED EGG FUNCTIONS
+--==================================================
+
+-- Cari egg prices dan jenis eggs
+local EggData = {
+    Basic = {price = 100, remoteName = "Basic", available = true},
+    Rare = {price = 500, remoteName = "Rare", available = true},
+    Epic = {price = 2000, remoteName = "Epic", available = true},
+    Legendary = {price = 10000, remoteName = "Legendary", available = true},
+    Mythic = {price = 50000, remoteName = "Mythic", available = true}
+}
+
+local function ScanEggPrices()
+    -- Coba scan dari GUI untuk mendapatkan harga
+    for _, v in pairs(CoreGui:GetDescendants()) do
+        if v:IsA("TextLabel") or v:IsA("TextButton") then
+            local text = v.Text:lower()
+            if text:find("egg") and text:find("%$") then
+                -- Parse harga
+                local price = text:match("%$([0-9,]+)")
+                if price then
+                    price = tonumber(price:gsub(",", ""))
+                    for eggName, data in pairs(EggData) do
+                        if text:find(eggName:lower()) then
+                            data.price = price
+                            print("Updated " .. eggName .. " price: $" .. price)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Buy egg dengan multiple methods
+local function BuyEgg(eggType)
+    eggType = eggType or Toggles.EggType
+    local eggData = EggData[eggType]
+    
+    if not eggData then return false end
+    
+    -- Method 1: Direct remote
+    if Remotes.BuyEgg then
+        local success = pcall(function()
+            if Remotes.BuyEgg:IsA("RemoteEvent") then
+                Remotes.BuyEgg:FireServer(eggType)
+            elseif Remotes.BuyEgg:IsA("RemoteFunction") then
+                Remotes.BuyEgg:InvokeServer(eggType)
+            end
+        end)
+        if success then return true end
+    end
+    
+    -- Method 2: Purchase remote
+    if Remotes.Purchase then
+        local success = pcall(function()
+            if Remotes.Purchase:IsA("RemoteEvent") then
+                Remotes.Purchase:FireServer("Egg", eggType)
+            else
+                Remotes.Purchase:InvokeServer("Egg", eggType)
+            end
+        end)
+        if success then return true end
+    end
+    
+    -- Method 3: Find and click buy button
+    for _, btn in pairs(ClickableElements.Buttons) do
+        if btn.Visible and btn.Active then
+            local text = btn.Text:lower()
+            if text:find("buy") and text:find(eggType:lower()) then
+                -- Click the button
+                local pos = btn.AbsolutePosition + btn.AbsoluteSize / 2
+                VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, game, 0)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 0)
+                return true
+            end
+        end
+    end
+    
+    -- Method 4: Try common remote patterns
+    local commonRemotes = {
+        "BuyEgg",
+        "PurchaseEgg",
+        "Buy" .. eggType .. "Egg",
+        "EggPurchase",
+        "BuyEggs"
+    }
+    
+    for _, remoteName in pairs(commonRemotes) do
+        local remote = ReplicatedStorage:FindFirstChild(remoteName)
+        if remote then
+            local success = pcall(function() remote:FireServer() end)
+            if success then return true end
+        end
+    end
+    
+    return false
+end
+
+-- Hatch egg dengan multiple methods
+local function HatchEgg()
+    -- Method 1: Direct remote
+    if Remotes.HatchEgg then
+        local success = pcall(function()
+            if Remotes.HatchEgg:IsA("RemoteEvent") then
+                Remotes.HatchEgg:FireServer()
+            else
+                Remotes.HatchEgg:InvokeServer()
+            end
+        end)
+        if success then return true end
+    end
+    
+    -- Method 2: Find hatch button
+    for _, btn in pairs(ClickableElements.Buttons) do
+        if btn.Visible and btn.Active then
+            local text = btn.Text:lower()
+            if text:find("hatch") or text:find("open") then
+                local pos = btn.AbsolutePosition + btn.AbsoluteSize / 2
+                VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, game, 0)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 0)
+                return true
+            end
+        end
+    end
+    
+    -- Method 3: Common remote patterns
+    local commonRemotes = {
+        "HatchEgg",
+        "OpenEgg",
+        "Hatch",
+        "EggHatch"
+    }
+    
+    for _, remoteName in pairs(commonRemotes) do
+        local remote = ReplicatedStorage:FindFirstChild(remoteName)
+        if remote then
+            local success = pcall(function() remote:FireServer() end)
+            if success then return true end
+        end
+    end
+    
+    return false
+end
+
+--==================================================
+-- COIN TRACKING
+--==================================================
+
+local function GetCoins()
+    -- Cek leaderstats
+    local leaderstats = Player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, v in pairs(leaderstats:GetChildren()) do
+            if v:IsA("NumberValue") then
+                local name = v.Name:lower()
+                if name:find("coin") or name:find("cash") or name:find("point") or name:find("money") then
+                    return v.Value
+                end
+            end
+        end
+    end
+    
+    -- Cek di player
+    for _, v in pairs(Player:GetChildren()) do
+        if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash")) then
+            return v.Value
+        end
+    end
+    
+    -- Cek di GUI
+    for _, v in pairs(CoreGui:GetDescendants()) do
+        if v:IsA("TextLabel") and v.Visible then
+            local text = v.Text
+            local num = text:match("^%$?([%d,]+)%s*$")
+            if num then
+                num = tonumber(num:gsub(",", ""))
+                if num and num > 0 then
+                    return num
+                end
+            end
+        end
+    end
+    
+    return 0
+end
+
+local function GetRebirths()
+    local leaderstats = Player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, v in pairs(leaderstats:GetChildren()) do
+            if v:IsA("NumberValue") then
+                local name = v.Name:lower()
+                if name:find("rebirth") or name:find("prestige") or name:find("reset") then
+                    return v.Value
+                end
+            end
+        end
+    end
+    return 0
+end
+
+local function formatNumber(num)
+    if num >= 1e12 then
+        return string.format("%.2fT", num / 1e12)
+    elseif num >= 1e9 then
+        return string.format("%.2fB", num / 1e9)
+    elseif num >= 1e6 then
+        return string.format("%.2fM", num / 1e6)
+    elseif num >= 1e3 then
+        return string.format("%.2fK", num / 1e3)
+    else
+        return tostring(num)
+    end
+end
+
+--==================================================
+-- NOTIFICATION
+--==================================================
+local function Notify(msg)
+    OrionLib:MakeNotification({
+        Name = "Tap Simulator",
+        Content = msg,
+        Image = "zap",
+        Time = 2.5
+    })
+end
+
+--==================================================
+-- CREATE MAIN WINDOW
+--==================================================
+local Window = OrionLib:MakeWindow({
+    Name = "Tap Simulator",
+    Subtext = "Enhanced Edition",
+    Version = "v2.0",
+    VersionIcon = "zap",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "TapSim_Config",
+    IntroEnabled = true,
+    IntroText = "Tap Simulator Enhanced",
+    IntroIcon = "rbxassetid://8834748103",
+    Icon = "rbxassetid://8834748103",
+    ShowIcon = true,
+    
+    ImageBackground = "",
+    ImageTransparency = 0.8,
+    WindowTransparency = 0.05,
+    
+    ToggleIcon = "rbxassetid://105921924721005",
+    ToggleSize = 50
 })
-createUIPadding(contentFrame, 15)
-createStroke(contentFrame, colors.BORDER_DIM, 1, 0)
 
--- Welcome Text
-local welcomeLabel = createInstance("TextLabel", {
-    Name = "WelcomeLabel",
-    Size = UDim2.new(1, 0, 0, 30),
-    BackgroundTransparency = 1,
-    Text = "",
-    TextColor3 = colors.NEON_GREEN,
-    TextScaled = true,
-    Font = Enum.Font.Code,
-    TextXAlignment = Enum.TextXAlignment.Center,
-    ZIndex = 13,
-    Parent = contentFrame
+OrionLib.SelectedTheme = "Ocean"
+
+Notify("Enhanced script loaded!")
+
+--==================================================
+-- CREATE TABS
+--==================================================
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "home",
+    Glass = true,
+    Outline = true
 })
 
--- Status Label
-local statusLabel = createInstance("TextLabel", {
-    Name = "StatusLabel",
-    Size = UDim2.new(1, 0, 0, 60),
-    Position = UDim2.new(0, 0, 0, 40),
-    BackgroundTransparency = 1,
-    Text = "",
-    TextColor3 = colors.TEXT_MID,
-    TextScaled = true,
-    Font = Enum.Font.Code,
-    TextXAlignment = Enum.TextXAlignment.Center,
-    TextYAlignment = Enum.TextYAlignment.Center,
-    ZIndex = 13,
-    Parent = contentFrame
+local ClickerTab = Window:MakeTab({
+    Name = "Clicker",
+    Icon = "mouse-pointer",
+    Glass = true,
+    Outline = true
 })
 
--- Loading Bar
-local loadingBar = createInstance("Frame", {
-    Name = "LoadingBar",
-    Size = UDim2.new(1, 0, 0, 4),
-    Position = UDim2.new(0, 0, 0, 120),
-    BackgroundColor3 = colors.BG_PANEL,
-    BackgroundTransparency = 0,
-    BorderSizePixel = 0,
-    ClipsDescendants = true,
-    ZIndex = 13,
-    Parent = contentFrame
-})
-createStroke(loadingBar, colors.BORDER_DIM, 1, 0.5)
-
-local loadingBarFill = createInstance("Frame", {
-    Name = "LoadingBarFill",
-    Size = UDim2.new(0, 0, 1, 0),
-    BackgroundColor3 = colors.NEON_GREEN,
-    BackgroundTransparency = 0,
-    BorderSizePixel = 0,
-    ZIndex = 14,
-    Parent = loadingBar
+local EggsTab = Window:MakeTab({
+    Name = "Eggs",
+    Icon = "egg",
+    Glass = true,
+    Outline = true
 })
 
--- Session Info
-local sessionLabel = createInstance("TextLabel", {
-    Name = "SessionLabel",
-    Size = UDim2.new(1, 0, 0, 40),
-    Position = UDim2.new(0, 0, 0, 140),
-    BackgroundTransparency = 1,
-    Text = "SESSION: " .. generateSessionID(),
-    TextColor3 = colors.TEXT_DIM,
-    TextScaled = true,
-    Font = Enum.Font.Code,
-    TextXAlignment = Enum.TextXAlignment.Center,
-    ZIndex = 13,
-    Parent = contentFrame
+local UpgradeTab = Window:MakeTab({
+    Name = "Upgrades",
+    Icon = "trending-up",
+    Glass = true,
+    Outline = true
 })
 
--- User Info
-local userLabel = createInstance("TextLabel", {
-    Name = "UserLabel",
-    Size = UDim2.new(1, 0, 0, 30),
-    Position = UDim2.new(0, 0, 0, 190),
-    BackgroundTransparency = 1,
-    Text = "USER: " .. player.Name,
-    TextColor3 = colors.TEXT_DIM,
-    TextScaled = true,
-    Font = Enum.Font.Code,
-    TextXAlignment = Enum.TextXAlignment.Center,
-    ZIndex = 13,
-    Parent = contentFrame
+local VisualsTab = Window:MakeTab({
+    Name = "Visuals",
+    Icon = "eye",
+    Glass = true,
+    Outline = true
 })
 
--- Load Button
-local loadButton = createInstance("TextButton", {
-    Name = "LoadButton",
-    Size = UDim2.new(0.6, 0, 0, 40),
-    Position = UDim2.new(0.2, 0, 0, 240),
-    BackgroundColor3 = Color3.fromRGB(0, 40, 22),
-    BackgroundTransparency = 0,
-    BorderSizePixel = 0,
-    Text = "▶ LOAD SCRIPT",
-    TextColor3 = colors.NEON_GREEN,
-    TextScaled = true,
-    Font = Enum.Font.Code,
-    AutoButtonColor = false,
-    ZIndex = 14,
-    Parent = contentFrame
+local MiscTab = Window:MakeTab({
+    Name = "Misc",
+    Icon = "settings",
+    Glass = true,
+    Outline = true
 })
-createUIPadding(loadButton, 8)
-local loadButtonStroke = createStroke(loadButton, colors.NEON_GREEN, 1, 0.3)
 
--- Load Button Events
-loadButton.MouseEnter:Connect(function()
-    tweenObject(loadButton, {
-        BackgroundColor3 = Color3.fromRGB(0, 60, 35)
-    }, 0.15)
-    tweenObject(loadButtonStroke, {
-        Transparency = 0
-    }, 0.15)
-end)
+--==================================================
+-- MAIN TAB
+--==================================================
+local StatsSection = MainTab:AddSection({
+    Name = "Player Stats",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
 
-loadButton.MouseLeave:Connect(function()
-    tweenObject(loadButton, {
-        BackgroundColor3 = Color3.fromRGB(0, 40, 22)
-    }, 0.15)
-    tweenObject(loadButtonStroke, {
-        Transparency = 0.3
-    }, 0.15)
-end)
+local StatsPara = StatsSection:AddParagraph({
+    Title = Player.Name,
+    Desc = "Loading stats...",
+    Image = "user",
+    ImageSize = 38,
+    Buttons = {
+        {
+            Title = "Refresh",
+            Callback = function()
+                local coins = GetCoins()
+                local rebirths = GetRebirths()
+                StatsPara:SetDesc("Coins: " .. formatNumber(coins) .. "\nRebirths: " .. rebirths)
+            end
+        }
+    }
+})
 
--- Load Button Click
-loadButton.MouseButton1Click:Connect(function()
-    -- Disable button during loading
-    loadButton.Text = "⏳ LOADING..."
-    loadButton.Active = false
-    
-    -- Start loading animation
-    tweenObject(loadingBarFill, {
-        Size = UDim2.new(1, 0, 1, 0)
-    }, 2, Enum.EasingStyle.Quad)
-    
-    -- Update status
-    statusLabel.TextColor3 = colors.NEON_AMBER
-    typewriterEffect(statusLabel, "INITIALIZING SYSTEM...", 0.03, colors.NEON_AMBER)
-    
-    task.wait(1)
-    
-    typewriterEffect(statusLabel, "LOADING MODULES...", 0.03, colors.NEON_AMBER)
-    
-    task.wait(1)
-    
-    typewriterEffect(statusLabel, "✓ SYSTEM READY", 0.03, colors.SUCCESS)
-    
-    -- Success animation
-    loadButton.Text = "✓ LOADED"
-    loadButton.TextColor3 = colors.SUCCESS
-    loadButtonStroke.Color = colors.SUCCESS
-    loadingBarFill.BackgroundColor3 = colors.SUCCESS
-    
-    task.wait(0.5)
-    
-    -- Close GUI
-    tweenObject(mainFrame, {
-        Size = UDim2.new(0, 450, 0, 40)
-    }, 0.3, Enum.EasingStyle.Quint)
-    tweenObject(background, {
-        BackgroundTransparency = 1
-    }, 0.3)
-    
-    task.wait(0.35)
-    screenGui:Destroy()
-    
-    -- Execute main script
-    ON_SUCCESS()
-end)
-
--- Startup Animation
+-- Update stats
 task.spawn(function()
-    mainFrame.BackgroundTransparency = 0
-    mainFrame.Size = UDim2.new(0, 450, 0, 40)
-    mainFrame.Position = UDim2.new(0.5, -225, 0.5, -175)
-    
-    task.wait(0.1)
-    
-    tweenObject(mainFrame, {
-        Size = UDim2.new(0, 450, 0, 350)
-    }, 0.5, Enum.EasingStyle.Quint)
-    
-    task.wait(0.5)
-    
-    typewriterEffect(welcomeLabel, "⚡ WELCOME TO NEXUS ⚡", 0.03, colors.NEON_GREEN)
-    
-    task.wait(0.3)
-    
-    typewriterEffect(statusLabel, "SYSTEM READY - CLICK LOAD TO CONTINUE", 0.03, colors.TEXT_MID)
-end)
-
--- Display Order Animation
-task.spawn(function()
-    while screenGui and screenGui.Parent do
-        screenGui.DisplayOrder = 999
+    while true do
+        local coins = GetCoins()
+        local rebirths = GetRebirths()
+        StatsPara:SetDesc("Coins: " .. formatNumber(coins) .. "\nRebirths: " .. rebirths)
         task.wait(2)
     end
 end)
 
-print("NEXUS SYSTEM LOADED SUCCESSFULLY - NO KEY REQUIRED")
+local QuickSection = MainTab:AddSection({
+    Name = "Quick Actions",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+QuickSection:AddButton({
+    Name = "Super Tap (100x)",
+    Icon = "zap",
+    Outline = true,
+    Callback = function()
+        for i = 1, 100 do
+            PerformClick("All")
+            if i % 10 == 0 then
+                task.wait(0.01)
+            end
+        end
+        Notify("Tapped 100 times!")
+    end
+})
+
+QuickSection:AddButton({
+    Name = "Buy & Hatch Egg",
+    Icon = "egg",
+    Outline = true,
+    Callback = function()
+        if BuyEgg(Toggles.EggType) then
+            task.wait(0.5)
+            HatchEgg()
+            Notify("Bought and hatched egg!")
+        else
+            Notify("Failed to buy egg")
+        end
+    end
+})
+
+--==================================================
+-- CLICKER TAB (ENHANCED)
+--==================================================
+local ClickMethodSection = ClickerTab:AddSection({
+    Name = "Click Method",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+ClickMethodSection:AddDropdown({
+    Name = "Click Method",
+    Default = "All",
+    Options = {"All", "Mouse", "Virtual", "Remote", "Button", "Detector"},
+    Multi = false,
+    Search = false,
+    AllowNone = false,
+    Outline = true,
+    Callback = function(Value)
+        Toggles.ClickMethod = Value
+        Notify("Click method: " .. Value)
+    end
+})
+
+ClickMethodSection:AddParagraph({
+    Title = "Method Info",
+    Desc = "Mouse: Basic mouse click\nVirtual: Virtual input\nRemote: Remote events\nButton: Find GUI button\nDetector: Click detectors\nAll: Try all methods",
+    Image = "info",
+    ImageSize = 32
+})
+
+local AutoClickSection = ClickerTab:AddSection({
+    Name = "Auto Clicker",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+AutoClickSection:AddToggle({
+    Name = "Enable Auto Clicker",
+    Default = false,
+    Color = Color3.fromRGB(0, 255, 100),
+    Outline = true,
+    Flag = "AutoClicker",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoClicker = Value
+        if Value then 
+            StartLoop("AutoClicker") 
+            Notify("Auto Clicker ON - Method: " .. Toggles.ClickMethod)
+        else 
+            StopLoop("AutoClicker") 
+        end
+    end
+})
+
+AutoClickSection:AddSlider({
+    Name = "Click Speed (CPS)",
+    Min = 1,
+    Max = 1000,
+    Default = 100,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 1,
+    ValueName = "CPS",
+    Outline = true,
+    Callback = function(Value)
+        -- Convert CPS to delay
+        Toggles.ClickSpeed = 1 / Value
+    end
+})
+
+AutoClickSection:AddSlider({
+    Name = "Click Speed (Delay)",
+    Min = 0.0001,
+    Max = 0.1,
+    Default = 0.001,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 0.0001,
+    ValueName = "sec",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.ClickSpeed = Value
+    end
+})
+
+AutoClickSection:AddToggle({
+    Name = "Auto Tap (Remote)",
+    Default = false,
+    Color = Color3.fromRGB(0, 150, 255),
+    Outline = true,
+    Flag = "AutoTap",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoTap = Value
+        if Value then StartLoop("AutoTap") else StopLoop("AutoTap") end
+    end
+})
+
+AutoClickSection:AddSlider({
+    Name = "Tap Speed",
+    Min = 0.001,
+    Max = 0.1,
+    Default = 0.01,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 0.001,
+    ValueName = "sec",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.TapSpeed = Value
+    end
+})
+
+local TestSection = ClickerTab:AddSection({
+    Name = "Test",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+TestSection:AddButton({
+    Name = "Test Click (10x)",
+    Icon = "play",
+    Outline = true,
+    Callback = function()
+        for i = 1, 10 do
+            PerformClick(Toggles.ClickMethod)
+            task.wait(0.05)
+        end
+        Notify("Tested 10 clicks")
+    end
+})
+
+TestSection:AddButton({
+    Name = "Scan Clickable Elements",
+    Icon = "search",
+    Outline = true,
+    Callback = function()
+        DetectClickableElements()
+        Notify("Found " .. #ClickableElements.Buttons .. " buttons, " .. #ClickableElements.Parts .. " parts")
+    end
+})
+
+--==================================================
+-- EGGS TAB (ENHANCED)
+--==================================================
+local EggBuySection = EggsTab:AddSection({
+    Name = "Egg Purchase",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+EggBuySection:AddToggle({
+    Name = "Auto Buy Egg",
+    Default = false,
+    Color = Color3.fromRGB(255, 150, 0),
+    Outline = true,
+    Flag = "AutoBuyEgg",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoBuyEgg = Value
+        if Value then 
+            StartLoop("AutoBuyEgg")
+            ScanEggPrices()
+        else 
+            StopLoop("AutoBuyEgg") 
+        end
+    end
+})
+
+EggBuySection:AddDropdown({
+    Name = "Egg Type",
+    Default = "Basic",
+    Options = {"Basic", "Rare", "Epic", "Legendary", "Mythic"},
+    Multi = false,
+    Search = false,
+    AllowNone = false,
+    Outline = true,
+    Callback = function(Value)
+        Toggles.EggType = Value
+    end
+})
+
+EggBuySection:AddSlider({
+    Name = "Buy Delay",
+    Min = 0.1,
+    Max = 5,
+    Default = 1,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 0.1,
+    ValueName = "sec",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.EggBuyDelay = Value
+    end
+})
+
+EggBuySection:AddButton({
+    Name = "Scan Egg Prices",
+    Icon = "dollar-sign",
+    Outline = true,
+    Callback = function()
+        ScanEggPrices()
+        Notify("Egg prices scanned")
+    end
+})
+
+local EggHatchSection = EggsTab:AddSection({
+    Name = "Hatching",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+EggHatchSection:AddToggle({
+    Name = "Auto Hatch",
+    Default = false,
+    Color = Color3.fromRGB(255, 150, 0),
+    Outline = true,
+    Flag = "AutoHatch",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoHatch = Value
+        if Value then StartLoop("AutoHatch") else StopLoop("AutoHatch") end
+    end
+})
+
+EggHatchSection:AddButton({
+    Name = "Hatch Now",
+    Icon = "egg",
+    Outline = true,
+    Callback = function()
+        if HatchEgg() then
+            Notify("Egg hatched!")
+        else
+            Notify("Failed to hatch egg")
+        end
+    end
+})
+
+local EggInfoSection = EggsTab:AddSection({
+    Name = "Egg Info",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+EggInfoSection:AddParagraph({
+    Title = "Egg Prices",
+    Desc = "Basic: $" .. formatNumber(EggData.Basic.price) .. 
+           "\nRare: $" .. formatNumber(EggData.Rare.price) ..
+           "\nEpic: $" .. formatNumber(EggData.Epic.price) ..
+           "\nLegendary: $" .. formatNumber(EggData.Legendary.price) ..
+           "\nMythic: $" .. formatNumber(EggData.Mythic.price),
+    Image = "info",
+    ImageSize = 32
+})
+
+--==================================================
+-- UPGRADES TAB
+--==================================================
+local UpgradeSection = UpgradeTab:AddSection({
+    Name = "Auto Upgrade",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+UpgradeSection:AddToggle({
+    Name = "Auto Upgrade",
+    Default = false,
+    Color = Color3.fromRGB(0, 150, 255),
+    Outline = true,
+    Flag = "AutoUpgrade",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoUpgrade = Value
+        if Value then StartLoop("AutoUpgrade") else StopLoop("AutoUpgrade") end
+    end
+})
+
+UpgradeSection:AddDropdown({
+    Name = "Upgrade Type",
+    Default = "All",
+    Options = {"All", "Damage", "Speed", "Multiplier", "Critical"},
+    Multi = false,
+    Search = false,
+    AllowNone = false,
+    Outline = true,
+    Callback = function(Value)
+        Toggles.UpgradeType = Value
+    end
+})
+
+local RebirthSection = UpgradeTab:AddSection({
+    Name = "Rebirth",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+RebirthSection:AddToggle({
+    Name = "Auto Rebirth",
+    Default = false,
+    Color = Color3.fromRGB(255, 50, 50),
+    Outline = true,
+    Flag = "AutoRebirth",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoRebirth = Value
+        if Value then StartLoop("AutoRebirth") else StopLoop("AutoRebirth") end
+    end
+})
+
+RebirthSection:AddSlider({
+    Name = "Rebirth At",
+    Min = 100,
+    Max = 10000000,
+    Default = 10000,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 100,
+    ValueName = "coins",
+    Outline = true,
+    Callback = function(Value)
+        Toggles.RebirthAt = Value
+    end
+})
+
+--==================================================
+-- LOOP FUNCTIONS (ENHANCED)
+--==================================================
+
+function StartLoop(name)
+    if Loops[name] then return end
+    Loops[name] = true
+    
+    task.spawn(function()
+        local lastClickTime = tick()
+        
+        while Loops[name] do
+            local currentTime = tick()
+            
+            if name == "AutoClicker" and Toggles.AutoClicker then
+                -- High-speed clicking
+                local clicksPerFrame = math.floor(Toggles.ClickSpeed * 60) + 1
+                for i = 1, math.min(clicksPerFrame, 10) do
+                    PerformClick(Toggles.ClickMethod)
+                    if i < clicksPerFrame then
+                        task.wait(0.0001)
+                    end
+                end
+                
+            elseif name == "AutoTap" and Toggles.AutoTap then
+                -- Remote tapping
+                RemoteClick()
+                task.wait(Toggles.TapSpeed)
+                
+            elseif name == "AutoBuyEgg" and Toggles.AutoBuyEgg then
+                -- Smart egg buying
+                local coins = GetCoins()
+                local eggData = EggData[Toggles.EggType]
+                
+                if coins >= eggData.price then
+                    if BuyEgg(Toggles.EggType) then
+                        Notify("Bought " .. Toggles.EggType .. " egg!")
+                    end
+                end
+                task.wait(Toggles.EggBuyDelay)
+                
+            elseif name == "AutoHatch" and Toggles.AutoHatch then
+                HatchEgg()
+                task.wait(0.5)
+                
+            elseif name == "AutoUpgrade" and Toggles.AutoUpgrade then
+                -- Upgrade dengan smart logic
+                if Remotes.Upgrade then
+                    pcall(function()
+                        if Toggles.UpgradeType == "All" then
+                            Remotes.Upgrade:FireServer("Damage")
+                            task.wait(0.1)
+                            Remotes.Upgrade:FireServer("Speed")
+                            task.wait(0.1)
+                            Remotes.Upgrade:FireServer("Multiplier")
+                        else
+                            Remotes.Upgrade:FireServer(Toggles.UpgradeType)
+                        end
+                    end)
+                end
+                task.wait(1)
+                
+            elseif name == "AutoRebirth" and Toggles.AutoRebirth then
+                local coins = GetCoins()
+                if coins >= Toggles.RebirthAt then
+                    if Remotes.Rebirth then
+                        pcall(function() Remotes.Rebirth:FireServer() end)
+                        Notify("Rebirthed!")
+                        task.wait(3)
+                    end
+                else
+                    task.wait(2)
+                end
+            end
+            
+            task.wait()
+        end
+    end)
+end
+
+function StopLoop(name)
+    Loops[name] = false
+end
+
+--==================================================
+-- VISUALS TAB
+--==================================================
+local ESPSection = VisualsTab:AddSection({
+    Name = "ESP",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+ESPSection:AddToggle({
+    Name = "Egg ESP",
+    Default = false,
+    Color = Color3.fromRGB(255, 0, 255),
+    Outline = true,
+    Flag = "EggESP",
+    Save = true,
+    Callback = function(Value)
+        Toggles.ESP = Value
+        -- Update ESP logic here
+    end
+})
+
+local LightingSection = VisualsTab:AddSection({
+    Name = "Lighting",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+LightingSection:AddToggle({
+    Name = "Full Bright",
+    Default = false,
+    Color = Color3.fromRGB(255, 255, 0),
+    Outline = true,
+    Flag = "FullBright",
+    Save = true,
+    Callback = function(Value)
+        Toggles.FullBright = Value
+        if Value then
+            Lighting.Brightness = 2
+            Lighting.GlobalShadows = false
+            Lighting.Ambient = Color3.new(1, 1, 1)
+        else
+            Lighting.Brightness = 1
+            Lighting.GlobalShadows = true
+            Lighting.Ambient = Color3.new(0, 0, 0)
+        end
+    end
+})
+
+--==================================================
+-- MISC TAB
+--==================================================
+local MiscSection = MiscTab:AddSection({
+    Name = "Miscellaneous",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+MiscSection:AddToggle({
+    Name = "Anti AFK",
+    Default = false,
+    Color = Color3.fromRGB(100, 100, 255),
+    Outline = true,
+    Flag = "AntiAFK",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AntiAFK = Value
+        if Value then
+            Player.Idled:Connect(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+        end
+    end
+})
+
+MiscSection:AddButton({
+    Name = "Rejoin Server",
+    Icon = "refresh-cw",
+    Outline = true,
+    Callback = function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
+    end
+})
+
+MiscSection:AddButton({
+    Name = "Server Hop",
+    Icon = "globe",
+    Outline = true,
+    Callback = function()
+        -- Simple server hop
+        local HttpService = game:GetService("HttpService")
+        local TeleportService = game:GetService("TeleportService")
+        local placeId = game.PlaceId
+        
+        local success, result = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?limit=100"))
+        end)
+        
+        if success and result.data then
+            for _, server in ipairs(result.data) do
+                if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                    TeleportService:TeleportToPlaceInstance(placeId, server.id, Player)
+                    break
+                end
+            end
+        end
+    end
+})
+
+MiscSection:AddButton({
+    Name = "Close GUI",
+    Icon = "x",
+    Outline = true,
+    Callback = function()
+        OrionLib:Destroy()
+        _G.TapSimLoaded = false
+    end
+})
+
+--==================================================
+-- INITIALIZATION
+--==================================================
+
+-- Scan for remotes and clickable elements
+FindRemotes()
+DetectClickableElements()
+ScanEggPrices()
+
+-- Add config tab
+Window:AddConfigTab({
+    Name = "Settings",
+    Icon = "settings"
+})
+
+-- Initialize
+OrionLib:Init()
+
+Notify("Enhanced script ready! Auto Clicker and Auto Buy Egg are optimized!")
+print("=== Tap Simulator Enhanced Edition Loaded ===")
+print("Auto Clicker: " .. tostring(Remotes.Tap and "Remote available" or "Using multiple methods"))
+print("Auto Buy Egg: " .. tostring(Remotes.BuyEgg and "Remote available" or "Using button detection"))
