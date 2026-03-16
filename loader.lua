@@ -15,9 +15,9 @@ local supportedGames = {
         name = "Catch A Monster",
         file = "catchamonster.lua"
     },
-    [222222222] = { -- Ganti dengan ID game Fisch
-        name = "Fisch",
-        file = "fisch.lua"
+    [75992362647444] = { -- Ganti dengan ID game tapsimu
+        name = "Tap simulator",
+        file = "tapsim.lua"
     }
 }
 
