@@ -1,7 +1,7 @@
 --[[
     ====================================================
-    SCRIPT FUSION - ALL IN ONE EXECUTABLE
-    Complete standalone script - No key system, no external loadstring
+    SCRIPT FUSION - CATRAZ UI EDITION
+    Complete standalone script with Catraz UI styling
     All features are built-in and ready to use
     Created: March 16, 2026
     ====================================================
@@ -21,721 +21,812 @@ if not checkEnvironment() then
 end
 
 -- ====================================================
--- UTILITY FUNCTIONS
+-- CATRAZ UI LIBRARY
 -- ====================================================
 
-local Utility = {}
+local Catraz = {}
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
-function Utility:CreateNotification(title, message, duration)
-    duration = duration or 3
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local titleLabel = Instance.new("TextLabel")
-    local msgLabel = Instance.new("TextLabel")
-    local closeBtn = Instance.new("TextButton")
-    
-    gui.Name = "Notification_" .. math.random(1000, 9999)
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0.5, -150, 0.8, 0)
-    frame.Size = UDim2.new(0, 300, 0, 100)
-    frame.AnchorPoint = Vector2.new(0.5, 0)
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
-    
-    titleLabel.Parent = frame
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Position = UDim2.new(0, 10, 0, 10)
-    titleLabel.Size = UDim2.new(1, -20, 0, 20)
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.Text = title
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize = 16
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    msgLabel.Parent = frame
-    msgLabel.BackgroundTransparency = 1
-    msgLabel.Position = UDim2.new(0, 10, 0, 35)
-    msgLabel.Size = UDim2.new(1, -20, 0, 40)
-    msgLabel.Font = Enum.Font.Gotham
-    msgLabel.Text = message
-    msgLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    msgLabel.TextSize = 14
-    msgLabel.TextXAlignment = Enum.TextXAlignment.Left
-    msgLabel.TextWrapped = true
-    
-    closeBtn.Parent = frame
-    closeBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-    closeBtn.BackgroundTransparency = 0.3
-    closeBtn.Position = UDim2.new(1, -30, 0, 5)
-    closeBtn.Size = UDim2.new(0, 25, 0, 25)
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextSize = 14
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 12)
-    btnCorner.Parent = closeBtn
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        gui:Destroy()
-    end)
-    
-    task.delay(duration, function()
-        if gui and gui.Parent then
-            gui:Destroy()
-        end
-    end)
-    
-    return gui
-end
-
-function Utility:CreateToggle(name, default, callback)
-    local toggle = {
-        Name = name,
-        Value = default,
-        Callback = callback
-    }
-    
-    function toggle:Set(value)
-        self.Value = value
-        if self.Callback then
-            self.Callback(value)
-        end
-    end
-    
-    function toggle:Toggle()
-        self.Value = not self.Value
-        if self.Callback then
-            self.Callback(self.Value)
-        end
-    end
-    
-    return toggle
-end
-
--- ====================================================
--- SCRIPT 1: TELEPORT ZONES
--- ====================================================
-
-local TeleportZones = {
-    Name = "Teleport Zones",
-    Description = "Teleport between predefined zones",
-    Enabled = false,
-    Zones = {},
-    CurrentZone = 1
+-- Colors
+local Colors = {
+    Background = Color3.fromRGB(20, 20, 30),
+    Surface = Color3.fromRGB(30, 30, 40),
+    Element = Color3.fromRGB(40, 40, 50),
+    ElementHover = Color3.fromRGB(50, 50, 60),
+    Accent = Color3.fromRGB(0, 170, 255),
+    AccentDark = Color3.fromRGB(0, 140, 210),
+    Success = Color3.fromRGB(0, 200, 100),
+    Danger = Color3.fromRGB(255, 80, 80),
+    Warning = Color3.fromRGB(255, 170, 0),
+    Text = Color3.fromRGB(255, 255, 255),
+    TextDim = Color3.fromRGB(180, 180, 180),
+    Border = Color3.fromRGB(50, 50, 60)
 }
 
-function TeleportZones:Load()
-    self.Enabled = true
-    
-    -- Create zones based on player position
-    local player = game:GetService("Players").LocalPlayer
-    if not player or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        Utility:CreateNotification("Teleport Zones", "Please wait for character to load", 2)
-        return
-    end
-    
-    local root = player.Character.HumanoidRootPart
-    local pos = root.Position
-    
-    -- Create 5 zones in a line
-    for i = 1, 5 do
-        table.insert(self.Zones, {
-            Name = "Zone " .. i,
-            Position = pos + Vector3.new((i - 3) * 20, 0, 0)
-        })
-    end
-    
-    Utility:CreateNotification("Teleport Zones", "5 zones created! Use keys 1-5 to teleport", 3)
-    
-    -- Create GUI
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local title = Instance.new("TextLabel")
-    local zoneList = Instance.new("ScrollingFrame")
-    local layout = Instance.new("UIListLayout")
-    
-    gui.Name = "TeleportZonesUI"
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
-    
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0.02, 0, 0.3, 0)
-    frame.Size = UDim2.new(0, 200, 0, 300)
-    frame.Active = true
-    frame.Draggable = true
-    
+-- Create gradient
+local function createGradient(color1, color2, rotation)
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, color1),
+        ColorSequenceKeypoint.new(1, color2)
+    })
+    gradient.Rotation = rotation or 90
+    return gradient
+end
+
+-- Create shadow
+local function addShadow(parent, transparency, size)
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "Shadow"
+    shadow.Parent = parent
+    shadow.BackgroundTransparency = 1
+    shadow.Position = UDim2.new(0, -5, 0, -5)
+    shadow.Size = UDim2.new(1, 10, 1, 10)
+    shadow.ZIndex = parent.ZIndex - 1
+    shadow.Image = "rbxassetid://6014261993"
+    shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.ImageTransparency = transparency or 0.5
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+    return shadow
+end
+
+-- Create corner
+local function addCorner(parent, radius)
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
+    corner.CornerRadius = UDim.new(0, radius or 8)
+    corner.Parent = parent
+    return corner
+end
+
+-- Create stroke
+local function addStroke(parent, thickness, color)
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = thickness or 1
+    stroke.Color = color or Colors.Border
+    stroke.Parent = parent
+    return stroke
+end
+
+-- Main window creation
+function Catraz:CreateWindow(title, subtitle, size)
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "Catraz_" .. title:gsub("%s+", "")
+    ScreenGui.Parent = game:GetService("CoreGui")
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.ResetOnSpawn = false
     
-    title.Parent = frame
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    title.Size = UDim2.new(1, 0, 0, 35)
-    title.Font = Enum.Font.GothamBold
-    title.Text = "Teleport Zones"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 16
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Parent = ScreenGui
+    MainFrame.BackgroundColor3 = Colors.Background
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Position = UDim2.new(0.5, -size.X.Offset/2, 0.5, -size.Y.Offset/2)
+    MainFrame.Size = size
+    MainFrame.ClipsDescendants = true
     
-    zoneList.Parent = frame
-    zoneList.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    zoneList.BorderSizePixel = 0
-    zoneList.Position = UDim2.new(0, 5, 0, 40)
-    zoneList.Size = UDim2.new(1, -10, 1, -45)
-    zoneList.CanvasSize = UDim2.new(0, 0, 0, 0)
-    zoneList.ScrollBarThickness = 5
+    -- Add shadow
+    addShadow(MainFrame, 0.3)
+    addCorner(MainFrame, 12)
+    addStroke(MainFrame, 1, Colors.Border)
     
-    layout.Parent = zoneList
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 5)
+    -- Title bar
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Parent = MainFrame
+    TitleBar.BackgroundColor3 = Colors.Surface
+    TitleBar.BorderSizePixel = 0
+    TitleBar.Size = UDim2.new(1, 0, 0, 40)
     
-    for i, zone in ipairs(self.Zones) do
-        local btn = Instance.new("TextButton")
-        btn.Name = "Zone" .. i
-        btn.Parent = zoneList
-        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-        btn.BorderSizePixel = 0
-        btn.Size = UDim2.new(1, 0, 0, 40)
-        btn.Font = Enum.Font.Gotham
-        btn.Text = zone.Name .. "\n(Press " .. i .. ")"
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.TextSize = 14
+    addCorner(TitleBar, 12)
+    addStroke(TitleBar, 1, Colors.Border)
+    
+    -- Make draggable
+    local dragging = false
+    local dragInput
+    local dragStart
+    local startPos
+    
+    local function update(input)
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+    
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+    
+    -- Title text
+    local TitleText = Instance.new("TextLabel")
+    TitleText.Parent = TitleBar
+    TitleText.BackgroundTransparency = 1
+    TitleText.Position = UDim2.new(0, 15, 0, 0)
+    TitleText.Size = UDim2.new(0.5, 0, 1, 0)
+    TitleText.Font = Enum.Font.GothamBold
+    TitleText.Text = title
+    TitleText.TextColor3 = Colors.Text
+    TitleText.TextSize = 18
+    TitleText.TextXAlignment = Enum.TextXAlignment.Left
+    
+    -- Subtitle text
+    local SubtitleText = Instance.new("TextLabel")
+    SubtitleText.Parent = TitleBar
+    SubtitleText.BackgroundTransparency = 1
+    SubtitleText.Position = UDim2.new(0.5, 0, 0, 0)
+    SubtitleText.Size = UDim2.new(0.5, -15, 1, 0)
+    SubtitleText.Font = Enum.Font.Gotham
+    SubtitleText.Text = subtitle
+    SubtitleText.TextColor3 = Colors.TextDim
+    SubtitleText.TextSize = 14
+    SubtitleText.TextXAlignment = Enum.TextXAlignment.Right
+    
+    -- Close button
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Parent = TitleBar
+    CloseBtn.BackgroundColor3 = Colors.Danger
+    CloseBtn.Position = UDim2.new(1, -35, 0.5, -12)
+    CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.Text = "X"
+    CloseBtn.TextColor3 = Colors.Text
+    CloseBtn.TextSize = 14
+    CloseBtn.AutoButtonColor = false
+    
+    addCorner(CloseBtn, 6)
+    
+    CloseBtn.MouseEnter:Connect(function()
+        TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 100, 100)}):Play()
+    end)
+    
+    CloseBtn.MouseLeave:Connect(function()
+        TweenService:Create(CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Danger}):Play()
+    end)
+    
+    -- Content frame
+    local Content = Instance.new("Frame")
+    Content.Name = "Content"
+    Content.Parent = MainFrame
+    Content.BackgroundColor3 = Colors.Background
+    Content.BorderSizePixel = 0
+    Content.Position = UDim2.new(0, 0, 0, 45)
+    Content.Size = UDim2.new(1, 0, 1, -45)
+    
+    return {
+        ScreenGui = ScreenGui,
+        MainFrame = MainFrame,
+        Content = Content,
+        CloseBtn = CloseBtn
+    }
+end
+
+-- Create tab system
+function Catraz:CreateTabs(parent, tabs)
+    local TabContainer = Instance.new("Frame")
+    TabContainer.Name = "TabContainer"
+    TabContainer.Parent = parent
+    TabContainer.BackgroundColor3 = Colors.Surface
+    TabContainer.BorderSizePixel = 0
+    TabContainer.Size = UDim2.new(1, 0, 0, 35)
+    
+    addCorner(TabContainer, 8)
+    
+    local TabButtons = {}
+    local TabContents = {}
+    
+    for i, tabData in ipairs(tabs) do
+        -- Create tab button
+        local TabBtn = Instance.new("TextButton")
+        TabBtn.Name = tabData.Name .. "Tab"
+        TabBtn.Parent = TabContainer
+        TabBtn.BackgroundColor3 = i == 1 and Colors.Accent or Colors.Element
+        TabBtn.BorderSizePixel = 0
+        TabBtn.Position = UDim2.new((i-1) * (1/#tabs), 2, 0.1, 0)
+        TabBtn.Size = UDim2.new(1/#tabs, -4, 0.8, 0)
+        TabBtn.Font = Enum.Font.GothamBold
+        TabBtn.Text = tabData.Name
+        TabBtn.TextColor3 = Colors.Text
+        TabBtn.TextSize = 14
+        TabBtn.AutoButtonColor = false
         
-        local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 4)
-        btnCorner.Parent = btn
+        addCorner(TabBtn, 6)
         
-        btn.MouseButton1Click:Connect(function()
-            self:TeleportToZone(i)
+        -- Create content frame for tab
+        local TabContent = Instance.new("ScrollingFrame")
+        TabContent.Name = tabData.Name .. "Content"
+        TabContent.Parent = parent
+        TabContent.BackgroundColor3 = Colors.Background
+        TabContent.BorderSizePixel = 0
+        TabContent.Position = UDim2.new(0, 0, 0, 40)
+        TabContent.Size = UDim2.new(1, 0, 1, -45)
+        TabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+        TabContent.ScrollBarThickness = 6
+        TabContent.ScrollBarImageColor3 = Colors.Accent
+        TabContent.Visible = i == 1
+        
+        local Layout = Instance.new("UIListLayout")
+        Layout.Parent = TabContent
+        Layout.SortOrder = Enum.SortOrder.LayoutOrder
+        Layout.Padding = UDim.new(0, 8)
+        Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        
+        Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            TabContent.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 20)
+        end)
+        
+        TabButtons[i] = TabBtn
+        TabContents[i] = TabContent
+        
+        -- Tab switching
+        TabBtn.MouseButton1Click:Connect(function()
+            for j, btn in ipairs(TabButtons) do
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = j == i and Colors.Accent or Colors.Element}):Play()
+                TabContents[j].Visible = j == i
+            end
+        end)
+        
+        TabBtn.MouseEnter:Connect(function()
+            if TabBtn.BackgroundColor3 ~= Colors.Accent then
+                TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.ElementHover}):Play()
+            end
+        end)
+        
+        TabBtn.MouseLeave:Connect(function()
+            if TabBtn.BackgroundColor3 ~= Colors.Accent then
+                TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Element}):Play()
+            end
         end)
     end
     
-    zoneList.CanvasSize = UDim2.new(0, 0, 0, #self.Zones * 45)
+    return TabContents
+end
+
+-- Create section
+function Catraz:CreateSection(parent, title)
+    local Section = Instance.new("Frame")
+    Section.Name = title .. "Section"
+    Section.Parent = parent
+    Section.BackgroundColor3 = Colors.Surface
+    Section.BorderSizePixel = 0
+    Section.Size = UDim2.new(0.95, 0, 0, 0)
+    Section.AutomaticSize = Enum.AutomaticSize.Y
     
-    -- Keybinds
-    local connection
-    connection = game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if not self.Enabled then
-            connection:Disconnect()
-            return
+    addCorner(Section, 8)
+    addStroke(Section, 1, Colors.Border)
+    
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Parent = Section
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Position = UDim2.new(0, 10, 0, 5)
+    TitleLabel.Size = UDim2.new(1, -20, 0, 25)
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.Text = title
+    TitleLabel.TextColor3 = Colors.Accent
+    TitleLabel.TextSize = 16
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local Content = Instance.new("Frame")
+    Content.Name = "Content"
+    Content.Parent = Section
+    Content.BackgroundTransparency = 1
+    Content.Position = UDim2.new(0, 5, 0, 35)
+    Content.Size = UDim2.new(1, -10, 0, 0)
+    Content.AutomaticSize = Enum.AutomaticSize.Y
+    
+    local Layout = Instance.new("UIListLayout")
+    Layout.Parent = Content
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
+    Layout.Padding = UDim.new(0, 8)
+    Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    
+    return Content
+end
+
+-- Create toggle
+function Catraz:CreateToggle(parent, text, default, callback)
+    local Toggle = Instance.new("Frame")
+    Toggle.Name = text .. "Toggle"
+    Toggle.Parent = parent
+    Toggle.BackgroundColor3 = Colors.Element
+    Toggle.BorderSizePixel = 0
+    Toggle.Size = UDim2.new(1, -10, 0, 40)
+    Toggle.AutomaticSize = Enum.AutomaticSize.None
+    
+    addCorner(Toggle, 6)
+    
+    local state = default or false
+    
+    local function updateState()
+        if state then
+            Toggle.BackgroundColor3 = Colors.Success
+        else
+            Toggle.BackgroundColor3 = Colors.Element
         end
-        
-        if input.KeyCode == Enum.KeyCode.One then
-            self:TeleportToZone(1)
-        elseif input.KeyCode == Enum.KeyCode.Two then
-            self:TeleportToZone(2)
-        elseif input.KeyCode == Enum.KeyCode.Three then
-            self:TeleportToZone(3)
-        elseif input.KeyCode == Enum.KeyCode.Four then
-            self:TeleportToZone(4)
-        elseif input.KeyCode == Enum.KeyCode.Five then
-            self:TeleportToZone(5)
+    end
+    
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Parent = Toggle
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Position = UDim2.new(0, 10, 0, 0)
+    TextLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    TextLabel.Font = Enum.Font.Gotham
+    TextLabel.Text = text
+    TextLabel.TextColor3 = Colors.Text
+    TextLabel.TextSize = 14
+    TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Parent = Toggle
+    ToggleBtn.BackgroundColor3 = state and Colors.Success or Colors.ElementHover
+    ToggleBtn.Position = UDim2.new(0.85, -15, 0.5, -10)
+    ToggleBtn.Size = UDim2.new(0, 30, 0, 20)
+    ToggleBtn.Font = Enum.Font.GothamBold
+    ToggleBtn.Text = state and "ON" or "OFF"
+    ToggleBtn.TextColor3 = Colors.Text
+    ToggleBtn.TextSize = 10
+    ToggleBtn.AutoButtonColor = false
+    
+    addCorner(ToggleBtn, 10)
+    
+    ToggleBtn.MouseButton1Click:Connect(function()
+        state = not state
+        ToggleBtn.Text = state and "ON" or "OFF"
+        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = state and Colors.Success or Colors.ElementHover}):Play()
+        updateState()
+        if callback then
+            pcall(callback, state)
         end
     end)
+    
+    Toggle.MouseEnter:Connect(function()
+        if not state then
+            TweenService:Create(Toggle, TweenInfo.new(0.2), {BackgroundColor3 = Colors.ElementHover}):Play()
+        end
+    end)
+    
+    Toggle.MouseLeave:Connect(function()
+        if not state then
+            TweenService:Create(Toggle, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Element}):Play()
+        end
+    end)
+    
+    updateState()
+    
+    return {
+        Set = function(value)
+            state = value
+            ToggleBtn.Text = state and "ON" or "OFF"
+            TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = state and Colors.Success or Colors.ElementHover}):Play()
+            updateState()
+        end,
+        Get = function() return state end
+    }
 end
 
-function TeleportZones:TeleportToZone(index)
-    if not self.Zones[index] then return end
+-- Create button
+function Catraz:CreateButton(parent, text, callback)
+    local Button = Instance.new("TextButton")
+    Button.Name = text .. "Button"
+    Button.Parent = parent
+    Button.BackgroundColor3 = Colors.Element
+    Button.BorderSizePixel = 0
+    Button.Size = UDim2.new(1, -10, 0, 40)
+    Button.Font = Enum.Font.GothamBold
+    Button.Text = text
+    Button.TextColor3 = Colors.Text
+    Button.TextSize = 14
+    Button.AutoButtonColor = false
     
-    local player = game:GetService("Players").LocalPlayer
-    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.CFrame = CFrame.new(self.Zones[index].Position)
-        Utility:CreateNotification("Teleported", "To " .. self.Zones[index].Name, 1)
-    end
+    addCorner(Button, 6)
+    
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = Colors.ElementHover}):Play()
+    end)
+    
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Element}):Play()
+    end)
+    
+    Button.MouseButton1Click:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundColor3 = Colors.Accent}):Play()
+        task.wait(0.1)
+        TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundColor3 = Colors.Element}):Play()
+        if callback then
+            pcall(callback)
+        end
+    end)
+    
+    return Button
 end
 
-function TeleportZones:Unload()
-    self.Enabled = false
-    local gui = game:GetService("CoreGui"):FindFirstChild("TeleportZonesUI")
-    if gui then gui:Destroy() end
-end
-
--- ====================================================
--- SCRIPT 2: AUTO TAP
--- ====================================================
-
-local AutoTap = {
-    Name = "Auto Tap",
-    Description = "Automatically taps for you",
-    Enabled = false,
-    Tapping = false,
-    Interval = 0.1,
-    Connection = nil
-}
-
-function AutoTap:Load()
-    self.Enabled = true
+-- Create slider
+function Catraz:CreateSlider(parent, text, min, max, default, callback)
+    local Slider = Instance.new("Frame")
+    Slider.Name = text .. "Slider"
+    Slider.Parent = parent
+    Slider.BackgroundColor3 = Colors.Element
+    Slider.BorderSizePixel = 0
+    Slider.Size = UDim2.new(1, -10, 0, 60)
     
-    -- Create GUI
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local title = Instance.new("TextLabel")
-    local toggleBtn = Instance.new("TextButton")
-    local statusLabel = Instance.new("TextLabel")
-    local intervalSlider = Instance.new("Frame")
-    local sliderBtn = Instance.new("TextButton")
-    local intervalValue = Instance.new("TextLabel")
+    addCorner(Slider, 6)
     
-    gui.Name = "AutoTapUI"
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Parent = Slider
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Position = UDim2.new(0, 10, 0, 5)
+    TextLabel.Size = UDim2.new(1, -20, 0, 20)
+    TextLabel.Font = Enum.Font.Gotham
+    TextLabel.Text = text
+    TextLabel.TextColor3 = Colors.Text
+    TextLabel.TextSize = 14
+    TextLabel.TextXAlignment = Enum.TextXAlignment.Left
     
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0.02, 0, 0.6, 0)
-    frame.Size = UDim2.new(0, 200, 0, 180)
-    frame.Active = true
-    frame.Draggable = true
+    local ValueLabel = Instance.new("TextLabel")
+    ValueLabel.Parent = Slider
+    ValueLabel.BackgroundTransparency = 1
+    ValueLabel.Position = UDim2.new(1, -50, 0, 5)
+    ValueLabel.Size = UDim2.new(0, 40, 0, 20)
+    ValueLabel.Font = Enum.Font.GothamBold
+    ValueLabel.Text = tostring(default)
+    ValueLabel.TextColor3 = Colors.Accent
+    ValueLabel.TextSize = 14
+    ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
+    local SliderBg = Instance.new("Frame")
+    SliderBg.Parent = Slider
+    SliderBg.BackgroundColor3 = Colors.ElementHover
+    SliderBg.Position = UDim2.new(0.1, 0, 0.6, 0)
+    SliderBg.Size = UDim2.new(0.8, 0, 0, 6)
     
-    title.Parent = frame
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    title.Size = UDim2.new(1, 0, 0, 35)
-    title.Font = Enum.Font.GothamBold
-    title.Text = "Auto Tap"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 16
+    addCorner(SliderBg, 3)
     
-    statusLabel.Parent = frame
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Position = UDim2.new(0, 10, 0, 45)
-    statusLabel.Size = UDim2.new(1, -20, 0, 25)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "Status: OFF"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    statusLabel.TextSize = 14
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    local SliderFill = Instance.new("Frame")
+    SliderFill.Parent = SliderBg
+    SliderFill.BackgroundColor3 = Colors.Accent
+    SliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
     
-    toggleBtn.Parent = frame
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    toggleBtn.Position = UDim2.new(0.5, -60, 0.4, 0)
-    toggleBtn.Size = UDim2.new(0, 120, 0, 35)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.Text = "START TAPPING"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 12
+    addCorner(SliderFill, 3)
     
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = toggleBtn
+    local SliderBtn = Instance.new("TextButton")
+    SliderBtn.Parent = SliderBg
+    SliderBtn.BackgroundColor3 = Colors.AccentDark
+    SliderBtn.Size = UDim2.new(0, 16, 0, 16)
+    SliderBtn.Position = UDim2.new((default - min) / (max - min), -8, 0.5, -8)
+    SliderBtn.Font = Enum.Font.SourceSans
+    SliderBtn.Text = ""
+    SliderBtn.AutoButtonColor = false
     
-    intervalValue.Parent = frame
-    intervalValue.BackgroundTransparency = 1
-    intervalValue.Position = UDim2.new(0, 10, 0, 100)
-    intervalValue.Size = UDim2.new(1, -20, 0, 20)
-    intervalValue.Font = Enum.Font.Gotham
-    intervalValue.Text = "Interval: 0.1s"
-    intervalValue.TextColor3 = Color3.fromRGB(200, 200, 200)
-    intervalValue.TextSize = 12
-    intervalValue.TextXAlignment = Enum.TextXAlignment.Left
+    addCorner(SliderBtn, 8)
+    addStroke(SliderBtn, 1, Colors.Text)
     
-    intervalSlider.Parent = frame
-    intervalSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    intervalSlider.Position = UDim2.new(0.1, 0, 0.7, 0)
-    intervalSlider.Size = UDim2.new(0.8, 0, 0, 5)
-    
-    sliderBtn.Parent = intervalSlider
-    sliderBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-    sliderBtn.Size = UDim2.new(0, 15, 0, 15)
-    sliderBtn.Position = UDim2.new((self.Interval - 0.05) / 0.45, -7, 0.5, -7)
-    sliderBtn.Font = Enum.Font.SourceSans
-    sliderBtn.Text = ""
-    sliderBtn.ZIndex = 2
-    
-    local sliderCorner = Instance.new("UICorner")
-    sliderCorner.CornerRadius = UDim.new(0, 7)
-    sliderCorner.Parent = sliderBtn
-    
-    -- Dragging logic
+    local value = default
     local dragging = false
-    sliderBtn.MouseButton1Down:Connect(function()
+    
+    local function updateSlider(input)
+        local pos = UserInputService:GetMouseLocation()
+        local sliderPos = SliderBg.AbsolutePosition
+        local sliderSize = SliderBg.AbsoluteSize.X
+        
+        local relativeX = math.clamp(pos.X - sliderPos.X, 0, sliderSize)
+        local percent = relativeX / sliderSize
+        value = math.floor(min + (percent * (max - min)) * 10) / 10
+        
+        SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        SliderBtn.Position = UDim2.new(percent, -8, 0.5, -8)
+        ValueLabel.Text = tostring(value)
+        
+        if callback then
+            pcall(callback, value)
+        end
+    end
+    
+    SliderBtn.MouseButton1Down:Connect(function()
         dragging = true
     end)
     
-    game:GetService("UserInputService").InputEnded:Connect(function(input)
+    UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
         end
     end)
     
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
+    UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local mousePos = game:GetService("UserInputService"):GetMouseLocation()
-            local sliderPos = intervalSlider.AbsolutePosition
-            local sliderSize = intervalSlider.AbsoluteSize.X
-            
-            local relativeX = math.clamp(mousePos.X - sliderPos.X, 0, sliderSize)
-            local percent = relativeX / sliderSize
-            
-            self.Interval = 0.05 + (percent * 0.45)
-            sliderBtn.Position = UDim2.new(percent, -7, 0.5, -7)
-            intervalValue.Text = string.format("Interval: %.2fs", self.Interval)
+            updateSlider(input)
         end
     end)
     
-    toggleBtn.MouseButton1Click:Connect(function()
-        self.Tapping = not self.Tapping
-        
-        if self.Tapping then
-            toggleBtn.Text = "STOP TAPPING"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
-            statusLabel.Text = "Status: ON"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            self:StartTapping()
-        else
-            toggleBtn.Text = "START TAPPING"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-            statusLabel.Text = "Status: OFF"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            self:StopTapping()
-        end
+    SliderBtn.MouseEnter:Connect(function()
+        TweenService:Create(SliderBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.Accent}):Play()
     end)
+    
+    SliderBtn.MouseLeave:Connect(function()
+        TweenService:Create(SliderBtn, TweenInfo.new(0.2), {BackgroundColor3 = Colors.AccentDark}):Play()
+    end)
+    
+    return {
+        Set = function(newValue)
+            value = math.clamp(newValue, min, max)
+            local percent = (value - min) / (max - min)
+            SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+            SliderBtn.Position = UDim2.new(percent, -8, 0.5, -8)
+            ValueLabel.Text = tostring(value)
+        end,
+        Get = function() return value end
+    }
 end
 
-function AutoTap:StartTapping()
-    if self.Connection then
-        self.Connection:Disconnect()
+-- Create dropdown
+function Catraz:CreateDropdown(parent, text, options, default, callback)
+    local Dropdown = Instance.new("Frame")
+    Dropdown.Name = text .. "Dropdown"
+    Dropdown.Parent = parent
+    Dropdown.BackgroundColor3 = Colors.Element
+    Dropdown.BorderSizePixel = 0
+    Dropdown.Size = UDim2.new(1, -10, 0, 40)
+    Dropdown.ClipsDescendants = true
+    
+    addCorner(Dropdown, 6)
+    
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.Parent = Dropdown
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Position = UDim2.new(0, 10, 0, 0)
+    TextLabel.Size = UDim2.new(0.6, 0, 1, 0)
+    TextLabel.Font = Enum.Font.Gotham
+    TextLabel.Text = text
+    TextLabel.TextColor3 = Colors.Text
+    TextLabel.TextSize = 14
+    TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local SelectedBtn = Instance.new("TextButton")
+    SelectedBtn.Parent = Dropdown
+    SelectedBtn.BackgroundColor3 = Colors.ElementHover
+    SelectedBtn.Position = UDim2.new(0.7, 0, 0.1, 0)
+    SelectedBtn.Size = UDim2.new(0.25, 0, 0.8, 0)
+    SelectedBtn.Font = Enum.Font.Gotham
+    SelectedBtn.Text = default or options[1]
+    SelectedBtn.TextColor3 = Colors.Text
+    SelectedBtn.TextSize = 12
+    SelectedBtn.AutoButtonColor = false
+    
+    addCorner(SelectedBtn, 4)
+    
+    local expanded = false
+    
+    SelectedBtn.MouseButton1Click:Connect(function()
+        expanded = not expanded
+        Dropdown.Size = expanded and UDim2.new(1, -10, 0, 40 + 35 * #options) or UDim2.new(1, -10, 0, 40)
+    end)
+    
+    for i, option in ipairs(options) do
+        local OptionBtn = Instance.new("TextButton")
+        OptionBtn.Parent = Dropdown
+        OptionBtn.BackgroundColor3 = Colors.ElementHover
+        OptionBtn.Position = UDim2.new(0.7, 0, 0.1 + i * 0.2, 0)
+        OptionBtn.Size = UDim2.new(0.25, 0, 0.15, 0)
+        OptionBtn.Font = Enum.Font.Gotham
+        OptionBtn.Text = option
+        OptionBtn.TextColor3 = Colors.Text
+        OptionBtn.TextSize = 12
+        OptionBtn.AutoButtonColor = false
+        OptionBtn.Visible = false
+        
+        addCorner(OptionBtn, 4)
+        
+        OptionBtn.MouseButton1Click:Connect(function()
+            SelectedBtn.Text = option
+            expanded = false
+            Dropdown.Size = UDim2.new(1, -10, 0, 40)
+            if callback then
+                pcall(callback, option)
+            end
+        end)
     end
     
+    return Dropdown
+end
+
+-- Create label
+function Catraz:CreateLabel(parent, text, color)
+    local Label = Instance.new("TextLabel")
+    Label.Parent = parent
+    Label.BackgroundTransparency = 1
+    Label.Size = UDim2.new(1, -10, 0, 30)
+    Label.Font = Enum.Font.Gotham
+    Label.Text = text
+    Label.TextColor3 = color or Colors.TextDim
+    Label.TextSize = 14
+    Label.TextWrapped = true
+    return Label
+end
+
+-- ====================================================
+-- SCRIPT MODULES
+-- ====================================================
+
+-- Teleport Zones Module
+local TeleportZones = {
+    Name = "Teleport Zones",
+    Description = "Create and teleport between zones",
+    Zones = {},
+    Active = false
+}
+
+function TeleportZones:Load(content)
+    local section = Catraz:CreateSection(content, "Teleport Zones")
+    
+    Catraz:CreateLabel(section, "Create up to 5 teleport zones")
+    
+    local zoneStatus = Catraz:CreateLabel(section, "Zones: 0/5")
+    
+    local createBtn = Catraz:CreateButton(section, "Create Zone", function()
+        local player = Players.LocalPlayer
+        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local pos = player.Character.HumanoidRootPart.Position
+            local zoneNum = #self.Zones + 1
+            
+            if zoneNum <= 5 then
+                table.insert(self.Zones, {
+                    Name = "Zone " .. zoneNum,
+                    Position = pos
+                })
+                
+                local zoneBtn = Catraz:CreateButton(section, "Zone " .. zoneNum .. " (Click to teleport)", function()
+                    local player = Players.LocalPlayer
+                    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        player.Character.HumanoidRootPart.CFrame = CFrame.new(self.Zones[zoneNum].Position)
+                    end
+                end)
+                
+                zoneStatus.Text = "Zones: " .. #self.Zones .. "/5"
+            end
+        end
+    end)
+    
+    local clearBtn = Catraz:CreateButton(section, "Clear All Zones", function()
+        self.Zones = {}
+        zoneStatus.Text = "Zones: 0/5"
+        -- Refresh section (simplified)
+        section.Parent:ClearAllChildren()
+        self:Load(content)
+    end)
+end
+
+-- Auto Tap Module
+local AutoTap = {
+    Name = "Auto Tap",
+    Description = "Automatically clicks for you",
+    Active = false,
+    CPS = 10,
+    Connection = nil
+}
+
+function AutoTap:Load(content)
+    local section = Catraz:CreateSection(content, "Auto Tap")
+    
+    local status = Catraz:CreateLabel(section, "Status: OFF", Color3.fromRGB(255, 100, 100))
+    
+    local toggle = Catraz:CreateToggle(section, "Enable Auto Tap", false, function(state)
+        self.Active = state
+        status.Text = state and "Status: ON" or "Status: OFF"
+        status.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+        
+        if state then
+            self:Start()
+        else
+            self:Stop()
+        end
+    end)
+    
+    local slider = Catraz:CreateSlider(section, "CPS", 1, 20, self.CPS, function(value)
+        self.CPS = value
+    end)
+end
+
+function AutoTap:Start()
+    if self.Connection then self.Connection:Disconnect() end
+    
     self.Connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if self.Tapping then
-            -- Simulate tap by clicking mouse
-            local mouse = game:GetService("Players").LocalPlayer:GetMouse()
+        if self.Active then
             mouse1click()
-            task.wait(self.Interval)
+            task.wait(1 / self.CPS)
         end
     end)
 end
 
-function AutoTap:StopTapping()
-    self.Tapping = false
+function AutoTap:Stop()
+    self.Active = false
     if self.Connection then
         self.Connection:Disconnect()
         self.Connection = nil
     end
 end
 
-function AutoTap:Unload()
-    self.Enabled = false
-    self:StopTapping()
-    local gui = game:GetService("CoreGui"):FindFirstChild("AutoTapUI")
-    if gui then gui:Destroy() end
-end
-
--- ====================================================
--- SCRIPT 3: AUTO FARM
--- ====================================================
-
+-- Auto Farm Module
 local AutoFarm = {
     Name = "Auto Farm",
-    Description = "Automatically farms for you",
-    Enabled = false,
-    Farming = false,
+    Description = "Automatically farms objects",
+    Active = false,
     Target = nil,
     Connection = nil
 }
 
-function AutoFarm:Load()
-    self.Enabled = true
+function AutoFarm:Load(content)
+    local section = Catraz:CreateSection(content, "Auto Farm")
     
-    -- Find farmable objects
-    local farmable = {}
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Part") and obj.Name:lower():find("farm") or obj.Name:lower():find("ore") or obj.Name:lower():find("node") then
-            table.insert(farmable, obj)
+    local status = Catraz:CreateLabel(section, "Status: OFF", Color3.fromRGB(255, 100, 100))
+    
+    local scanBtn = Catraz:CreateButton(section, "Scan for Farmable Objects", function()
+        local farmable = {}
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Part") and (obj.Name:lower():find("farm") or obj.Name:lower():find("ore") or obj.Name:lower():find("node")) then
+                table.insert(farmable, obj)
+            end
         end
-    end
-    
-    if #farmable == 0 then
-        Utility:CreateNotification("Auto Farm", "No farmable objects found", 2)
-        return
-    end
-    
-    self.Target = farmable[1]
-    
-    -- Create GUI
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local title = Instance.new("TextLabel")
-    local toggleBtn = Instance.new("TextButton")
-    local statusLabel = Instance.new("TextLabel")
-    local targetLabel = Instance.new("TextLabel")
-    
-    gui.Name = "AutoFarmUI"
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
-    
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0.02, 0, 0.8, 0)
-    frame.Size = UDim2.new(0, 200, 0, 150)
-    frame.Active = true
-    frame.Draggable = true
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
-    
-    title.Parent = frame
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    title.Size = UDim2.new(1, 0, 0, 35)
-    title.Font = Enum.Font.GothamBold
-    title.Text = "Auto Farm"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 16
-    
-    statusLabel.Parent = frame
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Position = UDim2.new(0, 10, 0, 45)
-    statusLabel.Size = UDim2.new(1, -20, 0, 25)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "Status: OFF"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    statusLabel.TextSize = 14
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    targetLabel.Parent = frame
-    targetLabel.BackgroundTransparency = 1
-    targetLabel.Position = UDim2.new(0, 10, 0, 70)
-    targetLabel.Size = UDim2.new(1, -20, 0, 25)
-    targetLabel.Font = Enum.Font.Gotham
-    targetLabel.Text = "Target: " .. (self.Target and self.Target.Name or "None")
-    targetLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    targetLabel.TextSize = 12
-    targetLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    toggleBtn.Parent = frame
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    toggleBtn.Position = UDim2.new(0.5, -60, 0.7, 0)
-    toggleBtn.Size = UDim2.new(0, 120, 0, 35)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.Text = "START FARMING"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 12
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = toggleBtn
-    
-    toggleBtn.MouseButton1Click:Connect(function()
-        self.Farming = not self.Farming
         
-        if self.Farming then
-            toggleBtn.Text = "STOP FARMING"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
-            statusLabel.Text = "Status: ON"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            self:StartFarming()
+        if #farmable > 0 then
+            self.Target = farmable[1]
+            Catraz:CreateLabel(section, "Found " .. #farmable .. " objects")
         else
-            toggleBtn.Text = "START FARMING"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-            statusLabel.Text = "Status: OFF"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            self:StopFarming()
+            Catraz:CreateLabel(section, "No farmable objects found")
+        end
+    end)
+    
+    local toggle = Catraz:CreateToggle(section, "Enable Auto Farm", false, function(state)
+        self.Active = state
+        status.Text = state and "Status: ON" or "Status: OFF"
+        status.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+        
+        if state then
+            self:Start()
+        else
+            self:Stop()
         end
     end)
 end
 
-function AutoFarm:StartFarming()
-    if self.Connection then
-        self.Connection:Disconnect()
-    end
+function AutoFarm:Start()
+    if self.Connection then self.Connection:Disconnect() end
     
     self.Connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if self.Farming and self.Target then
-            local player = game:GetService("Players").LocalPlayer
+        if self.Active and self.Target then
+            local player = Players.LocalPlayer
             if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local root = player.Character.HumanoidRootPart
-                root.CFrame = CFrame.new(self.Target.Position + Vector3.new(0, 3, 0))
-                
-                -- Simulate click
-                local mouse = player:GetMouse()
+                player.Character.HumanoidRootPart.CFrame = CFrame.new(self.Target.Position + Vector3.new(0, 3, 0))
                 mouse1click()
+                task.wait(0.1)
             end
         end
     end)
 end
 
-function AutoFarm:StopFarming()
-    self.Farming = false
-    if self.Connection then
-        self.Connection:Disconnect()
-        self.Connection = nil
-    end
-end
-
-function AutoFarm:Unload()
-    self.Enabled = false
-    self:StopFarming()
-    local gui = game:GetService("CoreGui"):FindFirstChild("AutoFarmUI")
-    if gui then gui:Destroy() end
-end
-
--- ====================================================
--- SCRIPT 4: AUTO REBIRTH
--- ====================================================
-
-local AutoRebirth = {
-    Name = "Auto Rebirth",
-    Description = "Automatically rebirths when possible",
-    Enabled = false,
-    Active = false,
-    RebirthPrice = 1000,
-    Connection = nil
-}
-
-function AutoRebirth:Load()
-    self.Enabled = true
-    
-    -- Create GUI
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local title = Instance.new("TextLabel")
-    local toggleBtn = Instance.new("TextButton")
-    local statusLabel = Instance.new("TextLabel")
-    local priceLabel = Instance.new("TextLabel")
-    local priceInput = Instance.new("TextBox")
-    
-    gui.Name = "AutoRebirthUI"
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
-    
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0.85, 0, 0.3, 0)
-    frame.Size = UDim2.new(0, 200, 0, 180)
-    frame.Active = true
-    frame.Draggable = true
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
-    
-    title.Parent = frame
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    title.Size = UDim2.new(1, 0, 0, 35)
-    title.Font = Enum.Font.GothamBold
-    title.Text = "Auto Rebirth"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 16
-    
-    statusLabel.Parent = frame
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Position = UDim2.new(0, 10, 0, 45)
-    statusLabel.Size = UDim2.new(1, -20, 0, 25)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "Status: OFF"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    statusLabel.TextSize = 14
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    priceLabel.Parent = frame
-    priceLabel.BackgroundTransparency = 1
-    priceLabel.Position = UDim2.new(0, 10, 0, 70)
-    priceLabel.Size = UDim2.new(1, -20, 0, 20)
-    priceLabel.Font = Enum.Font.Gotham
-    priceLabel.Text = "Rebirth Price:"
-    priceLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    priceLabel.TextSize = 12
-    priceLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    priceInput.Parent = frame
-    priceInput.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    priceInput.Position = UDim2.new(0.1, 0, 0.55, 0)
-    priceInput.Size = UDim2.new(0.8, 0, 0, 25)
-    priceInput.Font = Enum.Font.Gotham
-    priceInput.PlaceholderText = "1000"
-    priceInput.Text = tostring(self.RebirthPrice)
-    priceInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    priceInput.TextSize = 12
-    
-    local inputCorner = Instance.new("UICorner")
-    inputCorner.CornerRadius = UDim.new(0, 4)
-    inputCorner.Parent = priceInput
-    
-    priceInput.FocusLost:Connect(function()
-        local num = tonumber(priceInput.Text)
-        if num then
-            self.RebirthPrice = num
-        else
-            priceInput.Text = tostring(self.RebirthPrice)
-        end
-    end)
-    
-    toggleBtn.Parent = frame
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    toggleBtn.Position = UDim2.new(0.5, -60, 0.75, 0)
-    toggleBtn.Size = UDim2.new(0, 120, 0, 35)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.Text = "ENABLE"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 12
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = toggleBtn
-    
-    toggleBtn.MouseButton1Click:Connect(function()
-        self.Active = not self.Active
-        
-        if self.Active then
-            toggleBtn.Text = "DISABLE"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
-            statusLabel.Text = "Status: ON"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            self:StartRebirthCheck()
-        else
-            toggleBtn.Text = "ENABLE"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-            statusLabel.Text = "Status: OFF"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            self:StopRebirthCheck()
-        end
-    end)
-end
-
-function AutoRebirth:StartRebirthCheck()
-    if self.Connection then
-        self.Connection:Disconnect()
-    end
-    
-    self.Connection = game:GetService("RunService").Stepped:Connect(function()
-        if not self.Active then return end
-        
-        -- Find rebirth button
-        for _, obj in ipairs(game:GetService("Players").LocalPlayer.PlayerGui:GetDescendants()) do
-            if obj:IsA("TextButton") and obj.Name:lower():find("rebirth") then
-                -- Check if we have enough money (simplified)
-                local hasMoney = true -- In real script, you'd check actual currency
-                
-                if hasMoney then
-                    obj:Click()
-                end
-                break
-            end
-        end
-    end)
-end
-
-function AutoRebirth:StopRebirthCheck()
+function AutoFarm:Stop()
     self.Active = false
     if self.Connection then
         self.Connection:Disconnect()
@@ -743,156 +834,122 @@ function AutoRebirth:StopRebirthCheck()
     end
 end
 
-function AutoRebirth:Unload()
-    self.Enabled = false
-    self:StopRebirthCheck()
-    local gui = game:GetService("CoreGui"):FindFirstChild("AutoRebirthUI")
-    if gui then gui:Destroy() end
+-- Auto Rebirth Module
+local AutoRebirth = {
+    Name = "Auto Rebirth",
+    Description = "Automatically rebirths",
+    Active = false,
+    Price = 1000,
+    Connection = nil
+}
+
+function AutoRebirth:Load(content)
+    local section = Catraz:CreateSection(content, "Auto Rebirth")
+    
+    local status = Catraz:CreateLabel(section, "Status: OFF", Color3.fromRGB(255, 100, 100))
+    
+    local priceSlider = Catraz:CreateSlider(section, "Rebirth Price", 100, 10000, self.Price, function(value)
+        self.Price = value
+    end)
+    
+    local toggle = Catraz:CreateToggle(section, "Enable Auto Rebirth", false, function(state)
+        self.Active = state
+        status.Text = state and "Status: ON" or "Status: OFF"
+        status.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+        
+        if state then
+            self:Start()
+        else
+            self:Stop()
+        end
+    end)
 end
 
--- ====================================================
--- SCRIPT 5: AUTO ENCHANT
--- ====================================================
+function AutoRebirth:Start()
+    if self.Connection then self.Connection:Disconnect() end
+    
+    self.Connection = game:GetService("RunService").Stepped:Connect(function()
+        if self.Active then
+            for _, obj in ipairs(Players.LocalPlayer.PlayerGui:GetDescendants()) do
+                if obj:IsA("TextButton") and obj.Name:lower():find("rebirth") then
+                    obj:Click()
+                    break
+                end
+            end
+        end
+    end)
+end
 
+function AutoRebirth:Stop()
+    self.Active = false
+    if self.Connection then
+        self.Connection:Disconnect()
+        self.Connection = nil
+    end
+end
+
+-- Auto Enchant Module
 local AutoEnchant = {
     Name = "Auto Enchant",
     Description = "Automatically enchants items",
-    Enabled = false,
     Active = false,
-    TargetEnchant = "Damage",
+    EnchantType = "Damage",
     Connection = nil
 }
 
-function AutoEnchant:Load()
-    self.Enabled = true
+function AutoEnchant:Load(content)
+    local section = Catraz:CreateSection(content, "Auto Enchant")
     
-    -- Create GUI
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local title = Instance.new("TextLabel")
-    local toggleBtn = Instance.new("TextButton")
-    local statusLabel = Instance.new("TextLabel")
-    local enchantLabel = Instance.new("TextLabel")
+    local status = Catraz:CreateLabel(section, "Status: OFF", Color3.fromRGB(255, 100, 100))
+    
     local enchantInput = Instance.new("TextBox")
-    
-    gui.Name = "AutoEnchantUI"
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
-    
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0.85, 0, 0.5, 0)
-    frame.Size = UDim2.new(0, 200, 0, 180)
-    frame.Active = true
-    frame.Draggable = true
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
-    
-    title.Parent = frame
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    title.Size = UDim2.new(1, 0, 0, 35)
-    title.Font = Enum.Font.GothamBold
-    title.Text = "Auto Enchant"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 16
-    
-    statusLabel.Parent = frame
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Position = UDim2.new(0, 10, 0, 45)
-    statusLabel.Size = UDim2.new(1, -20, 0, 25)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "Status: OFF"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    statusLabel.TextSize = 14
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    enchantLabel.Parent = frame
-    enchantLabel.BackgroundTransparency = 1
-    enchantLabel.Position = UDim2.new(0, 10, 0, 70)
-    enchantLabel.Size = UDim2.new(1, -20, 0, 20)
-    enchantLabel.Font = Enum.Font.Gotham
-    enchantLabel.Text = "Enchant Type:"
-    enchantLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    enchantLabel.TextSize = 12
-    enchantLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    enchantInput.Parent = frame
-    enchantInput.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    enchantInput.Position = UDim2.new(0.1, 0, 0.55, 0)
-    enchantInput.Size = UDim2.new(0.8, 0, 0, 25)
+    enchantInput.Parent = section
+    enchantInput.BackgroundColor3 = Colors.Element
+    enchantInput.Size = UDim2.new(1, -10, 0, 35)
     enchantInput.Font = Enum.Font.Gotham
-    enchantInput.PlaceholderText = "Damage"
-    enchantInput.Text = self.TargetEnchant
-    enchantInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    enchantInput.TextSize = 12
+    enchantInput.PlaceholderText = "Enchant type (e.g., Damage)"
+    enchantInput.Text = self.EnchantType
+    enchantInput.TextColor3 = Colors.Text
+    enchantInput.TextSize = 14
     
-    local inputCorner = Instance.new("UICorner")
-    inputCorner.CornerRadius = UDim.new(0, 4)
-    inputCorner.Parent = enchantInput
+    addCorner(enchantInput, 6)
     
     enchantInput.FocusLost:Connect(function()
         if enchantInput.Text ~= "" then
-            self.TargetEnchant = enchantInput.Text
-        else
-            enchantInput.Text = self.TargetEnchant
+            self.EnchantType = enchantInput.Text
         end
     end)
     
-    toggleBtn.Parent = frame
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    toggleBtn.Position = UDim2.new(0.5, -60, 0.75, 0)
-    toggleBtn.Size = UDim2.new(0, 120, 0, 35)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.Text = "ENABLE"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 12
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = toggleBtn
-    
-    toggleBtn.MouseButton1Click:Connect(function()
-        self.Active = not self.Active
+    local toggle = Catraz:CreateToggle(section, "Enable Auto Enchant", false, function(state)
+        self.Active = state
+        status.Text = state and "Status: ON" or "Status: OFF"
+        status.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
         
-        if self.Active then
-            toggleBtn.Text = "DISABLE"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
-            statusLabel.Text = "Status: ON"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            self:StartEnchanting()
+        if state then
+            self:Start()
         else
-            toggleBtn.Text = "ENABLE"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-            statusLabel.Text = "Status: OFF"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            self:StopEnchanting()
+            self:Stop()
         end
     end)
 end
 
-function AutoEnchant:StartEnchanting()
-    if self.Connection then
-        self.Connection:Disconnect()
-    end
+function AutoEnchant:Start()
+    if self.Connection then self.Connection:Disconnect() end
     
     self.Connection = game:GetService("RunService").Stepped:Connect(function()
-        if not self.Active then return end
-        
-        -- Find enchant buttons
-        for _, obj in ipairs(game:GetService("Players").LocalPlayer.PlayerGui:GetDescendants()) do
-            if obj:IsA("TextButton") and obj.Name:lower():find(self.TargetEnchant:lower()) then
-                obj:Click()
-                task.wait(0.5)
-                break
+        if self.Active then
+            for _, obj in ipairs(Players.LocalPlayer.PlayerGui:GetDescendants()) do
+                if obj:IsA("TextButton") and obj.Name:lower():find(self.EnchantType:lower()) then
+                    obj:Click()
+                    task.wait(0.5)
+                    break
+                end
             end
         end
     end)
 end
 
-function AutoEnchant:StopEnchanting()
+function AutoEnchant:Stop()
     self.Active = false
     if self.Connection then
         self.Connection:Disconnect()
@@ -900,142 +957,42 @@ function AutoEnchant:StopEnchanting()
     end
 end
 
-function AutoEnchant:Unload()
-    self.Enabled = false
-    self:StopEnchanting()
-    local gui = game:GetService("CoreGui"):FindFirstChild("AutoEnchantUI")
-    if gui then gui:Destroy() end
-end
-
--- ====================================================
--- SCRIPT 6: WALKBOOST
--- ====================================================
-
+-- WalkBoost Module
 local WalkBoost = {
     Name = "WalkBoost",
     Description = "Increase walk speed",
-    Enabled = false,
     Active = false,
     Speed = 50,
     OriginalSpeed = 16
 }
 
-function WalkBoost:Load()
-    self.Enabled = true
+function WalkBoost:Load(content)
+    local section = Catraz:CreateSection(content, "WalkBoost")
     
-    -- Create GUI
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local title = Instance.new("TextLabel")
-    local toggleBtn = Instance.new("TextButton")
-    local statusLabel = Instance.new("TextLabel")
-    local speedLabel = Instance.new("TextLabel")
-    local speedInput = Instance.new("TextBox")
+    local status = Catraz:CreateLabel(section, "Status: OFF", Color3.fromRGB(255, 100, 100))
     
-    gui.Name = "WalkBoostUI"
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
-    
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0.85, 0, 0.7, 0)
-    frame.Size = UDim2.new(0, 200, 0, 180)
-    frame.Active = true
-    frame.Draggable = true
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
-    
-    title.Parent = frame
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    title.Size = UDim2.new(1, 0, 0, 35)
-    title.Font = Enum.Font.GothamBold
-    title.Text = "WalkBoost"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 16
-    
-    statusLabel.Parent = frame
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Position = UDim2.new(0, 10, 0, 45)
-    statusLabel.Size = UDim2.new(1, -20, 0, 25)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "Status: OFF"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    statusLabel.TextSize = 14
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    speedLabel.Parent = frame
-    speedLabel.BackgroundTransparency = 1
-    speedLabel.Position = UDim2.new(0, 10, 0, 70)
-    speedLabel.Size = UDim2.new(1, -20, 0, 20)
-    speedLabel.Font = Enum.Font.Gotham
-    speedLabel.Text = "Speed:"
-    speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    speedLabel.TextSize = 12
-    speedLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    speedInput.Parent = frame
-    speedInput.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    speedInput.Position = UDim2.new(0.1, 0, 0.55, 0)
-    speedInput.Size = UDim2.new(0.8, 0, 0, 25)
-    speedInput.Font = Enum.Font.Gotham
-    speedInput.PlaceholderText = "50"
-    speedInput.Text = tostring(self.Speed)
-    speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    speedInput.TextSize = 12
-    
-    local inputCorner = Instance.new("UICorner")
-    inputCorner.CornerRadius = UDim.new(0, 4)
-    inputCorner.Parent = speedInput
-    
-    speedInput.FocusLost:Connect(function()
-        local num = tonumber(speedInput.Text)
-        if num and num > 0 then
-            self.Speed = num
-            if self.Active then
-                self:ApplySpeed()
-            end
-        else
-            speedInput.Text = tostring(self.Speed)
+    local speedSlider = Catraz:CreateSlider(section, "Walk Speed", 16, 250, self.Speed, function(value)
+        self.Speed = value
+        if self.Active then
+            self:Apply()
         end
     end)
     
-    toggleBtn.Parent = frame
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    toggleBtn.Position = UDim2.new(0.5, -60, 0.75, 0)
-    toggleBtn.Size = UDim2.new(0, 120, 0, 35)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.Text = "ENABLE"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 12
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = toggleBtn
-    
-    toggleBtn.MouseButton1Click:Connect(function()
-        self.Active = not self.Active
+    local toggle = Catraz:CreateToggle(section, "Enable WalkBoost", false, function(state)
+        self.Active = state
+        status.Text = state and "Status: ON" or "Status: OFF"
+        status.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
         
-        if self.Active then
-            toggleBtn.Text = "DISABLE"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
-            statusLabel.Text = "Status: ON"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            self:ApplySpeed()
+        if state then
+            self:Apply()
         else
-            toggleBtn.Text = "ENABLE"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-            statusLabel.Text = "Status: OFF"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            self:ResetSpeed()
+            self:Reset()
         end
     end)
 end
 
-function WalkBoost:ApplySpeed()
-    local player = game:GetService("Players").LocalPlayer
+function WalkBoost:Apply()
+    local player = Players.LocalPlayer
     if player and player.Character then
         local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
         if humanoid then
@@ -1045,8 +1002,8 @@ function WalkBoost:ApplySpeed()
     end
 end
 
-function WalkBoost:ResetSpeed()
-    local player = game:GetService("Players").LocalPlayer
+function WalkBoost:Reset()
+    local player = Players.LocalPlayer
     if player and player.Character then
         local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
         if humanoid then
@@ -1055,143 +1012,42 @@ function WalkBoost:ResetSpeed()
     end
 end
 
-function WalkBoost:Unload()
-    self.Active = false
-    self.Enabled = false
-    self:ResetSpeed()
-    local gui = game:GetService("CoreGui"):FindFirstChild("WalkBoostUI")
-    if gui then gui:Destroy() end
-end
-
--- ====================================================
--- SCRIPT 7: JUMPBOOST
--- ====================================================
-
+-- JumpBoost Module
 local JumpBoost = {
     Name = "JumpBoost",
     Description = "Increase jump power",
-    Enabled = false,
     Active = false,
     Power = 100,
     OriginalPower = 50
 }
 
-function JumpBoost:Load()
-    self.Enabled = true
+function JumpBoost:Load(content)
+    local section = Catraz:CreateSection(content, "JumpBoost")
     
-    -- Create GUI
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local title = Instance.new("TextLabel")
-    local toggleBtn = Instance.new("TextButton")
-    local statusLabel = Instance.new("TextLabel")
-    local powerLabel = Instance.new("TextLabel")
-    local powerInput = Instance.new("TextBox")
+    local status = Catraz:CreateLabel(section, "Status: OFF", Color3.fromRGB(255, 100, 100))
     
-    gui.Name = "JumpBoostUI"
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
-    
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0.85, 0, 0.85, 0)
-    frame.Size = UDim2.new(0, 200, 0, 180)
-    frame.Active = true
-    frame.Draggable = true
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
-    
-    title.Parent = frame
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    title.Size = UDim2.new(1, 0, 0, 35)
-    title.Font = Enum.Font.GothamBold
-    title.Text = "JumpBoost"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 16
-    
-    statusLabel.Parent = frame
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Position = UDim2.new(0, 10, 0, 45)
-    statusLabel.Size = UDim2.new(1, -20, 0, 25)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "Status: OFF"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    statusLabel.TextSize = 14
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    powerLabel.Parent = frame
-    powerLabel.BackgroundTransparency = 1
-    powerLabel.Position = UDim2.new(0, 10, 0, 70)
-    powerLabel.Size = UDim2.new(1, -20, 0, 20)
-    powerLabel.Font = Enum.Font.Gotham
-    powerLabel.Text = "Power:"
-    powerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    powerLabel.TextSize = 12
-    powerLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    powerInput.Parent = frame
-    powerInput.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    powerInput.Position = UDim2.new(0.1, 0, 0.55, 0)
-    powerInput.Size = UDim2.new(0.8, 0, 0, 25)
-    powerInput.Font = Enum.Font.Gotham
-    powerInput.PlaceholderText = "100"
-    powerInput.Text = tostring(self.Power)
-    powerInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    powerInput.TextSize = 12
-    
-    local inputCorner = Instance.new("UICorner")
-    inputCorner.CornerRadius = UDim.new(0, 4)
-    inputCorner.Parent = powerInput
-    
-    powerInput.FocusLost:Connect(function()
-        local num = tonumber(powerInput.Text)
-        if num and num > 0 then
-            self.Power = num
-            if self.Active then
-                self:ApplyPower()
-            end
-        else
-            powerInput.Text = tostring(self.Power)
+    local powerSlider = Catraz:CreateSlider(section, "Jump Power", 50, 500, self.Power, function(value)
+        self.Power = value
+        if self.Active then
+            self:Apply()
         end
     end)
     
-    toggleBtn.Parent = frame
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    toggleBtn.Position = UDim2.new(0.5, -60, 0.75, 0)
-    toggleBtn.Size = UDim2.new(0, 120, 0, 35)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.Text = "ENABLE"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 12
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = toggleBtn
-    
-    toggleBtn.MouseButton1Click:Connect(function()
-        self.Active = not self.Active
+    local toggle = Catraz:CreateToggle(section, "Enable JumpBoost", false, function(state)
+        self.Active = state
+        status.Text = state and "Status: ON" or "Status: OFF"
+        status.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
         
-        if self.Active then
-            toggleBtn.Text = "DISABLE"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
-            statusLabel.Text = "Status: ON"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            self:ApplyPower()
+        if state then
+            self:Apply()
         else
-            toggleBtn.Text = "ENABLE"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-            statusLabel.Text = "Status: OFF"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            self:ResetPower()
+            self:Reset()
         end
     end)
 end
 
-function JumpBoost:ApplyPower()
-    local player = game:GetService("Players").LocalPlayer
+function JumpBoost:Apply()
+    local player = Players.LocalPlayer
     if player and player.Character then
         local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
         if humanoid then
@@ -1201,8 +1057,8 @@ function JumpBoost:ApplyPower()
     end
 end
 
-function JumpBoost:ResetPower()
-    local player = game:GetService("Players").LocalPlayer
+function JumpBoost:Reset()
+    local player = Players.LocalPlayer
     if player and player.Character then
         local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
         if humanoid then
@@ -1211,492 +1067,199 @@ function JumpBoost:ResetPower()
     end
 end
 
-function JumpBoost:Unload()
-    self.Active = false
-    self.Enabled = false
-    self:ResetPower()
-    local gui = game:GetService("CoreGui"):FindFirstChild("JumpBoostUI")
-    if gui then gui:Destroy() end
-end
-
--- ====================================================
--- SCRIPT 8: AUTO CLICK
--- ====================================================
-
+-- Auto Click Module
 local AutoClick = {
     Name = "Auto Click",
-    Description = "Automatically clicks",
-    Enabled = false,
-    Clicking = false,
+    Description = "Simple auto clicker",
+    Active = false,
     CPS = 10,
     Connection = nil
 }
 
-function AutoClick:Load()
-    self.Enabled = true
+function AutoClick:Load(content)
+    local section = Catraz:CreateSection(content, "Auto Click")
     
-    -- Create GUI
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local title = Instance.new("TextLabel")
-    local toggleBtn = Instance.new("TextButton")
-    local statusLabel = Instance.new("TextLabel")
-    local cpsLabel = Instance.new("TextLabel")
-    local cpsSlider = Instance.new("Frame")
-    local sliderBtn = Instance.new("TextButton")
+    local status = Catraz:CreateLabel(section, "Status: OFF", Color3.fromRGB(255, 100, 100))
     
-    gui.Name = "AutoClickUI"
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
-    
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0.02, 0, 0.3, 0)
-    frame.Size = UDim2.new(0, 200, 0, 160)
-    frame.Active = true
-    frame.Draggable = true
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
-    
-    title.Parent = frame
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    title.Size = UDim2.new(1, 0, 0, 35)
-    title.Font = Enum.Font.GothamBold
-    title.Text = "Auto Click"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 16
-    
-    statusLabel.Parent = frame
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Position = UDim2.new(0, 10, 0, 45)
-    statusLabel.Size = UDim2.new(1, -20, 0, 25)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "Status: OFF"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    statusLabel.TextSize = 14
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    cpsLabel.Parent = frame
-    cpsLabel.BackgroundTransparency = 1
-    cpsLabel.Position = UDim2.new(0, 10, 0, 70)
-    cpsLabel.Size = UDim2.new(1, -20, 0, 20)
-    cpsLabel.Font = Enum.Font.Gotham
-    cpsLabel.Text = "CPS: 10"
-    cpsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    cpsLabel.TextSize = 12
-    cpsLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    cpsSlider.Parent = frame
-    cpsSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    cpsSlider.Position = UDim2.new(0.1, 0, 0.6, 0)
-    cpsSlider.Size = UDim2.new(0.8, 0, 0, 5)
-    
-    sliderBtn.Parent = cpsSlider
-    sliderBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-    sliderBtn.Size = UDim2.new(0, 15, 0, 15)
-    sliderBtn.Position = UDim2.new((self.CPS - 1) / 19, -7, 0.5, -7)
-    sliderBtn.Font = Enum.Font.SourceSans
-    sliderBtn.Text = ""
-    sliderBtn.ZIndex = 2
-    
-    local sliderCorner = Instance.new("UICorner")
-    sliderCorner.CornerRadius = UDim.new(0, 7)
-    sliderCorner.Parent = sliderBtn
-    
-    toggleBtn.Parent = frame
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    toggleBtn.Position = UDim2.new(0.5, -60, 0.8, 0)
-    toggleBtn.Size = UDim2.new(0, 120, 0, 30)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.Text = "START"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 12
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = toggleBtn
-    
-    -- Slider dragging
-    local dragging = false
-    sliderBtn.MouseButton1Down:Connect(function()
-        dragging = true
+    local slider = Catraz:CreateSlider(section, "CPS", 1, 30, self.CPS, function(value)
+        self.CPS = value
     end)
     
-    game:GetService("UserInputService").InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local mousePos = game:GetService("UserInputService"):GetMouseLocation()
-            local sliderPos = cpsSlider.AbsolutePosition
-            local sliderSize = cpsSlider.AbsoluteSize.X
-            
-            local relativeX = math.clamp(mousePos.X - sliderPos.X, 0, sliderSize)
-            local percent = relativeX / sliderSize
-            
-            self.CPS = 1 + math.floor(percent * 19)
-            sliderBtn.Position = UDim2.new(percent, -7, 0.5, -7)
-            cpsLabel.Text = "CPS: " .. self.CPS
-        end
-    end)
-    
-    toggleBtn.MouseButton1Click:Connect(function()
-        self.Clicking = not self.Clicking
+    local toggle = Catraz:CreateToggle(section, "Enable Auto Click", false, function(state)
+        self.Active = state
+        status.Text = state and "Status: ON" or "Status: OFF"
+        status.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
         
-        if self.Clicking then
-            toggleBtn.Text = "STOP"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
-            statusLabel.Text = "Status: ON"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            self:StartClicking()
+        if state then
+            self:Start()
         else
-            toggleBtn.Text = "START"
-            toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-            statusLabel.Text = "Status: OFF"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            self:StopClicking()
+            self:Stop()
         end
     end)
 end
 
-function AutoClick:StartClicking()
-    if self.Connection then
-        self.Connection:Disconnect()
-    end
+function AutoClick:Start()
+    if self.Connection then self.Connection:Disconnect() end
     
     self.Connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if self.Clicking then
+        if self.Active then
             mouse1click()
             task.wait(1 / self.CPS)
         end
     end)
 end
 
-function AutoClick:StopClicking()
-    self.Clicking = false
+function AutoClick:Stop()
+    self.Active = false
     if self.Connection then
         self.Connection:Disconnect()
         self.Connection = nil
     end
 end
 
-function AutoClick:Unload()
-    self.Enabled = false
-    self:StopClicking()
-    local gui = game:GetService("CoreGui"):FindFirstChild("AutoClickUI")
-    if gui then gui:Destroy() end
-end
-
 -- ====================================================
--- MAIN SCRIPT SELECTOR
+-- MAIN WINDOW CREATION
 -- ====================================================
 
-local ScriptSelector = {
-    Name = "Script Selector",
-    ActiveScripts = {},
-    MainGui = nil
-}
+-- Create main window
+local Window = Catraz:CreateWindow(
+    "SCRIPT FUSION", 
+    "Catraz UI Edition - 8 Scripts", 
+    UDim2.new(0, 700, 0, 500)
+)
 
-function ScriptSelector:Load()
-    -- Create main GUI
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local title = Instance.new("TextLabel")
-    local subtitle = Instance.new("TextLabel")
-    local scrollingFrame = Instance.new("ScrollingFrame")
-    local layout = Instance.new("UIListLayout")
-    
-    gui.Name = "ScriptFusionMain"
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0.5, -300, 0.5, -250)
-    frame.Size = UDim2.new(0, 600, 0, 500)
-    frame.Active = true
-    frame.Draggable = true
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-    
-    title.Parent = frame
-    title.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-    title.Size = UDim2.new(1, 0, 0, 50)
-    title.Font = Enum.Font.GothamBold
-    title.Text = "SCRIPT FUSION - ALL IN ONE"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 20
-    
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 12)
-    titleCorner.Parent = title
-    
-    subtitle.Parent = frame
-    subtitle.BackgroundTransparency = 1
-    subtitle.Position = UDim2.new(0, 20, 0, 55)
-    subtitle.Size = UDim2.new(1, -40, 0, 25)
-    subtitle.Font = Enum.Font.Gotham
-    subtitle.Text = "8 built-in scripts - Click any to enable/disable"
-    subtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
-    subtitle.TextSize = 14
-    subtitle.TextXAlignment = Enum.TextXAlignment.Left
-    
-    scrollingFrame.Parent = frame
-    scrollingFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    scrollingFrame.BorderSizePixel = 0
-    scrollingFrame.Position = UDim2.new(0, 20, 0, 90)
-    scrollingFrame.Size = UDim2.new(1, -40, 1, -140)
-    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scrollingFrame.ScrollBarThickness = 8
-    scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
-    
-    local scrollCorner = Instance.new("UICorner")
-    scrollCorner.CornerRadius = UDim.new(0, 8)
-    scrollCorner.Parent = scrollingFrame
-    
-    layout.Parent = scrollingFrame
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 8)
-    
-    -- Create buttons for each script
-    local scripts = {
-        TeleportZones,
-        AutoTap,
-        AutoFarm,
-        AutoRebirth,
-        AutoEnchant,
-        WalkBoost,
-        JumpBoost,
-        AutoClick
-    }
-    
-    for _, script in ipairs(scripts) do
-        self:CreateScriptButton(scrollingFrame, script)
-    end
-    
-    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, #scripts * 75)
-    
-    -- Close button
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Parent = frame
-    closeBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-    closeBtn.Position = UDim2.new(1, -45, 0, 10)
-    closeBtn.Size = UDim2.new(0, 30, 0, 30)
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextSize = 16
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 8)
-    closeCorner.Parent = closeBtn
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        -- Unload all scripts
-        for _, script in ipairs(scripts) do
-            if script.Unload then
-                pcall(function() script:Unload() end)
-            end
-        end
-        gui:Destroy()
-    end)
-    
-    self.MainGui = gui
-    Utility:CreateNotification("Script Fusion", "8 scripts loaded successfully!", 3)
+-- Create tabs
+local Tabs = Catraz:CreateTabs(Window.Content, {
+    {Name = "Movement"},
+    {Name = "Automation"},
+    {Name = "Boost"},
+    {Name = "Click"},
+    {Name = "About"}
+})
+
+-- Movement Tab
+local function setupMovementTab()
+    Catraz:CreateLabel(Tabs[1], "Movement Scripts", Colors.Accent)
+    TeleportZones:Load(Tabs[1])
 end
 
-function ScriptSelector:CreateScriptButton(parent, script)
-    local btn = Instance.new("TextButton")
-    local nameLabel = Instance.new("TextLabel")
-    local descLabel = Instance.new("TextLabel")
-    local statusLabel = Instance.new("TextLabel")
-    var toggleBtn = Instance.new("TextButton")
+-- Automation Tab
+local function setupAutomationTab()
+    Catraz:CreateLabel(Tabs[2], "Automation Scripts", Colors.Accent)
+    AutoFarm:Load(Tabs[2])
+    AutoRebirth:Load(Tabs[2])
+    AutoEnchant:Load(Tabs[2])
+end
+
+-- Boost Tab
+local function setupBoostTab()
+    Catraz:CreateLabel(Tabs[3], "Boost Scripts", Colors.Accent)
+    WalkBoost:Load(Tabs[3])
+    JumpBoost:Load(Tabs[3])
+end
+
+-- Click Tab
+local function setupClickTab()
+    Catraz:CreateLabel(Tabs[4], "Click Scripts", Colors.Accent)
+    AutoTap:Load(Tabs[4])
+    AutoClick:Load(Tabs[4])
+end
+
+-- About Tab
+local function setupAboutTab()
+    Catraz:CreateLabel(Tabs[5], "About Script Fusion", Colors.Accent)
+    Catraz:CreateLabel(Tabs[5], "Version: 2.0.0")
+    Catraz:CreateLabel(Tabs[5], "UI: Catraz Edition")
+    Catraz:CreateLabel(Tabs[5], "")
+    Catraz:CreateLabel(Tabs[5], "Features:")
+    Catraz:CreateLabel(Tabs[5], "• 8 Built-in Scripts")
+    Catraz:CreateLabel(Tabs[5], "• No Keys Required")
+    Catraz:CreateLabel(Tabs[5], "• Catraz UI Design")
+    Catraz:CreateLabel(Tabs[5], "• Draggable Windows")
+    Catraz:CreateLabel(Tabs[5], "• Smooth Animations")
+    Catraz:CreateLabel(Tabs[5], "")
+    Catraz:CreateLabel(Tabs[5], "Created: March 16, 2026")
     
-    btn.Name = script.Name .. "Btn"
-    btn.Parent = parent
-    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    btn.BorderSizePixel = 0
-    btn.Size = UDim2.new(1, 0, 0, 70)
-    btn.AutoButtonColor = true
-    btn.Font = Enum.Font.SourceSans
-    btn.Text = ""
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 8)
-    btnCorner.Parent = btn
-    
-    nameLabel.Parent = btn
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Position = UDim2.new(0.02, 0, 0.1, 0)
-    nameLabel.Size = UDim2.new(0.5, 0, 0.4, 0)
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.Text = script.Name
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextSize = 18
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    descLabel.Parent = btn
-    descLabel.BackgroundTransparency = 1
-    descLabel.Position = UDim2.new(0.02, 0, 0.5, 0)
-    descLabel.Size = UDim2.new(0.7, 0, 0.4, 0)
-    descLabel.Font = Enum.Font.Gotham
-    descLabel.Text = script.Description
-    descLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-    descLabel.TextSize = 12
-    descLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    statusLabel.Parent = btn
-    statusLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    statusLabel.BackgroundTransparency = 0.3
-    statusLabel.Position = UDim2.new(0.75, 0, 0.2, 0)
-    statusLabel.Size = UDim2.new(0.1, 0, 0.6, 0)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Text = "OFF"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    statusLabel.TextSize = 12
-    
-    local statusCorner = Instance.new("UICorner")
-    statusCorner.CornerRadius = UDim.new(0, 4)
-    statusCorner.Parent = statusLabel
-    
-    toggleBtn.Parent = btn
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    toggleBtn.Position = UDim2.new(0.88, 0, 0.25, 0)
-    toggleBtn.Size = UDim2.new(0.1, 0, 0.5, 0)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.Text = ">"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 14
-    
-    local toggleCorner = Instance.new("UICorner")
-    toggleCorner.CornerRadius = UDim.new(0, 4)
-    toggleCorner.Parent = toggleBtn
-    
-    -- Hover effect
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
-    end)
-    
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    end)
-    
-    -- Toggle button click
-    toggleBtn.MouseButton1Click:Connect(function()
-        if script.Enabled then
-            -- Disable script
-            if script.Unload then
-                pcall(function() script:Unload() end)
-            end
-            script.Enabled = false
-            statusLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-            statusLabel.Text = "OFF"
-            statusLabel.BackgroundTransparency = 0.3
-        else
-            -- Enable script
-            pcall(function() script:Load() end)
-            statusLabel.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-            statusLabel.Text = "ON"
-            statusLabel.BackgroundTransparency = 0
-        end
+    Catraz:CreateButton(Tabs[5], "Unload All Scripts", function()
+        AutoTap:Stop()
+        AutoFarm:Stop()
+        AutoRebirth:Stop()
+        AutoEnchant:Stop()
+        WalkBoost:Reset()
+        JumpBoost:Reset()
+        AutoClick:Stop()
+        
+        WalkBoost.Active = false
+        JumpBoost.Active = false
+        
+        Catraz:CreateLabel(Tabs[5], "All scripts unloaded!", Colors.Success)
     end)
 end
 
--- ====================================================
--- WELCOME MESSAGE
--- ====================================================
+-- Initialize all tabs
+setupMovementTab()
+setupAutomationTab()
+setupBoostTab()
+setupClickTab()
+setupAboutTab()
 
-local function showWelcome()
-    local gui = Instance.new("ScreenGui")
-    local frame = Instance.new("Frame")
-    local title = Instance.new("TextLabel")
-    local message = Instance.new("TextLabel")
-    local continueBtn = Instance.new("TextButton")
+-- Close button functionality
+Window.CloseBtn.MouseButton1Click:Connect(function()
+    -- Cleanup all scripts
+    AutoTap:Stop()
+    AutoFarm:Stop()
+    AutoRebirth:Stop()
+    AutoEnchant:Stop()
+    WalkBoost:Reset()
+    JumpBoost:Reset()
+    AutoClick:Stop()
     
-    gui.Name = "WelcomeScreen"
-    gui.Parent = game:GetService("CoreGui")
-    gui.ResetOnSpawn = false
-    
-    frame.Parent = gui
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    frame.Position = UDim2.new(0.5, -200, 0.5, -100)
-    frame.Size = UDim2.new(0, 400, 0, 200)
-    frame.Active = true
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-    
-    title.Parent = frame
-    title.BackgroundTransparency = 1
-    title.Position = UDim2.new(0, 20, 0, 20)
-    title.Size = UDim2.new(1, -40, 0, 40)
-    title.Font = Enum.Font.GothamBold
-    title.Text = "SCRIPT FUSION"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 28
-    
-    message.Parent = frame
-    message.BackgroundTransparency = 1
-    message.Position = UDim2.new(0, 20, 0, 70)
-    message.Size = UDim2.new(1, -40, 0, 60)
-    message.Font = Enum.Font.Gotham
-    message.Text = "8 built-in scripts\nNo keys required\nAll features included"
-    message.TextColor3 = Color3.fromRGB(200, 200, 200)
-    message.TextSize = 16
-    message.TextWrapped = true
-    
-    continueBtn.Parent = frame
-    continueBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-    continueBtn.Position = UDim2.new(0.5, -75, 0.8, 0)
-    continueBtn.Size = UDim2.new(0, 150, 0, 40)
-    continueBtn.Font = Enum.Font.GothamBold
-    continueBtn.Text = "START"
-    continueBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    continueBtn.TextSize = 18
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 8)
-    btnCorner.Parent = continueBtn
-    
-    continueBtn.MouseButton1Click:Connect(function()
-        gui:Destroy()
-        ScriptSelector:Load()
-    end)
-    
-    -- Auto start after 3 seconds
-    task.delay(3, function()
-        if gui and gui.Parent then
-            gui:Destroy()
-            ScriptSelector:Load()
-        end
-    end)
-end
+    Window.ScreenGui:Destroy()
+end)
 
--- ====================================================
--- START THE APPLICATION
--- ====================================================
+-- Welcome notification
+local Notification = Instance.new("ScreenGui")
+local NotifFrame = Instance.new("Frame")
+local NotifText = Instance.new("TextLabel")
 
-print("=== SCRIPT FUSION LOADED ===")
-print("8 scripts included:")
-print("- Teleport Zones")
-print("- Auto Tap")
-print("- Auto Farm")
-print("- Auto Rebirth")
-print("- Auto Enchant")
-print("- WalkBoost")
-print("- JumpBoost")
-print("- Auto Click")
-print("Loading interface...")
+Notification.Name = "WelcomeNotification"
+Notification.Parent = game:GetService("CoreGui")
+Notification.ResetOnSpawn = false
+Notification.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-showWelcome()
+NotifFrame.Parent = Notification
+NotifFrame.BackgroundColor3 = Colors.Surface
+NotifFrame.BorderSizePixel = 0
+NotifFrame.Position = UDim2.new(0.5, -150, 0.1, 0)
+NotifFrame.Size = UDim2.new(0, 300, 0, 50)
+
+addCorner(NotifFrame, 8)
+addStroke(NotifFrame, 1, Colors.Accent)
+
+NotifText.Parent = NotifFrame
+NotifText.BackgroundTransparency = 1
+NotifText.Size = UDim2.new(1, 0, 1, 0)
+NotifText.Font = Enum.Font.GothamBold
+NotifText.Text = "Script Fusion loaded successfully!"
+NotifText.TextColor3 = Colors.Accent
+NotifText.TextSize = 14
+
+-- Animate notification
+local startPos = NotifFrame.Position
+NotifFrame.Position = UDim2.new(0.5, -150, 0, -50)
+
+TweenService:Create(NotifFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    Position = startPos
+}):Play()
+
+task.wait(3)
+
+TweenService:Create(NotifFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+    Position = UDim2.new(0.5, -150, 0, -50)
+}):Play()
+
+task.wait(0.5)
+Notification:Destroy()
+
+print("=== SCRIPT FUSION - CATRAZ UI EDITION LOADED ===")
+print("8 scripts ready to use")
