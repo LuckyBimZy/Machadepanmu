@@ -1,7 +1,7 @@
--- ==================== TAP SIMULATOR - CATRAZ EDITION ====================
--- Premium Auto Farm Script untuk Tap Simulator
--- Author: Adapted for Catraz Hub
--- Version: 2.0 (Enhanced Auto Clicker)
+-- ==================== TAP SIMULATOR - CATRAZ EDITION V2 ====================
+-- Premium Auto Farm Script dengan Independent Auto Clicker
+-- Author: Enhanced for Catraz Hub
+-- Version: 2.0
 
 if _G.TapSimLoaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -32,22 +32,12 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
-local CoreGui = game:GetService("CoreGui")
+local Camera = Workspace.CurrentCamera
 local TweenService = game:GetService("TweenService")
 
--- Auto Clicker Variables
-local AutoClickerEnabled = false
-local AutoClickerConnection = nil
-local ClickInterval = 0.001 -- 1ms default (super fast)
-local ClickCount = 0
-local IsClicking = false
-
--- Untuk memastikan clicker tidak mengganggu mouse
-local LastMousePosition = Vector2.new(0, 0)
-local MouseMoved = false
-
--- Cari Remote Events/Functions
-local RemoteEvent = nil
+--==================================================
+-- REMOTE FINDER
+--==================================================
 local Remotes = {
     Tap = nil,
     BuyEgg = nil,
@@ -58,372 +48,76 @@ local Remotes = {
     Rebirth = nil
 }
 
---==================================================
--- AUTO CLICKER FLOATING BUTTON
---==================================================
-
--- Buat ScreenGui untuk floating button
-local ClickerGui = Instance.new("ScreenGui")
-ClickerGui.Name = "TapSimClicker"
-ClickerGui.Parent = CoreGui
-ClickerGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ClickerGui.ResetOnSpawn = false
-
--- Floating button untuk auto clicker
-local ClickerButton = Instance.new("Frame")
-ClickerButton.Name = "ClickerButton"
-ClickerButton.Size = UDim2.new(0, 60, 0, 60)
-ClickerButton.Position = UDim2.new(0, 100, 0.5, -30)
-ClickerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-ClickerButton.BackgroundTransparency = 0.2
-ClickerButton.BorderSizePixel = 0
-ClickerButton.Active = true
-ClickerButton.Draggable = true
-ClickerButton.Parent = ClickerGui
-ClickerButton.ClipsDescendants = true
-
--- Shadow
-local ClickerShadow = Instance.new("Frame")
-ClickerShadow.Name = "Shadow"
-ClickerShadow.Size = UDim2.new(1, 8, 1, 8)
-ClickerShadow.Position = UDim2.new(0, -4, 0, -4)
-ClickerShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ClickerShadow.BackgroundTransparency = 0.7
-ClickerShadow.BorderSizePixel = 0
-ClickerShadow.Parent = ClickerButton
-
--- Corner
-local ClickerCorner = Instance.new("UICorner")
-ClickerCorner.CornerRadius = UDim.new(0, 30)
-ClickerCorner.Parent = ClickerButton
-
-local ShadowCorner = Instance.new("UICorner")
-ShadowCorner.CornerRadius = UDim.new(0, 34)
-ShadowCorner.Parent = ClickerShadow
-
--- Icon
-local ClickerIcon = Instance.new("TextLabel")
-ClickerIcon.Name = "Icon"
-ClickerIcon.Size = UDim2.new(1, 0, 0.7, 0)
-ClickerIcon.Position = UDim2.new(0, 0, 0, 5)
-ClickerIcon.BackgroundTransparency = 1
-ClickerIcon.Text = "🖱️"
-ClickerIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-ClickerIcon.TextSize = 30
-ClickerIcon.Font = Enum.Font.Gotham
-ClickerIcon.Parent = ClickerButton
-
--- Status text
-local ClickerStatus = Instance.new("TextLabel")
-ClickerStatus.Name = "Status"
-ClickerStatus.Size = UDim2.new(1, 0, 0.3, 0)
-ClickerStatus.Position = UDim2.new(0, 0, 0.7, -5)
-ClickerStatus.BackgroundTransparency = 1
-ClickerStatus.Text = "OFF"
-ClickerStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
-ClickerStatus.TextSize = 12
-ClickerStatus.Font = Enum.Font.GothamBold
-ClickerStatus.Parent = ClickerButton
-
--- Click counter
-local ClickCounter = Instance.new("TextLabel")
-ClickCounter.Name = "Counter"
-ClickCounter.Size = UDim2.new(0, 40, 0, 20)
-ClickCounter.Position = UDim2.new(1, -45, 0, -25)
-ClickCounter.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-ClickCounter.BackgroundTransparency = 0.3
-ClickCounter.Text = "0"
-ClickCounter.TextColor3 = Color3.fromRGB(255, 255, 255)
-ClickCounter.TextSize = 12
-ClickCounter.Font = Enum.Font.GothamBold
-ClickCounter.Parent = ClickerButton
-ClickCounter.ZIndex = 5
-ClickCounter.Visible = false
-
-local CounterCorner = Instance.new("UICorner")
-CounterCorner.CornerRadius = UDim.new(0, 10)
-CounterCorner.Parent = ClickCounter
-
--- Animation on click
-local ClickerGlow = Instance.new("Frame")
-ClickerGlow.Name = "Glow"
-ClickerGlow.Size = UDim2.new(1, 0, 1, 0)
-ClickerGlow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-ClickerGlow.BackgroundTransparency = 1
-ClickerGlow.BorderSizePixel = 0
-ClickerGlow.Parent = ClickerButton
-ClickerGlow.ZIndex = 2
-
-local GlowCorner = Instance.new("UICorner")
-GlowCorner.CornerRadius = UDim.new(0, 30)
-GlowCorner.Parent = ClickerGlow
-
--- Tooltip saat hover
-local ClickerTooltip = Instance.new("Frame")
-ClickerTooltip.Name = "Tooltip"
-ClickerTooltip.Size = UDim2.new(0, 120, 0, 25)
-ClickerTooltip.Position = UDim2.new(1, 10, 0.5, -12.5)
-ClickerTooltip.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-ClickerTooltip.BackgroundTransparency = 0.1
-ClickerTooltip.BorderSizePixel = 0
-ClickerTooltip.Parent = ClickerButton
-ClickerTooltip.Visible = false
-ClickerTooltip.ZIndex = 10
-
-local TooltipCorner = Instance.new("UICorner")
-TooltipCorner.CornerRadius = UDim.new(0, 8)
-TooltipCorner.Parent = ClickerTooltip
-
-local TooltipText = Instance.new("TextLabel")
-TooltipText.Size = UDim2.new(1, -10, 1, 0)
-TooltipText.Position = UDim2.new(0, 5, 0, 0)
-TooltipText.BackgroundTransparency = 1
-TooltipText.Text = "Klik untuk ON/OFF"
-TooltipText.TextColor3 = Color3.fromRGB(200, 200, 200)
-TooltipText.TextSize = 12
-TooltipText.Font = Enum.Font.Gotham
-TooltipText.TextXAlignment = Enum.TextXAlignment.Left
-TooltipText.Parent = ClickerTooltip
-
--- Hover effects
-ClickerButton.MouseEnter:Connect(function()
-    TweenService:Create(ClickerButton, TweenInfo.new(0.2), {Size = UDim2.new(0, 65, 0, 65)}):Play()
-    ClickerTooltip.Visible = true
-end)
-
-ClickerButton.MouseLeave:Connect(function()
-    TweenService:Create(ClickerButton, TweenInfo.new(0.2), {Size = UDim2.new(0, 60, 0, 60)}):Play()
-    ClickerTooltip.Visible = false
-end)
-
--- Fungsi untuk update status auto clicker
-local function UpdateClickerButton(state)
-    AutoClickerEnabled = state
-    
-    if state then
-        -- ON state
-        TweenService:Create(ClickerButton, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(0, 200, 100)}):Play()
-        ClickerStatus.Text = "ON"
-        ClickerStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
-        ClickerIcon.Text = "⚡"
-        ClickCounter.Visible = true
-        ClickCounter.Text = "0"
-        ClickCount = 0
-    else
-        -- OFF state
-        TweenService:Create(ClickerButton, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(40, 40, 45)}):Play()
-        ClickerStatus.Text = "OFF"
-        ClickerStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
-        ClickerIcon.Text = "🖱️"
-        ClickCounter.Visible = false
-    end
-end
-
--- Animasi klik
-local function PlayClickAnimation()
-    -- Glow effect
-    ClickerGlow.BackgroundTransparency = 0.7
-    TweenService:Create(ClickerGlow, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
-    
-    -- Scale effect
-    TweenService:Create(ClickerButton, TweenInfo.new(0.05), {Size = UDim2.new(0, 55, 0, 55)}):Play()
-    task.wait(0.05)
-    TweenService:Create(ClickerButton, TweenInfo.new(0.1), {Size = UDim2.new(0, 60, 0, 60)}):Play()
-    
-    -- Update counter
-    ClickCount = ClickCount + 1
-    ClickCounter.Text = formatNumber(ClickCount)
-end
-
--- Click handler
-ClickerButton.MouseButton1Click:Connect(function()
-    PlayClickAnimation()
-    
-    if AutoClickerEnabled then
-        StopAutoClicker()
-        UpdateClickerButton(false)
-        Notify("Auto Clicker OFF")
-    else
-        StartAutoClicker()
-        UpdateClickerButton(true)
-        Notify("Auto Clicker ON")
-    end
-end)
-
---==================================================
--- AUTO CLICKER CORE (BACKGROUND CLICKER)
---==================================================
-
--- Fungsi untuk melakukan click di background (tidak mengganggu mouse)
-local function PerformBackgroundClick()
-    -- Method 1: Menggunakan VirtualInputManager (paling aman)
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(
-            0, 0, -- Posisi 0,0 (tidak mengganggu mouse)
-            0, -- Left button
-            true, -- Down
-            game, 1
-        )
-        task.wait(0.0001)
-        VirtualInputManager:SendMouseButtonEvent(
-            0, 0,
-            0,
-            false, -- Up
-            game, 1
-        )
-    end)
-    
-    -- Method 2: Fire remote tap sebagai backup
-    if Remotes.Tap then
-        pcall(function()
-            if Remotes.Tap:IsA("RemoteEvent") then
-                Remotes.Tap:FireServer()
-            elseif Remotes.Tap:IsA("RemoteFunction") then
-                Remotes.Tap:InvokeServer()
-            end
-        end)
-    else
-        -- Fallback: Cari remote event lain
-        for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-            if v:IsA("RemoteEvent") and not v.Name:find("Character") then
-                pcall(function() v:FireServer() end)
-                break
-            end
-        end
-    end
-    
-    -- Update counter di UI
-    ClickCount = ClickCount + 1
-    ClickCounter.Text = formatNumber(ClickCount)
-end
-
--- Start auto clicker (background)
-function StartAutoClicker()
-    if AutoClickerConnection then
-        AutoClickerConnection:Disconnect()
-        AutoClickerConnection = nil
-    end
-    
-    IsClicking = true
-    ClickCount = 0
-    ClickCounter.Text = "0"
-    
-    -- Gunakan RunService.Heartbeat untuk click loop yang sangat cepat
-    AutoClickerConnection = RunService.Heartbeat:Connect(function()
-        if AutoClickerEnabled and IsClicking then
-            PerformBackgroundClick()
-            task.wait(ClickInterval)
-        end
-    end)
-    
-    -- Backup dengan spawn thread untuk redundancy
-    task.spawn(function()
-        while AutoClickerEnabled do
-            if IsClicking then
-                PerformBackgroundClick()
-            end
-            task.wait(ClickInterval)
-        end
-    end)
-end
-
-function StopAutoClicker()
-    AutoClickerEnabled = false
-    IsClicking = false
-    if AutoClickerConnection then
-        AutoClickerConnection:Disconnect()
-        AutoClickerConnection = nil
-    end
-end
-
---==================================================
--- AUTO BUY EGG ENHANCED
---==================================================
-
--- Fungsi untuk auto buy egg yang lebih cerdas
-local function SmartBuyEgg()
-    if not Remotes.BuyEgg then
-        -- Coba cari remote yang tepat
-        for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-            if v:IsA("RemoteEvent") and (v.Name:lower():find("buy") and v.Name:lower():find("egg")) then
-                Remotes.BuyEgg = v
-                break
-            end
-        end
-    end
-    
-    if Remotes.BuyEgg then
-        -- Coba beli egg dengan berbagai parameter
-        local eggTypes = {"Basic", "Common", "Rare", "Epic", "Legendary", "Mythic"}
-        local eggIndex = 1
-        
-        -- Tentukan egg type berdasarkan setting
-        if Toggles.EggType == "Basic" then eggIndex = 1
-        elseif Toggles.EggType == "Rare" then eggIndex = 3
-        elseif Toggles.EggType == "Epic" then eggIndex = 4
-        elseif Toggles.EggType == "Legendary" then eggIndex = 5
-        elseif Toggles.EggType == "Mythic" then eggIndex = 6
-        end
-        
-        -- Coba berbagai format parameter
-        local success = pcall(function()
-            -- Format 1: String
-            Remotes.BuyEgg:FireServer(eggTypes[eggIndex])
-        end)
-        
-        if not success then
-            pcall(function()
-                -- Format 2: Number
-                Remotes.BuyEgg:FireServer(eggIndex)
-            end)
-        end
-        
-        -- Update counter
-        if AutoBuyEggCount then
-            AutoBuyEggCount = AutoBuyEggCount + 1
-        end
-    end
-end
-
---==================================================
--- FUNGSI LAINNYA (SAMA DENGAN SEBELUMNYA)
---==================================================
-
--- Fungsi untuk mencari remotes
+-- Fungsi untuk mencari remotes dengan lebih akurat
 local function FindRemotes()
+    print("🔍 Mencari remote events...")
+    
+    -- Daftar pattern umum untuk setiap tipe remote
+    local patterns = {
+        Tap = {"tap", "click", "attack", "hit", "damage", "mine", "break"},
+        BuyEgg = {"buyegg", "purchaseegg", "buypet", "buyegg"},
+        HatchEgg = {"hatch", "openegg", "hatchegg", "open", "unbox"},
+        BuyArea = {"buyarea", "purchasearea", "buyzone", "unlockarea", "buyregion"},
+        Upgrade = {"upgrade", "purchaseupgrade", "buypower", "buydamage", "levelup"},
+        Collect = {"collect", "claim", "claimreward", "getreward", "dailyreward"},
+        Rebirth = {"rebirth", "prestige", "reset", "newgameplus"}
+    }
+    
     -- Cari di ReplicatedStorage
     for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then
-            local name = v.Name:lower()
-            if name:find("tap") or name:find("click") then
-                Remotes.Tap = v
-            elseif (name:find("egg") and name:find("buy")) or name:find("purchaseegg") then
-                Remotes.BuyEgg = v
-            elseif name:find("hatch") or name:find("openegg") then
-                Remotes.HatchEgg = v
-            elseif name:find("upgrade") or name:find("power") then
-                Remotes.Upgrade = v
-            elseif name:find("collect") or name:find("claim") then
-                Remotes.Collect = v
-            elseif name:find("rebirth") or name:find("prestige") then
-                Remotes.Rebirth = v
+        if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") or v:IsA("UnreliableRemoteEvent") then
+            local nameLower = v.Name:lower()
+            
+            for remoteType, patternList in pairs(patterns) do
+                for _, pattern in ipairs(patternList) do
+                    if nameLower:find(pattern) and not Remotes[remoteType] then
+                        Remotes[remoteType] = v
+                        print("✅ Found " .. remoteType .. ": " .. v.Name)
+                        break
+                    end
+                end
             end
         end
     end
     
-    print("=== REMOTES FOUND ===")
+    -- Cari di PlayerScripts jika belum ditemukan
+    for _, v in pairs(Player.PlayerScripts:GetDescendants()) do
+        if (v:IsA("RemoteEvent") or v:IsA("RemoteFunction")) and not Remotes.Tap then
+            if v.Name:lower():find("tap") or v.Name:lower():find("click") then
+                Remotes.Tap = v
+                print("✅ Found Tap in PlayerScripts: " .. v.Name)
+            end
+        end
+    end
+    
+    -- Fallback: jika masih belum ditemukan, cari remote yang paling sering dipanggil
+    if not Remotes.Tap then
+        for _, v in pairs(ReplicatedStorage:GetChildren()) do
+            if v:IsA("RemoteEvent") and not v.Name:find("Character") then
+                Remotes.Tap = v
+                print("⚠️ Using fallback remote: " .. v.Name)
+                break
+            end
+        end
+    end
+    
+    print("=== REMOTES STATUS ===")
     for k, v in pairs(Remotes) do
-        print(k, v and "✓" or "✗")
+        print(k .. ": " .. (v and "✓" or "✗"))
     end
 end
 
 FindRemotes()
 
--- Toggles
+--==================================================
+-- TOGGLES
+--==================================================
 local Toggles = {
     -- Auto Farm
     AutoTap = false,
     TapSpeed = 0.01,
+    AutoClicker = false,
+    ClickSpeed = 0.001,
     
     -- Eggs
     AutoBuyEgg = false,
@@ -447,37 +141,26 @@ local Toggles = {
     
     -- Misc
     AntiAFK = false,
-    AutoClaim = false
+    AutoClaim = false,
+    
+    -- Clicker Settings
+    ClickerPosition = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2),
+    ClickerActive = false
 }
-
--- Counter untuk auto buy egg
-local AutoBuyEggCount = 0
 
 -- Loops
 local Loops = {}
-
--- Format number
-local function formatNumber(num)
-    if num >= 1e9 then
-        return string.format("%.1fB", num / 1e9)
-    elseif num >= 1e6 then
-        return string.format("%.1fM", num / 1e6)
-    elseif num >= 1e3 then
-        return string.format("%.1fK", num / 1e3)
-    else
-        return tostring(num)
-    end
-end
+local BubbleConnections = {}
 
 --==================================================
 -- NOTIFICATION
 --==================================================
-local function Notify(msg)
+local function Notify(msg, time)
     OrionLib:MakeNotification({
         Name = "Tap Simulator",
         Content = msg,
         Image = "zap",
-        Time = 2.5
+        Time = time or 2.5
     })
 end
 
@@ -486,14 +169,14 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Tap Simulator",
-    Subtext = "Auto Farm Premium",
+    Subtext = "Premium Auto Farm",
     Version = "v2.0",
     VersionIcon = "zap",
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "TapSim_Config",
     IntroEnabled = true,
-    IntroText = "Tap Simulator",
+    IntroText = "Tap Simulator V2",
     IntroIcon = "rbxassetid://8834748103",
     Icon = "rbxassetid://8834748103",
     ShowIcon = true,
@@ -508,15 +191,442 @@ local Window = OrionLib:MakeWindow({
 
 OrionLib.SelectedTheme = "Ocean"
 
-Notify("Script loaded successfully! Click the floating mouse button for auto clicker")
+Notify("Script loaded successfully!")
 
 --==================================================
--- CREATE TABS (SAMA DENGAN SEBELUMNYA)
+-- CLICKER BUBBLE UI
+--==================================================
+
+-- Buat ScreenGui untuk bubble
+local BubbleGui = Instance.new("ScreenGui")
+BubbleGui.Name = "TapSimBubble"
+BubbleGui.Parent = game.CoreGui
+BubbleGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+BubbleGui.ResetOnSpawn = false
+
+-- Buat bubble utama
+local Bubble = Instance.new("Frame")
+Bubble.Name = "ClickerBubble"
+Bubble.Size = UDim2.new(0, 80, 0, 80)
+Bubble.Position = UDim2.new(0.5, -40, 0.5, -40) -- Tengah layar default
+Bubble.BackgroundColor3 = Color3.fromRGB(255, 50, 150)
+Bubble.BackgroundTransparency = 0.2
+Bubble.BorderSizePixel = 0
+Bubble.Active = true
+Bubble.Draggable = true -- Bisa digeser
+Bubble.Parent = BubbleGui
+Bubble.ZIndex = 10
+
+-- Efek glow
+local BubbleGlow = Instance.new("Frame")
+BubbleGlow.Size = UDim2.new(1, 10, 1, 10)
+BubbleGlow.Position = UDim2.new(0, -5, 0, -5)
+BubbleGlow.BackgroundColor3 = Color3.fromRGB(255, 50, 150)
+BubbleGlow.BackgroundTransparency = 0.5
+BubbleGlow.BorderSizePixel = 0
+BubbleGlow.Parent = Bubble
+BubbleGlow.ZIndex = 9
+
+-- Sudut membulat
+local BubbleCorner = Instance.new("UICorner")
+BubbleCorner.CornerRadius = UDim.new(1, 0) -- Circle
+BubbleCorner.Parent = Bubble
+
+local GlowCorner = Instance.new("UICorner")
+GlowCorner.CornerRadius = UDim.new(1, 0)
+GlowCorner.Parent = BubbleGlow
+
+-- Ikon di dalam bubble
+local BubbleIcon = Instance.new("TextLabel")
+BubbleIcon.Size = UDim2.new(1, 0, 1, 0)
+BubbleIcon.BackgroundTransparency = 1
+BubbleIcon.Text = "⚡"
+BubbleIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+BubbleIcon.TextSize = 40
+BubbleIcon.Font = Enum.Font.GothamBold
+BubbleIcon.Parent = Bubble
+BubbleIcon.ZIndex = 11
+
+-- Teks status
+local BubbleStatus = Instance.new("TextLabel")
+BubbleStatus.Size = UDim2.new(0, 100, 0, 30)
+BubbleStatus.Position = UDim2.new(0.5, -50, 1, 5)
+BubbleStatus.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+BubbleStatus.BackgroundTransparency = 0.2
+BubbleStatus.Text = "AUTO CLICKER: OFF"
+BubbleStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+BubbleStatus.TextSize = 12
+BubbleStatus.Font = Enum.Font.GothamBold
+BubbleStatus.Parent = Bubble
+BubbleStatus.ZIndex = 11
+
+local StatusCorner = Instance.new("UICorner")
+StatusCorner.CornerRadius = UDim.new(0, 10)
+StatusCorner.Parent = BubbleStatus
+
+-- Tooltip
+local BubbleTooltip = Instance.new("TextLabel")
+BubbleTooltip.Size = UDim2.new(0, 150, 0, 25)
+BubbleTooltip.Position = UDim2.new(0.5, -75, 0, -30)
+BubbleTooltip.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+BubbleTooltip.BackgroundTransparency = 0.2
+BubbleTooltip.Text = "Drag to move • Click to toggle"
+BubbleTooltip.TextColor3 = Color3.fromRGB(200, 200, 200)
+BubbleTooltip.TextSize = 10
+BubbleTooltip.Font = Enum.Font.Gotham
+BubbleTooltip.Parent = Bubble
+BubbleTooltip.ZIndex = 11
+
+local TooltipCorner = Instance.new("UICorner")
+TooltipCorner.CornerRadius = UDim.new(0, 8)
+TooltipCorner.Parent = BubbleTooltip
+
+-- Tombol toggle di bubble
+local BubbleToggleBtn = Instance.new("TextButton")
+BubbleToggleBtn.Size = UDim2.new(1, 0, 1, 0)
+BubbleToggleBtn.BackgroundTransparency = 1
+BubbleToggleBtn.Text = ""
+BubbleToggleBtn.Parent = Bubble
+BubbleToggleBtn.ZIndex = 12
+
+-- Fungsi update tampilan bubble
+local function UpdateBubbleUI()
+    if Toggles.AutoClicker then
+        Bubble.BackgroundColor3 = Color3.fromRGB(50, 255, 100)
+        BubbleGlow.BackgroundColor3 = Color3.fromRGB(50, 255, 100)
+        BubbleStatus.Text = "AUTO CLICKER: ON"
+        BubbleStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+        BubbleIcon.Text = "✅"
+        
+        -- Animasi pulse
+        local pulse = TweenService:Create(Bubble, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1), {
+            Size = UDim2.new(0, 85, 0, 85)
+        })
+        pulse:Play()
+        BubbleConnections.Pulse = pulse
+    else
+        Bubble.BackgroundColor3 = Color3.fromRGB(255, 50, 150)
+        BubbleGlow.BackgroundColor3 = Color3.fromRGB(255, 50, 150)
+        BubbleStatus.Text = "AUTO CLICKER: OFF"
+        BubbleStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+        BubbleIcon.Text = "⚡"
+        
+        if BubbleConnections.Pulse then
+            BubbleConnections.Pulse:Cancel()
+            Bubble.Size = UDim2.new(0, 80, 0, 80)
+        end
+    end
+end
+
+-- Toggle clicker dari bubble
+BubbleToggleBtn.MouseButton1Click:Connect(function()
+    Toggles.AutoClicker = not Toggles.AutoClicker
+    UpdateBubbleUI()
+    
+    if Toggles.AutoClicker then
+        StartLoop("AutoClicker")
+        Notify("Auto Clicker ON", 1)
+    else
+        StopLoop("AutoClicker")
+        Notify("Auto Clicker OFF", 1)
+    end
+end)
+
+-- Update posisi clicker saat bubble digeser
+Bubble.DragFinished:Connect(function()
+    local absPos = Bubble.AbsolutePosition
+    Toggles.ClickerPosition = Vector2.new(absPos.X + 40, absPos.Y + 40) -- Tengah bubble
+end)
+
+-- Sembunyikan bubble saat menu terbuka? (opsional)
+-- Bubble.Visible = false -- Default hidden, akan muncul saat auto clicker diaktifkan
+
+--==================================================
+-- INDEPENDENT AUTO CLICKER (TIDAK MENGGANGGU MOUSE)
+--==================================================
+
+-- Fungsi click yang independen
+local function IndependentClick()
+    -- Method 1: VirtualInputManager (paling ampuh)
+    VirtualInputManager:SendMouseButtonEvent(
+        Toggles.ClickerPosition.X,  -- X position
+        Toggles.ClickerPosition.Y,  -- Y position
+        0,                          -- Mouse button (0 = left)
+        true,                       -- Down
+        game,                       
+        1
+    )
+    task.wait(0.01)
+    VirtualInputManager:SendMouseButtonEvent(
+        Toggles.ClickerPosition.X,
+        Toggles.ClickerPosition.Y,
+        0,
+        false,                      -- Up
+        game,
+        1
+    )
+    
+    -- Method 2: Remote event (sebagai backup)
+    if Remotes.Tap then
+        pcall(function()
+            if Remotes.Tap:IsA("RemoteEvent") then
+                Remotes.Tap:FireServer()
+            elseif Remotes.Tap:IsA("RemoteFunction") then
+                Remotes.Tap:InvokeServer()
+            end
+        end)
+    end
+end
+
+-- Loop auto clicker yang independen
+local ClickerThread = nil
+local ClickerRunning = false
+
+function StartIndependentClicker()
+    if ClickerRunning then return end
+    ClickerRunning = true
+    
+    -- Tampilkan bubble
+    Bubble.Visible = true
+    
+    ClickerThread = task.spawn(function()
+        while ClickerRunning and Toggles.AutoClicker do
+            IndependentClick()
+            task.wait(Toggles.ClickSpeed)
+        end
+    end)
+end
+
+function StopIndependentClicker()
+    ClickerRunning = false
+    if ClickerThread then
+        task.cancel(ClickerThread)
+        ClickerThread = nil
+    end
+    Bubble.Visible = false -- Sembunyikan bubble
+end
+
+--==================================================
+-- AUTO BUY EGG YANG DIPERBAIKI
+--==================================================
+
+-- Fungsi beli egg yang lebih robust
+function BuyEgg(eggType)
+    local success = false
+    
+    -- Method 1: Pake remote yang sudah ditemukan
+    if Remotes.BuyEgg then
+        pcall(function()
+            if Remotes.BuyEgg:IsA("RemoteEvent") then
+                Remotes.BuyEgg:FireServer(eggType)
+            else
+                Remotes.BuyEgg:InvokeServer(eggType)
+            end
+            success = true
+        end)
+    end
+    
+    -- Method 2: Coba berbagai kemungkinan argument
+    if not success then
+        -- Coba semua remote yang mirip
+        for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+            if v:IsA("RemoteEvent") and (v.Name:lower():find("egg") or v.Name:lower():find("pet") or v.Name:lower():find("buy")) then
+                pcall(function()
+                    -- Coba berbagai format argument
+                    v:FireServer(eggType)
+                    v:FireServer("Buy", eggType)
+                    v:FireServer(1) -- Index egg
+                    v:FireServer()
+                end)
+            end
+        end
+    end
+    
+    -- Method 3: Cari di player scripts
+    for _, v in pairs(Player.PlayerScripts:GetDescendants()) do
+        if v:IsA("RemoteEvent") and v.Name:lower():find("egg") then
+            pcall(function() v:FireServer() end)
+        end
+    end
+end
+
+-- Fungsi hatch egg yang diperbaiki
+function HatchEgg()
+    if Remotes.HatchEgg then
+        pcall(function()
+            if Remotes.HatchEgg:IsA("RemoteEvent") then
+                Remotes.HatchEgg:FireServer()
+            else
+                Remotes.HatchEgg:InvokeServer()
+            end
+        end)
+    else
+        -- Coba semua kemungkinan
+        for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+            if v:IsA("RemoteEvent") and (v.Name:lower():find("hatch") or v.Name:lower():find("open") or v.Name:lower():find("unbox")) then
+                pcall(function() v:FireServer() end)
+            end
+        end
+    end
+end
+
+--==================================================
+-- LOOP FUNCTIONS
+--==================================================
+
+function StartLoop(name)
+    if Loops[name] then return end
+    Loops[name] = true
+    
+    task.spawn(function()
+        while Loops[name] do
+            if not Loops[name] then break end
+            
+            if name == "AutoTap" and Toggles.AutoTap then
+                if Remotes.Tap then
+                    pcall(function() Remotes.Tap:FireServer() end)
+                end
+                task.wait(Toggles.TapSpeed)
+                
+            elseif name == "AutoClicker" then
+                -- Auto clicker sudah ditangani oleh IndependentClicker
+                -- Loop ini hanya untuk menjaga status
+                task.wait(1)
+                
+            elseif name == "AutoBuyEgg" and Toggles.AutoBuyEgg then
+                BuyEgg(Toggles.EggType)
+                task.wait(1.5)
+                
+            elseif name == "AutoHatch" and Toggles.AutoHatch then
+                HatchEgg()
+                task.wait(0.8)
+                
+            elseif name == "AutoUpgrade" and Toggles.AutoUpgrade then
+                if Remotes.Upgrade then
+                    if Toggles.UpgradeType == "All" then
+                        pcall(function() Remotes.Upgrade:FireServer("Damage") end)
+                        task.wait(0.3)
+                        pcall(function() Remotes.Upgrade:FireServer("Speed") end)
+                        task.wait(0.3)
+                        pcall(function() Remotes.Upgrade:FireServer("Multiplier") end)
+                    else
+                        pcall(function() Remotes.Upgrade:FireServer(Toggles.UpgradeType) end)
+                    end
+                end
+                task.wait(1.2)
+                
+            elseif name == "AutoBuyArea" and Toggles.AutoBuyArea then
+                if Remotes.BuyArea then
+                    pcall(function() Remotes.BuyArea:FireServer() end)
+                end
+                task.wait(2.5)
+                
+            elseif name == "AutoCollect" and Toggles.AutoCollect then
+                if Remotes.Collect then
+                    pcall(function() Remotes.Collect:FireServer() end)
+                end
+                task.wait(5)
+                
+            elseif name == "AutoRebirth" and Toggles.AutoRebirth then
+                local coins = GetCoins()
+                if coins >= Toggles.RebirthAt then
+                    if Remotes.Rebirth then
+                        pcall(function() Remotes.Rebirth:FireServer() end)
+                    end
+                    task.wait(3)
+                else
+                    task.wait(5)
+                end
+                
+            elseif name == "AutoClaim" and Toggles.AutoClaim then
+                local claimRemote = ReplicatedStorage:FindFirstChild("ClaimDaily") or 
+                                   ReplicatedStorage:FindFirstChild("DailyReward")
+                if claimRemote then
+                    pcall(function() claimRemote:FireServer() end)
+                end
+                task.wait(60)
+            end
+            
+            task.wait()
+        end
+    end)
+end
+
+function StopLoop(name)
+    Loops[name] = false
+    if name == "AutoClicker" then
+        StopIndependentClicker()
+    end
+end
+
+--==================================================
+-- UTILITY FUNCTIONS
+--==================================================
+
+-- Get coins/points
+function GetCoins()
+    local leaderstats = Player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, v in pairs(leaderstats:GetChildren()) do
+            if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash") or v.Name:lower():find("point") or v.Name:lower():find("money")) then
+                return v.Value
+            end
+        end
+    end
+    
+    for _, v in pairs(Player:GetChildren()) do
+        if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash")) then
+            return v.Value
+        end
+    end
+    
+    -- Coba cari di Data folder
+    local data = Player:FindFirstChild("Data") or Player:FindFirstChild("Stats")
+    if data then
+        for _, v in pairs(data:GetChildren()) do
+            if v:IsA("NumberValue") then
+                return v.Value
+            end
+        end
+    end
+    
+    return 0
+end
+
+-- Get rebirths
+function GetRebirths()
+    local leaderstats = Player:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, v in pairs(leaderstats:GetChildren()) do
+            if v:IsA("NumberValue") and (v.Name:lower():find("rebirth") or v.Name:lower():find("prestige") or v.Name:lower():find("reset")) then
+                return v.Value
+            end
+        end
+    end
+    return 0
+end
+
+-- Format angka
+function formatNumber(num)
+    if num >= 1e12 then
+        return string.format("%.2fT", num / 1e12)
+    elseif num >= 1e9 then
+        return string.format("%.2fB", num / 1e9)
+    elseif num >= 1e6 then
+        return string.format("%.2fM", num / 1e6)
+    elseif num >= 1e3 then
+        return string.format("%.2fK", num / 1e3)
+    else
+        return tostring(math.floor(num))
+    end
+end
+
+--==================================================
+-- CREATE TABS
 --==================================================
 local MainTab = Window:MakeTab({
     Name = "Main",
     Icon = "home",
-    PremiumOnly = false,
     Glass = true,
     Outline = true
 })
@@ -542,6 +652,13 @@ local UpgradeTab = Window:MakeTab({
     Outline = true
 })
 
+local ClickerTab = Window:MakeTab({
+    Name = "Clicker",
+    Icon = "mouse-pointer",
+    Glass = true,
+    Outline = true
+})
+
 local VisualsTab = Window:MakeTab({
     Name = "Visuals",
     Icon = "eye",
@@ -557,16 +674,16 @@ local MiscTab = Window:MakeTab({
 })
 
 --==================================================
--- MAIN TAB CONTENT
+-- MAIN TAB
 --==================================================
 local StatsSection = MainTab:AddSection({
     Name = "Player Stats",
     TextSize = 17,
-    Folded = false,
     Glass = true,
     Outline = true
 })
 
+-- Paragraph stats
 local StatsPara = StatsSection:AddParagraph({
     Title = Player.Name,
     Desc = "Loading stats...",
@@ -578,76 +695,140 @@ local StatsPara = StatsSection:AddParagraph({
             Callback = function()
                 local coins = GetCoins()
                 local rebirths = GetRebirths()
-                StatsPara:SetDesc("Coins: " .. formatNumber(coins) .. "\nRebirths: " .. rebirths .. "\nClicks: " .. formatNumber(ClickCount))
+                StatsPara:SetDesc("💰 Coins: " .. formatNumber(coins) .. "\n🔄 Rebirths: " .. formatNumber(rebirths))
             end
         }
     }
 })
 
--- Update stats setiap 5 detik
+-- Update stats otomatis
 task.spawn(function()
     while true do
         local coins = GetCoins()
         local rebirths = GetRebirths()
-        StatsPara:SetDesc("Coins: " .. formatNumber(coins) .. "\nRebirths: " .. rebirths .. "\nClicks: " .. formatNumber(ClickCount))
-        task.wait(5)
+        StatsPara:SetDesc("💰 Coins: " .. formatNumber(coins) .. "\n🔄 Rebirths: " .. formatNumber(rebirths))
+        task.wait(3)
     end
 end)
 
---==================================================
--- AUTO FARM TAB (DENGAN AUTO CLICKER SETTINGS)
---==================================================
-local TapSection = FarmTab:AddSection({
-    Name = "Auto Clicker Settings",
+local QuickSection = MainTab:AddSection({
+    Name = "Quick Actions",
     TextSize = 17,
-    Folded = false,
     Glass = true,
     Outline = true
 })
 
-TapSection:AddParagraph({
-    Title = "Auto Clicker Status",
-    Desc = "Klik tombol mouse 🖱️ di layar untuk ON/OFF\nBerjalan di BACKGROUND - tidak ganggu mouse",
-    Image = "info",
-    ImageSize = 38
+QuickSection:AddButton({
+    Name = "⚡ Tap 50x",
+    Icon = "hand",
+    Outline = true,
+    Callback = function()
+        for i = 1, 50 do
+            IndependentClick()
+            task.wait(0.02)
+        end
+        Notify("Tapped 50 times!")
+    end
 })
 
-TapSection:AddSlider({
-    Name = "Click Speed (ms)",
+QuickSection:AddButton({
+    Name = "🥚 Hatch Egg",
+    Icon = "egg",
+    Outline = true,
+    Callback = function()
+        HatchEgg()
+        Notify("Hatched egg!")
+    end
+})
+
+QuickSection:AddButton({
+    Name = "💰 Collect Rewards",
+    Icon = "gift",
+    Outline = true,
+    Callback = function()
+        if Remotes.Collect then
+            pcall(function() Remotes.Collect:FireServer() end)
+            Notify("Collected rewards!")
+        end
+    end
+})
+
+--==================================================
+-- CLICKER TAB (KONTROL BUBBLE)
+--==================================================
+local ClickerSection = ClickerTab:AddSection({
+    Name = "Auto Clicker Control",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+ClickerSection:AddToggle({
+    Name = "Enable Auto Clicker",
+    Default = false,
+    Color = Color3.fromRGB(50, 255, 100),
+    Outline = true,
+    Flag = "AutoClicker",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoClicker = Value
+        UpdateBubbleUI()
+        
+        if Value then
+            StartIndependentClicker()
+            StartLoop("AutoClicker")
+            Notify("Auto Clicker ON - Bubble muncul!", 1)
+        else
+            StopIndependentClicker()
+            StopLoop("AutoClicker")
+            Notify("Auto Clicker OFF", 1)
+        end
+    end
+})
+
+ClickerSection:AddSlider({
+    Name = "Click Speed (seconds)",
     Min = 0.0001,
-    Max = 0.01,
+    Max = 0.05,
     Default = 0.001,
     Color = Color3.fromRGB(255, 255, 255),
     Increment = 0.0001,
     ValueName = "sec",
     Outline = true,
     Callback = function(Value)
-        ClickInterval = Value
+        Toggles.ClickSpeed = Value
     end
 })
 
-TapSection:AddButton({
-    Name = "Test Click (10x)",
-    Icon = "hand",
+ClickerSection:AddParagraph({
+    Title = "Clicker Bubble Info",
+    Desc = "• Bubble muncul saat Auto Clicker ON\n• Drag bubble untuk memindahkan posisi click\n• Klik bubble untuk toggle ON/OFF\n• Posisi tersimpan otomatis",
+    Image = "info",
+    ImageSize = 38
+})
+
+ClickerSection:AddButton({
+    Name = "Reset Bubble Position",
+    Icon = "refresh-cw",
     Outline = true,
     Callback = function()
-        for i = 1, 10 do
-            PerformBackgroundClick()
-            task.wait(0.05)
-        end
-        Notify("Test clicked 10 times!")
+        Toggles.ClickerPosition = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        Bubble.Position = UDim2.new(0.5, -40, 0.5, -40)
+        Notify("Bubble position reset")
     end
 })
 
-local TapSection2 = FarmTab:AddSection({
-    Name = "Auto Tap (Remote)",
+--==================================================
+-- AUTO FARM TAB
+--==================================================
+local TapSection = FarmTab:AddSection({
+    Name = "Auto Tap",
     TextSize = 17,
-    Folded = false,
     Glass = true,
     Outline = true
 })
 
-TapSection2:AddToggle({
+TapSection:AddToggle({
     Name = "Auto Tap (Remote)",
     Default = false,
     Color = Color3.fromRGB(0, 255, 100),
@@ -660,7 +841,7 @@ TapSection2:AddToggle({
     end
 })
 
-TapSection2:AddSlider({
+TapSection:AddSlider({
     Name = "Tap Speed",
     Min = 0.001,
     Max = 0.1,
@@ -675,12 +856,11 @@ TapSection2:AddSlider({
 })
 
 --==================================================
--- EGGS TAB (DENGAN AUTO BUY EGG ENHANCED)
+-- EGGS TAB
 --==================================================
 local EggSection = EggsTab:AddSection({
     Name = "Egg Settings",
     TextSize = 17,
-    Folded = false,
     Glass = true,
     Outline = true
 })
@@ -695,10 +875,10 @@ EggSection:AddToggle({
     Callback = function(Value)
         Toggles.AutoBuyEgg = Value
         if Value then 
-            StartLoop("AutoBuyEgg") 
-            Notify("Auto Buy Egg ON - Smart buying enabled")
+            StartLoop("AutoBuyEgg")
+            Notify("Auto Buy Egg ON")
         else 
-            StopLoop("AutoBuyEgg") 
+            StopLoop("AutoBuyEgg")
         end
     end
 })
@@ -706,7 +886,7 @@ EggSection:AddToggle({
 EggSection:AddDropdown({
     Name = "Egg Type",
     Default = "Basic",
-    Options = {"Basic", "Rare", "Epic", "Legendary", "Mythic"},
+    Options = {"Basic", "Rare", "Epic", "Legendary", "Mythic", "Divine"},
     Multi = false,
     Search = false,
     AllowNone = false,
@@ -730,153 +910,20 @@ EggSection:AddToggle({
 })
 
 EggSection:AddButton({
-    Name = "Buy Egg Now",
-    Icon = "shopping-cart",
+    Name = "Hatch Now!",
+    Icon = "egg",
     Outline = true,
     Callback = function()
-        SmartBuyEgg()
-        Notify("Buying egg...")
+        HatchEgg()
     end
 })
 
 --==================================================
--- FUNGSI UTILITY
+-- UPGRADES TAB
 --==================================================
-
--- Get coins/points
-local function GetCoins()
-    local leaderstats = Player:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in pairs(leaderstats:GetChildren()) do
-            if v:IsA("NumberValue") and (v.Name:lower():find("coin") or v.Name:lower():find("cash") or v.Name:lower():find("point")) then
-                return v.Value
-            end
-        end
-    end
-    return 0
-end
-
--- Get rebirths
-local function GetRebirths()
-    local leaderstats = Player:FindFirstChild("leaderstats")
-    if leaderstats then
-        for _, v in pairs(leaderstats:GetChildren()) do
-            if v:IsA("NumberValue") and (v.Name:lower():find("rebirth") or v.Name:lower():find("prestige")) then
-                return v.Value
-            end
-        end
-    end
-    return 0
-end
-
--- Hatch egg function
-local function HatchEgg()
-    if Remotes.HatchEgg then
-        pcall(function() Remotes.HatchEgg:FireServer() end)
-    end
-end
-
--- Upgrade function
-local function Upgrade(upgradeType)
-    if Remotes.Upgrade then
-        pcall(function() Remotes.Upgrade:FireServer(upgradeType) end)
-    end
-end
-
--- Buy area function
-local function BuyArea()
-    if Remotes.BuyArea then
-        pcall(function() Remotes.BuyArea:FireServer() end)
-    end
-end
-
--- Collect rewards
-local function Collect()
-    if Remotes.Collect then
-        pcall(function() Remotes.Collect:FireServer() end)
-    end
-end
-
--- Rebirth function
-local function Rebirth()
-    if Remotes.Rebirth then
-        pcall(function() Remotes.Rebirth:FireServer() end)
-    end
-end
-
---==================================================
--- LOOP FUNCTIONS
---==================================================
-
-function StartLoop(name)
-    if Loops[name] then return end
-    Loops[name] = true
-    
-    task.spawn(function()
-        while Loops[name] do
-            if name == "AutoTap" and Toggles.AutoTap then
-                if Remotes.Tap then
-                    pcall(function() Remotes.Tap:FireServer() end)
-                end
-                task.wait(Toggles.TapSpeed)
-                
-            elseif name == "AutoBuyEgg" and Toggles.AutoBuyEgg then
-                SmartBuyEgg()
-                task.wait(1)
-                
-            elseif name == "AutoHatch" and Toggles.AutoHatch then
-                HatchEgg()
-                task.wait(0.5)
-                
-            elseif name == "AutoUpgrade" and Toggles.AutoUpgrade then
-                Upgrade(Toggles.UpgradeType)
-                task.wait(1)
-                
-            elseif name == "AutoBuyArea" and Toggles.AutoBuyArea then
-                BuyArea()
-                task.wait(2)
-                
-            elseif name == "AutoCollect" and Toggles.AutoCollect then
-                Collect()
-                task.wait(5)
-                
-            elseif name == "AutoRebirth" and Toggles.AutoRebirth then
-                local coins = GetCoins()
-                if coins >= Toggles.RebirthAt then
-                    Rebirth()
-                    task.wait(3)
-                else
-                    task.wait(5)
-                end
-                
-            elseif name == "AutoClaim" and Toggles.AutoClaim then
-                local claimRemote = ReplicatedStorage:FindFirstChild("ClaimDaily") or 
-                                   ReplicatedStorage:FindFirstChild("DailyReward")
-                if claimRemote then
-                    pcall(function() claimRemote:FireServer() end)
-                end
-                task.wait(60)
-            end
-            
-            task.wait()
-        end
-    end)
-end
-
-function StopLoop(name)
-    Loops[name] = false
-end
-
---==================================================
--- SISANYA (UPGRADE TAB, VISUALS TAB, MISC TAB)
--- (Sama seperti sebelumnya, tidak diubah)
---==================================================
-
--- Upgrade Tab
 local UpgradeSection = UpgradeTab:AddSection({
     Name = "Auto Upgrade",
     TextSize = 17,
-    Folded = false,
     Glass = true,
     Outline = true
 })
@@ -895,9 +942,9 @@ UpgradeSection:AddToggle({
 })
 
 UpgradeSection:AddDropdown({
-    Name = "Upgrade Type",
+    Name = "Upgrade Priority",
     Default = "All",
-    Options = {"All", "Damage", "Speed", "Multiplier", "Critical"},
+    Options = {"All", "Damage", "Speed", "Multiplier", "Critical", "Luck"},
     Multi = false,
     Search = false,
     AllowNone = false,
@@ -907,15 +954,7 @@ UpgradeSection:AddDropdown({
     end
 })
 
-local AreaSection = UpgradeTab:AddSection({
-    Name = "Area",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-AreaSection:AddToggle({
+UpgradeSection:AddToggle({
     Name = "Auto Buy Area",
     Default = false,
     Color = Color3.fromRGB(0, 150, 255),
@@ -931,7 +970,6 @@ AreaSection:AddToggle({
 local RebirthSection = UpgradeTab:AddSection({
     Name = "Rebirth",
     TextSize = 17,
-    Folded = false,
     Glass = true,
     Outline = true
 })
@@ -950,9 +988,9 @@ RebirthSection:AddToggle({
 })
 
 RebirthSection:AddSlider({
-    Name = "Rebirth At",
+    Name = "Rebirth Requirement",
     Min = 100,
-    Max = 1000000,
+    Max = 10000000,
     Default = 1000,
     Color = Color3.fromRGB(255, 255, 255),
     Increment = 100,
@@ -963,11 +1001,33 @@ RebirthSection:AddSlider({
     end
 })
 
--- Visuals Tab
+--==================================================
+-- VISUALS TAB
+--==================================================
+local ESPSection = VisualsTab:AddSection({
+    Name = "ESP",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+ESPSection:AddToggle({
+    Name = "Egg ESP",
+    Default = false,
+    Color = Color3.fromRGB(255, 0, 255),
+    Outline = true,
+    Flag = "EggESP",
+    Save = true,
+    Callback = function(Value)
+        Toggles.ESP = Value
+        -- Implement egg ESP
+        Notify("Egg ESP " .. (Value and "ON" or "OFF"))
+    end
+})
+
 local LightingSection = VisualsTab:AddSection({
     Name = "Lighting",
     TextSize = 17,
-    Folded = false,
     Glass = true,
     Outline = true
 })
@@ -1006,11 +1066,12 @@ LightingSection:AddToggle({
     end
 })
 
--- Misc Tab
+--==================================================
+-- MISC TAB
+--==================================================
 local MiscSection = MiscTab:AddSection({
-    Name = "Miscellaneous",
+    Name = "Utilities",
     TextSize = 17,
-    Folded = false,
     Glass = true,
     Outline = true
 })
@@ -1033,6 +1094,19 @@ MiscSection:AddToggle({
     end
 })
 
+MiscSection:AddToggle({
+    Name = "Auto Claim Daily",
+    Default = false,
+    Color = Color3.fromRGB(100, 100, 255),
+    Outline = true,
+    Flag = "AutoClaim",
+    Save = true,
+    Callback = function(Value)
+        Toggles.AutoClaim = Value
+        if Value then StartLoop("AutoClaim") else StopLoop("AutoClaim") end
+    end
+})
+
 MiscSection:AddButton({
     Name = "Rejoin Server",
     Icon = "refresh-cw",
@@ -1047,37 +1121,26 @@ MiscSection:AddButton({
     Icon = "globe",
     Outline = true,
     Callback = function()
-        local HttpService = game:GetService("HttpService")
         local TeleportService = game:GetService("TeleportService")
         local placeId = game.PlaceId
         
-        local function getServers()
-            local servers = {}
-            local cursor = ""
-            repeat
-                local success, result = pcall(function()
-                    return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?limit=100" .. (cursor ~= "" and "&cursor=" .. cursor or "")))
-                end)
-                if success then
-                    for _, server in ipairs(result.data) do
-                        if server.playing < server.maxPlayers then
-                            table.insert(servers, server.id)
-                        end
-                    end
-                    cursor = result.nextPageCursor
-                else
-                    break
-                end
-            until not cursor
-            return servers
-        end
+        Notify("Mencari server...")
         
-        local servers = getServers()
-        if #servers > 0 then
-            local randomServer = servers[math.random(1, #servers)]
-            TeleportService:TeleportToPlaceInstance(placeId, randomServer, Player)
+        -- Simple server hop
+        local success, result = pcall(function()
+            return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?limit=10"))
+        end)
+        
+        if success and result.data then
+            for _, server in ipairs(result.data) do
+                if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                    TeleportService:TeleportToPlaceInstance(placeId, server.id, Player)
+                    return
+                end
+            end
+            Notify("Tidak ada server tersedia")
         else
-            Notify("No servers available!")
+            Notify("Gagal mendapatkan server")
         end
     end
 })
@@ -1087,37 +1150,16 @@ MiscSection:AddButton({
     Icon = "x",
     Outline = true,
     Callback = function()
+        StopIndependentClicker()
         OrionLib:Destroy()
-        ClickerGui:Destroy()
+        BubbleGui:Destroy()
         _G.TapSimLoaded = false
     end
 })
 
--- Server Info
-local ServerSection = MiscTab:AddSection({
-    Name = "Server Info",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-local function GetServerPlayers()
-    local count = 0
-    for _, v in pairs(Players:GetPlayers()) do
-        count = count + 1
-    end
-    return count .. "/" .. game.Players.MaxPlayers
-end
-
-ServerSection:AddParagraph({
-    Title = "Server Status",
-    Desc = "Players: " .. GetServerPlayers() .. "\nPing: " .. math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) .. "ms",
-    Image = "server",
-    ImageSize = 38
-})
-
--- Config Tab
+--==================================================
+-- ADD CONFIG TAB
+--==================================================
 Window:AddConfigTab({
     Name = "Settings",
     Icon = "settings"
@@ -1128,8 +1170,14 @@ Window:AddConfigTab({
 --==================================================
 OrionLib:Init()
 
-Notify("Press F4 or click floating button to toggle menu")
-print("=== Tap Simulator - Catraz Edition v2.0 ===")
-print("✅ Auto Clicker: Background clicker with floating button")
-print("✅ Auto Buy Egg: Smart buying with multiple formats")
-print("✅ All features ready!")
+-- Sembunyikan bubble awalnya
+Bubble.Visible = false
+
+Notify("✅ Tap Simulator V2 Loaded! | F4 untuk menu", 3)
+print("=== TAP SIMULATOR - CATRAZ EDITION V2 ===")
+print("✅ Independent Auto Clicker - Tidak mengganggu mouse")
+print("✅ Bubble Control - Drag & click to toggle")
+print("✅ Auto Buy Egg - Bekerja dengan berbagai remote")
+print("✅ Auto Farm Lengkap")
+print("✅ Config Auto-save")
+print("Press F4 to toggle menu")
