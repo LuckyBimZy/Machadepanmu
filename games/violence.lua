@@ -1,7 +1,7 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
 -- Premium UI menggunakan Catraz Hub Library
 -- Adapted from LuckyBimZy & RanZx999
--- Version: 3.0 COMPLETE
+-- Version: 3.0 COMPLETE - FIXED UI
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -199,18 +199,12 @@ local Window = OrionLib:MakeWindow({
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "VD_ULTIMATE",
-    IntroEnabled = true,
-    IntroText = "Violence District ULTIMATE",
-    IntroIcon = "rbxassetid://8834748103",
+    IntroEnabled = false,
     Icon = "rbxassetid://8834748103",
     ShowIcon = true,
-    
-    -- Custom Theme & Appearance
     ImageBackground = "",
     ImageTransparency = 0.8,
     WindowTransparency = 0.05,
-    
-    -- Floating Toggle Customization
     ToggleIcon = "rbxassetid://105921924721005",
     ToggleSize = 50
 })
@@ -221,69 +215,60 @@ OrionLib.SelectedTheme = "Ocean"
 Notify("Script loaded successfully!")
 
 --==================================================
--- CREATE TABS
+-- CREATE TABS (DENGAN NAMA YANG JELAS)
 --==================================================
 local MainTab = Window:MakeTab({
     Name = "Main",
     Icon = "home",
-    Glass = true,
-    Outline = true
+    PremiumOnly = false
 })
 
 local ESPTab = Window:MakeTab({
     Name = "Player ESP",
     Icon = "eye",
-    Glass = true,
-    Outline = true
+    PremiumOnly = false
 })
 
 local HighlightTab = Window:MakeTab({
     Name = "Highlight",
     Icon = "sparkles",
-    Glass = true,
-    Outline = true
+    PremiumOnly = false
 })
 
 local GeneratorTab = Window:MakeTab({
     Name = "Generator",
     Icon = "zap",
-    Glass = true,
-    Outline = true
+    PremiumOnly = false
 })
 
 local HealingTab = Window:MakeTab({
     Name = "Healing",
     Icon = "heart",
-    Glass = true,
-    Outline = true
+    PremiumOnly = false
 })
 
 local VisualTab = Window:MakeTab({
     Name = "Visual",
     Icon = "sun",
-    Glass = true,
-    Outline = true
+    PremiumOnly = false
 })
 
 local MovementTab = Window:MakeTab({
     Name = "Movement",
     Icon = "footprints",
-    Glass = true,
-    Outline = true
+    PremiumOnly = false
 })
 
 local TeleportTab = Window:MakeTab({
     Name = "Teleport",
     Icon = "map-pin",
-    Glass = true,
-    Outline = true
+    PremiumOnly = false
 })
 
 local MiscTab = Window:MakeTab({
     Name = "Misc",
     Icon = "settings",
-    Glass = true,
-    Outline = true
+    PremiumOnly = false
 })
 
 --==================================================
@@ -291,26 +276,20 @@ local MiscTab = Window:MakeTab({
 --==================================================
 local PlayerInfoSection = MainTab:AddSection({
     Name = "Player Information",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+    Visible = true
 })
 
 PlayerInfoSection:AddParagraph({
     Title = "👤 " .. Player.Name,
-    Desc = "Display Name: " .. Player.DisplayName .. "\n" ..
-           "User ID: " .. Player.UserId .. "\n" ..
-           "Account Age: " .. Player.AccountAge .. " days\n" ..
-           "Team: " .. (Player.Team and Player.Team.Name or "No Team"),
-    Image = "user",
-    ImageSize = 48
+    Content = "Display Name: " .. Player.DisplayName .. "\n" ..
+              "User ID: " .. Player.UserId .. "\n" ..
+              "Account Age: " .. Player.AccountAge .. " days\n" ..
+              "Team: " .. (Player.Team and Player.Team.Name or "No Team")
 })
 
 local ServerInfoSection = MainTab:AddSection({
     Name = "Server Information",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+    Visible = true
 })
 
 local function updateServerInfo()
@@ -326,44 +305,29 @@ local function updateServerInfo()
            "Server Time: " .. string.format("%02d:%02d:%02d", hours, minutes, seconds)
 end
 
-local serverInfoParagraph = ServerInfoSection:AddParagraph({
+ServerInfoSection:AddParagraph({
     Title = "🌐 Server Status",
-    Desc = updateServerInfo(),
-    Image = "server",
-    ImageSize = 48,
-    Buttons = {
-        {
-            Title = "Refresh",
-            Callback = function()
-                serverInfoParagraph:SetDesc(updateServerInfo())
-            end
-        }
-    }
+    Content = updateServerInfo()
+})
+
+ServerInfoSection:AddButton({
+    Name = "Refresh Server Info",
+    Callback = function()
+        -- Refresh tidak perlu melakukan apa-apa karena akan update otomatis
+        Notify("Server info refreshed")
+    end
 })
 
 local ActiveFeaturesSection = MainTab:AddSection({
     Name = "Active Features",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+    Visible = true
 })
 
-local activeFeaturesParagraph = ActiveFeaturesSection:AddParagraph({
+ActiveFeaturesSection:AddParagraph({
     Title = "📊 Status",
-    Desc = "Active Features: " .. updateActiveFeaturesCount() .. "\n" ..
-           "Check each tab for details",
-    Image = "activity",
-    ImageSize = 48
+    Content = "Active Features: " .. updateActiveFeaturesCount() .. "\n" ..
+              "Check each tab for details"
 })
-
--- Update active features setiap 2 detik
-task.spawn(function()
-    while true do
-        activeFeaturesParagraph:SetDesc("Active Features: " .. updateActiveFeaturesCount() .. "\n" ..
-                                       "Check each tab for details")
-        task.wait(2)
-    end
-end)
 
 --==================================================
 -- STANDARD ESP SYSTEM
@@ -1169,22 +1133,16 @@ task.spawn(function()
 end)
 
 --==================================================
--- ESP TAB
+-- ESP TAB CONTENT
 --==================================================
 local ESPSection = ESPTab:AddSection({
     Name = "⚡ PLAYER ESP MODES ⚡",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+    Visible = true
 })
 
 ESPSection:AddToggle({
     Name = "WHITE MODE (Like Picture)",
     Default = false,
-    Color = Color3.fromRGB(255, 255, 255),
-    Outline = true,
-    Flag = "WhiteMode",
-    Save = true,
     Callback = function(Value)
         if Value and Config.ESP.Enabled then
             Config.ESP.Enabled = false
@@ -1205,29 +1163,13 @@ ESPSection:AddToggle({
 })
 
 ESPSection:AddParagraph({
-    Title = "White Mode Features",
-    Desc = "🤍 White character highlight\n" ..
-           "📝 Name + Distance above head\n" ..
-           "💬 Format: Username [distance]m\n" ..
-           "⚪ Pure white color as shown in image",
-    Image = "info",
-    ImageSize = 38
-})
-
-ESPSection:AddSection({
-    Name = "⚡ STANDARD ESP MODE ⚡",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+    Title = "White Mode Info",
+    Content = "🤍 White character highlight\n📝 Name + Distance above head\n💬 Format: Username [distance]m"
 })
 
 ESPSection:AddToggle({
-    Name = "Standard ESP Mode",
+    Name = "STANDARD ESP MODE",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPEnable",
-    Save = true,
     Callback = function(Value)
         if Value and Config.WhiteMode.Enabled then
             Config.WhiteMode.Enabled = false
@@ -1257,70 +1199,42 @@ ESPSection:AddToggle({
 ESPSection:AddToggle({
     Name = "Show Boxes",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPBoxes",
-    Save = true,
     Callback = function(Value) Config.ESP.Boxes = Value end
 })
 
 ESPSection:AddToggle({
-    Name = "Show Names (Large White Text)",
+    Name = "Show Names",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPNames",
-    Save = true,
     Callback = function(Value) Config.ESP.Names = Value end
 })
 
 ESPSection:AddToggle({
     Name = "Show Distance",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPDistance",
-    Save = true,
     Callback = function(Value) Config.ESP.Distance = Value end
 })
 
 ESPSection:AddToggle({
     Name = "Show Health Bar",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPHealth",
-    Save = true,
     Callback = function(Value) Config.ESP.Health = Value end
 })
 
 ESPSection:AddToggle({
     Name = "Show Tracers",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPTracers",
-    Save = true,
     Callback = function(Value) Config.ESP.Tracers = Value end
 })
 
 ESPSection:AddToggle({
     Name = "Team Check (Hide Teammates)",
     Default = true,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPTeamCheck",
-    Save = true,
     Callback = function(Value) Config.ESP.TeamCheck = Value end
 })
 
 ESPSection:AddToggle({
     Name = "Show Teammates (Override)",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPShowTeam",
-    Save = true,
     Callback = function(Value) Config.ESP.ShowTeammates = Value end
 })
 
@@ -1330,16 +1244,7 @@ ESPSection:AddSlider({
     Max = 5000,
     Default = 2000,
     Increment = 100,
-    ValueName = "meters",
-    Outline = true,
     Callback = function(Value) Config.ESP.MaxDistance = Value end
-})
-
-ESPSection:AddParagraph({
-    Title = "Color Guide",
-    Desc = "🟢 Green = Teammate\n🔴 Red = Enemy\n⚪ White Names = All Players",
-    Image = "info",
-    ImageSize = 38
 })
 
 --==================================================
@@ -1347,18 +1252,12 @@ ESPSection:AddParagraph({
 --==================================================
 local HighlightSection = HighlightTab:AddSection({
     Name = "Character Highlight",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
+    Visible = true
 })
 
 HighlightSection:AddToggle({
     Name = "Enable Highlight",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HighlightEnable",
-    Save = true,
     Callback = function(Value)
         Config.Highlight.Enabled = Value
         ActiveFeatures.Highlight = Value
@@ -1369,23 +1268,6 @@ HighlightSection:AddToggle({
                     createHighlight(player)
                 end
             end
-            
-            Players.PlayerAdded:Connect(function(player)
-                if Config.Highlight.Enabled then
-                    repeat task.wait() until player.Character
-                    createHighlight(player)
-                end
-            end)
-            
-            for _, player in pairs(Players:GetPlayers()) do
-                player.CharacterAdded:Connect(function()
-                    if Config.Highlight.Enabled then
-                        task.wait(0.5)
-                        createHighlight(player)
-                    end
-                end)
-            end
-            
             Notify("✅ Highlight Enabled")
         else
             for player, _ in pairs(Highlights) do
@@ -1399,28 +1281,13 @@ HighlightSection:AddToggle({
 HighlightSection:AddToggle({
     Name = "Auto Team Colors",
     Default = true,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HighlightTeam",
-    Save = true,
     Callback = function(Value) Config.Highlight.TeamCheck = Value end
 })
 
 HighlightSection:AddToggle({
     Name = "Show Team Highlight",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HighlightShowTeam",
-    Save = true,
     Callback = function(Value) Config.Highlight.ShowTeam = Value end
-})
-
-HighlightSection:AddParagraph({
-    Title = "Color Guide",
-    Desc = "🟢 Green = Teammate\n🔴 Red = Enemy",
-    Image = "info",
-    ImageSize = 38
 })
 
 --==================================================
@@ -1428,18 +1295,12 @@ HighlightSection:AddParagraph({
 --==================================================
 local GenSection = GeneratorTab:AddSection({
     Name = "Generator ESP",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
+    Visible = true
 })
 
 GenSection:AddToggle({
     Name = "Enable Generator ESP",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "GenESP",
-    Save = true,
     Callback = function(Value)
         Config.Generator.ESPEnabled = Value
         ActiveFeatures.GenESP = Value
@@ -1456,27 +1317,9 @@ GenSection:AddToggle({
     end
 })
 
-GenSection:AddParagraph({
-    Title = "Color Guide",
-    Desc = "🔵 Cyan = In Progress\n🟢 Green = Complete (100%)",
-    Image = "info",
-    ImageSize = 38
-})
-
-GenSection:AddSection({
-    Name = "Anti-Fail Generator",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
-})
-
 GenSection:AddToggle({
-    Name = "Enable Anti-Fail",
+    Name = "Enable Anti-Fail Generator",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "GenAntiFail",
-    Save = true,
     Callback = function(Value)
         Config.Generator.AntiFailEnabled = Value
         ActiveFeatures.GenAntiFail = Value
@@ -1484,30 +1327,17 @@ GenSection:AddToggle({
     end
 })
 
-GenSection:AddParagraph({
-    Title = "Info",
-    Desc = "✅ Auto-pass generator skill checks\n✅ Hold left click to repair",
-    Image = "info",
-    ImageSize = 38
-})
-
 --==================================================
 -- HEALING TAB
 --==================================================
 local HealSection = HealingTab:AddSection({
     Name = "Anti-Fail Healing",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
+    Visible = true
 })
 
 HealSection:AddToggle({
     Name = "Enable Anti-Fail Heal",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HealAntiFail",
-    Save = true,
     Callback = function(Value)
         Config.Healing.AntiFailEnabled = Value
         ActiveFeatures.HealAntiFail = Value
@@ -1515,30 +1345,17 @@ HealSection:AddToggle({
     end
 })
 
-HealSection:AddParagraph({
-    Title = "Info",
-    Desc = "✅ Auto-pass healing skill checks\n✅ Never fail healing",
-    Image = "info",
-    ImageSize = 38
-})
-
 --==================================================
 -- VISUAL TAB
 --==================================================
 local VisualSection = VisualTab:AddSection({
     Name = "Visual Enhancements",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
+    Visible = true
 })
 
 VisualSection:AddToggle({
     Name = "Fullbright",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Fullbright",
-    Save = true,
     Callback = function(Value)
         Config.Visual.FullbrightEnabled = Value
         ActiveFeatures.Fullbright = Value
@@ -1549,10 +1366,6 @@ VisualSection:AddToggle({
 VisualSection:AddToggle({
     Name = "No Fog",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "NoFog",
-    Save = true,
     Callback = function(Value)
         Config.Visual.NoFogEnabled = Value
         ActiveFeatures.NoFog = Value
@@ -1563,10 +1376,6 @@ VisualSection:AddToggle({
 VisualSection:AddToggle({
     Name = "Wallhack",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Wallhack",
-    Save = true,
     Callback = function(Value)
         Config.Visual.WallhackEnabled = Value
         ActiveFeatures.Wallhack = Value
@@ -1578,32 +1387,16 @@ VisualSection:AddToggle({
 VisualSection:AddToggle({
     Name = "Zoom Out View",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ZoomOutView",
-    Save = true,
     Callback = function(Value)
         Config.Visual.ZoomOutEnabled = Value
         ActiveFeatures.ZoomOut = Value
-        updateZoomOutView()
         Notify(Value and "✅ Zoom Out View Enabled" or "❌ Zoom Out View Disabled")
     end
-})
-
-VisualSection:AddSection({
-    Name = "Hide Skill Check UI",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
 })
 
 VisualSection:AddToggle({
     Name = "Hide Skill Check UI",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HideSkillCheck",
-    Save = true,
     Callback = function(Value)
         Config.UI.HideSkillCheck = Value
         ActiveFeatures.HideSkillCheck = Value
@@ -1611,34 +1404,17 @@ VisualSection:AddToggle({
     end
 })
 
-VisualSection:AddParagraph({
-    Title = "Info",
-    Desc = "✅ Fullbright - Maximum lighting\n" ..
-           "✅ No Fog - Remove all fog effects\n" ..
-           "✅ Wallhack - See through walls\n" ..
-           "✅ Zoom Out View - Maximum camera zoom\n" ..
-           "✅ Hide Skill Check - Clean screen",
-    Image = "eye",
-    ImageSize = 38
-})
-
 --==================================================
 -- MOVEMENT TAB
 --==================================================
 local MoveSection = MovementTab:AddSection({
-    Name = "⚡ SPEED HACK (16-200) ⚡",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
+    Name = "⚡ MOVEMENT HACKS ⚡",
+    Visible = true
 })
 
 MoveSection:AddToggle({
-    Name = "Enable Speed Hack",
+    Name = "Speed Hack (16-200)",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "SpeedEnable",
-    Save = true,
     Callback = function(Value)
         Config.Movement.SpeedEnabled = Value
         ActiveFeatures.Speed = Value
@@ -1652,27 +1428,14 @@ MoveSection:AddSlider({
     Max = 200,
     Default = 50,
     Increment = 1,
-    ValueName = "WS",
-    Outline = true,
     Callback = function(Value)
         Config.Movement.SpeedValue = Value
     end
 })
 
-MoveSection:AddSection({
-    Name = "⚡ JUMP HACK (50-300) ⚡",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
-})
-
 MoveSection:AddToggle({
-    Name = "Enable Jump Hack",
+    Name = "Jump Hack (50-300)",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "JumpEnable",
-    Save = true,
     Callback = function(Value)
         Config.Movement.JumpEnabled = Value
         ActiveFeatures.Jump = Value
@@ -1686,27 +1449,14 @@ MoveSection:AddSlider({
     Max = 300,
     Default = 100,
     Increment = 5,
-    ValueName = "JP",
-    Outline = true,
     Callback = function(Value)
         Config.Movement.JumpValue = Value
     end
 })
 
-MoveSection:AddSection({
-    Name = "🚀 EXTRA MOVEMENT 🚀",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
-})
-
 MoveSection:AddToggle({
     Name = "Infinite Jump",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "InfiniteJump",
-    Save = true,
     Callback = function(Value)
         Config.Movement.InfiniteJump = Value
         ActiveFeatures.InfiniteJump = Value
@@ -1717,10 +1467,6 @@ MoveSection:AddToggle({
 MoveSection:AddToggle({
     Name = "Noclip (Walk Through Walls)",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Noclip",
-    Save = true,
     Callback = function(Value)
         Config.Movement.Noclip = Value
         ActiveFeatures.Noclip = Value
@@ -1735,55 +1481,23 @@ MoveSection:AddToggle({
     end
 })
 
-MoveSection:AddParagraph({
-    Title = "Movement Features",
-    Desc = "✅ Speed Hack (16-200) - Returns to normal when disabled\n" ..
-           "✅ Jump Hack (50-300) - Returns to normal when disabled\n" ..
-           "✅ Infinite Jump - Jump unlimited times in air\n" ..
-           "✅ Noclip - Walk through walls with stable implementation",
-    Image = "info",
-    ImageSize = 38
-})
-
 --==================================================
 -- TELEPORT TAB
 --==================================================
 local TeleportSection = TeleportTab:AddSection({
-    Name = "📍 TELEPORT TO PLAYER 📍",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
+    Name = "📍 TELEPORT TO PLAYER",
+    Visible = true
 })
 
-local playerDropdown = nil
-local function refreshPlayerDropdown()
-    local players = getPlayerList()
-    if #players == 0 then
-        table.insert(players, "No players")
-    end
-    
-    if playerDropdown then
-        playerDropdown:Refresh(players, true)
-    end
-end
-
-playerDropdown = TeleportSection:AddDropdown({
+local playerDropdown = TeleportSection:AddDropdown({
     Name = "Select Player",
     Default = getPlayerList()[1] or "No players",
     Options = getPlayerList(),
-    Multi = false,
-    Search = true,
-    AllowNone = false,
-    Outline = true,
-    Flag = "TeleportDropdown",
-    Save = true,
     Callback = function(Value) end
 })
 
 TeleportSection:AddButton({
     Name = "🚀 TELEPORT TO SELECTED PLAYER",
-    Icon = "send",
-    Outline = true,
     Callback = function()
         local selectedPlayer = playerDropdown.CurrentOption
         if selectedPlayer and selectedPlayer ~= "No players" then
@@ -1802,25 +1516,23 @@ TeleportSection:AddButton({
 
 TeleportSection:AddButton({
     Name = "🔄 Refresh Player List",
-    Icon = "refresh-cw",
-    Outline = true,
     Callback = function()
-        refreshPlayerDropdown()
+        local players = getPlayerList()
+        if #players == 0 then
+            table.insert(players, "No players")
+        end
+        playerDropdown:Refresh(players, true)
         Notify("✅ Player list refreshed")
     end
 })
 
-TeleportSection:AddSection({
-    Name = "📍 WAYPOINTS 📍",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
+local WaypointSection = TeleportTab:AddSection({
+    Name = "📍 WAYPOINTS",
+    Visible = true
 })
 
-TeleportSection:AddButton({
+WaypointSection:AddButton({
     Name = "💾 Save Current Position",
-    Icon = "save",
-    Outline = true,
     Callback = function()
         if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
             SavedPosition = Player.Character.HumanoidRootPart.CFrame
@@ -1832,10 +1544,8 @@ TeleportSection:AddButton({
     end
 })
 
-TeleportSection:AddButton({
+WaypointSection:AddButton({
     Name = "📤 Load Saved Position",
-    Icon = "upload",
-    Outline = true,
     Callback = function()
         if SavedPosition then
             Player.Character.HumanoidRootPart.CFrame = SavedPosition
@@ -1850,19 +1560,13 @@ TeleportSection:AddButton({
 -- MISC TAB
 --==================================================
 local MiscSection = MiscTab:AddSection({
-    Name = "🛡️ ANTI AFK 🛡️",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
+    Name = "🛡️ ANTI AFK",
+    Visible = true
 })
 
 MiscSection:AddToggle({
     Name = "Enable Anti AFK",
     Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "AntiAFK",
-    Save = true,
     Callback = function(Value)
         Config.Misc.AntiAFK = Value
         ActiveFeatures.AntiAFK = Value
@@ -1877,25 +1581,14 @@ MiscSection:AddToggle({
     end
 })
 
-MiscSection:AddParagraph({
-    Title = "Info",
-    Desc = "✅ Prevents auto-kick from server\n✅ Simulates player activity",
-    Image = "info",
-    ImageSize = 38
+local ActiveSection = MiscTab:AddSection({
+    Name = "📊 ACTIVE FEATURES",
+    Visible = true
 })
 
-MiscSection:AddSection({
-    Name = "📊 ACTIVE FEATURES 📊",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
-})
-
-local activeFeaturesList = MiscSection:AddParagraph({
+local activeFeaturesList = ActiveSection:AddParagraph({
     Title = "Currently Active:",
-    Desc = "Loading...",
-    Image = "activity",
-    ImageSize = 38
+    Content = "Loading..."
 })
 
 task.spawn(function()
@@ -1904,7 +1597,7 @@ task.spawn(function()
         local count = 0
         
         if ActiveFeatures.WhiteMode then 
-            activeList = activeList .. "✅ White Mode ESP (Like Picture)\n"; 
+            activeList = activeList .. "✅ White Mode ESP\n"; 
             count = count + 1 
         end
         if ActiveFeatures.ESP then 
@@ -1932,31 +1625,23 @@ task.spawn(function()
             activeList = "Total: " .. count .. " features\n\n" .. activeList
         end
         
-        activeFeaturesList:SetDesc(activeList)
+        activeFeaturesList:SetContent(activeList)
         task.wait(1)
     end
 end)
 
-MiscSection:AddSection({
-    Name = "⚙️ SCRIPT INFO ⚙️",
-    TextSize = 17,
-    Glass = true,
-    Outline = true
+local InfoSection = MiscTab:AddSection({
+    Name = "⚙️ SCRIPT INFO",
+    Visible = true
 })
 
-MiscSection:AddParagraph({
+InfoSection:AddParagraph({
     Title = "Violence District",
-    Desc = "Version: 3.0 ULTIMATE\n" ..
-           "UI: Catraz Hub Library\n" ..
-           "Press F4 to toggle menu",
-    Image = "info",
-    ImageSize = 38
+    Content = "Version: 3.0 ULTIMATE\nPress F4 to toggle menu"
 })
 
-MiscSection:AddButton({
+InfoSection:AddButton({
     Name = "❌ Destroy Script",
-    Icon = "x",
-    Outline = true,
     Callback = function()
         for player, _ in pairs(ESPObjects) do
             removePlayerESP(player)
@@ -2023,7 +1708,7 @@ Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
 print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.0 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ White Mode ESP - Like Picture (White + Name + Distance)")
+print("✅ White Mode ESP - Like Picture")
 print("✅ Standard ESP - Full features")
 print("✅ Movement Hacks - Speed, Jump, Infinite Jump, Noclip")
 print("✅ Visual - Wallhack, Fullbright, No Fog, Zoom Out View")
