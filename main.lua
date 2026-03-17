@@ -11,17 +11,13 @@ local supportedGames = {
         name = "Violence District",
         file = "violence.lua"
     },
-    [98664161516921] = { -- Ganti dengan ID game catch a monster
-        name = "Catch A Monster",
-        file = "catchamonster.lua"
+    [131623223084840] = { -- Ganti dengan ID game brainrot
+        name = "Escape Tsunami For Brainrots",
+        file = "EscapeTsunamiForBrainrots!.lua"
     },
     [75992362647444] = { -- Ganti dengan ID game tapsimu
         name = "Tap simulator",
         file = "tapsim.lua"
-    },
-    [131623223084840] = { -- Ganti dengan ID game tapsimu
-        name = "Escape Tsunami For Brainrots",
-        file = "EscapeTsunamiForBrainrots!.lua"
     }
 }
 
