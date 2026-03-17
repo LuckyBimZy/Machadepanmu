@@ -1460,7 +1460,7 @@ end
 M.setupInstant()
 
 -- =================================================================
--- UI IMPLEMENTATION (CATRAZ HUB x ORIONLIB)
+-- UI IMPLEMENTATION (CATRAZ HUB x ORIONLIB) - SIMPLE VERSION
 -- =================================================================
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))() 
 
@@ -1488,16 +1488,6 @@ local Window = OrionLib:MakeWindow({
 OrionLib.SelectedTheme = "Ocean"
 
 -- Options
-local RAR = {"Any","Common","Uncommon","Rare","Epic","Legendary","Mythical","Cosmic","Secret","Celestial","Divine","Infinity"}
-local MUT = {"Any","None","Emerald","Gold","Blood","Diamond","Rainbow","Shadow","Crystal","Void"}
-local FM = {"Collect","Collect, Place & Max"}
-local FR = {"Common","Uncommon","Rare","Epic","Legendary","Mythical"}
-local LBR = {"Any","Common","Uncommon","Rare","Epic","Legendary","Mythical","Cosmic","Secret","Celestial","Divine","Infinity","Admin","UFO","Candy","Money"}
-local SL = {} 
-for i=1,40 do 
-    table.insert(SL,tostring(i)) 
-end
-local CSPD = {"100","200","300","400","500","600","800","1000","1200","1500","2000"}
 local TSUNAMI_MODES = {"Bawah (Gali Tanah)", "Atas (Terbang di Atas)"}
 
 -- ================== HOME TAB ==================
@@ -1635,493 +1625,37 @@ TsunamiSet:AddParagraph({
     ImageSize = 38
 })
 
--- ================== FARM TAB ==================
-local FarmTab = Window:MakeTab({ 
-    Name = "Farm", 
-    Icon = "swords", 
+-- ================== PLAYER INFO UPDATE ==================
+local PlayerInfoSec = HomeTab:AddSection({ 
+    Name = "👤 PLAYER INFO", 
     Glass = true, 
     Outline = true 
 })
 
-local FarmFilterSec = FarmTab:AddSection({ 
-    Name = "🎯 TARGET SELECTION", 
-    Glass = true, 
-    Outline = true 
-})
-
-FarmFilterSec:AddDropdown({
-    Name = "What to Farm?", 
-    Default = {"Brainrots"}, 
-    Options = {"Brainrots", "Lucky Blocks"},
-    Multi = true, 
-    Outline = true, 
-    Flag = "FarmTargets",
-    Callback = function(v)
-        local s = {}
-        for _, on in pairs(v) do table.insert(s, on) end
-        if #s == 0 then s = {"Brainrots"} end
-        M.S.FarmTargets = s 
-    end
-})
-
-local BrainrotSet = FarmTab:AddSection({ 
-    Name = "🧟 BRAINROT SETTINGS", 
-    Glass = true, 
-    Outline = true 
-})
-
-BrainrotSet:AddDropdown({ 
-    Name = "Target Rarity", 
-    Default = {"Common"}, 
-    Options = RAR, 
-    Multi = true, 
-    Outline = true, 
-    Flag = "TargetRarity",
-    Callback = function(v) 
-        local s = {} 
-        for _, on in pairs(v) do table.insert(s, on) end 
-        M.S.TargetRarity = #s>0 and s or {"Common"} 
-    end 
-})
-
-BrainrotSet:AddDropdown({ 
-    Name = "Target Mutation", 
-    Default = "None", 
-    Options = MUT, 
-    Multi = false, 
-    Outline = true, 
-    Flag = "TargetMutation",
-    Callback = function(v) M.S.TargetMutation = v end 
-})
-
-BrainrotSet:AddDropdown({ 
-    Name = "Farm Mode", 
-    Default = M.S.FarmMode, 
-    Options = FM, 
-    Multi = false, 
-    Outline = true, 
-    Flag = "FarmMode",
-    Callback = function(v) M.S.FarmMode = v end 
-})
-
-BrainrotSet:AddDropdown({ 
-    Name = "Work Slot", 
-    Default = M.S.FarmSlot, 
-    Options = SL, 
-    Multi = false, 
-    Outline = true, 
-    Flag = "FarmSlot",
-    Callback = function(v) M.S.FarmSlot = v end 
-})
-
-BrainrotSet:AddSlider({ 
-    Name = "Max Level", 
-    Min = 1, 
-    Max = 500, 
-    Default = M.S.MaxLevel, 
-    Increment = 1, 
-    ValueName = "Lv", 
-    Outline = true, 
-    Flag = "MaxLevel",
-    Callback = function(v) M.S.MaxLevel = math.floor(v) end 
-})
-
-local LBSet = FarmTab:AddSection({ 
-    Name = "🎲 LUCKY BLOCK SETTINGS", 
-    Glass = true, 
-    Outline = true 
-})
-
-LBSet:AddDropdown({ 
-    Name = "LB Rarity", 
-    Default = {"Common"}, 
-    Options = LBR, 
-    Multi = true, 
-    Outline = true, 
-    Flag = "LBRarity",
-    Callback = function(v) 
-        local s = {} 
-        for _, on in pairs(v) do table.insert(s, on) end 
-        M.S.LuckyBlockRarity = #s>0 and s or {"Common"} 
-    end 
-})
-
-LBSet:AddDropdown({ 
-    Name = "LB Mutation", 
-    Default = "Any", 
-    Options = MUT, 
-    Multi = false, 
-    Outline = true, 
-    Flag = "LBMutation",
-    Callback = function(v) M.S.LuckyBlockMutation = v end 
-})
-
-local FarmControlSec = FarmTab:AddSection({ 
-    Name = "🚀 AUTO FARM MASTER", 
-    Glass = true, 
-    Outline = true 
-})
-
-local FSP = FarmControlSec:AddParagraph({
-    Title = "Master Farm Status", 
-    Desc = "Idle", 
-    Image = "activity",
-    ImageSize = 30
-})
-
-local FPP = FarmControlSec:AddParagraph({
-    Title = "Statistics", 
-    Desc = "Placed: 0 | Upgraded: 0", 
-    Image = "bar-chart",
-    ImageSize = 30
-})
-
-FarmControlSec:AddToggle({
-    Name = "🚀 Master Auto Farm", 
-    Default = false, 
-    Outline = true, 
-    Flag = "FarmToggle",
-    Callback = function(v)
-        if v then 
-            M.findBase() 
-            M.startFarming() 
-            OrionLib:MakeNotification({
-                Name = "Master Farm", 
-                Content = "Started! Prioritizing targets...", 
-                Time = 3 
-            })
-        else 
-            M.stopFarming() 
-            OrionLib:MakeNotification({
-                Name = "Master Farm", 
-                Content = "Stopped.", 
-                Time = 3 
-            }) 
-        end
-    end
-})
-
--- ================== FACTORY TAB ==================
-local FacTab = Window:MakeTab({ 
-    Name = "Factory", 
-    Icon = "hammer", 
-    Glass = true, 
-    Outline = true 
-})
-
-local FCTSec = FacTab:AddSection({ 
-    Name = "🏭 FACTORY LOOP", 
-    Glass = true, 
-    Outline = true 
-})
-
-FCTSec:AddDropdown({ 
-    Name = "Rarity", 
-    Default = M.S.FactoryRarity, 
-    Options = FR, 
-    Multi = false, 
-    Outline = true, 
-    Flag = "FactoryRarity",
-    Callback = function(v) M.S.FactoryRarity = v end 
-})
-
-FCTSec:AddDropdown({ 
-    Name = "Work Slot", 
-    Default = M.S.FactorySlot, 
-    Options = SL, 
-    Multi = false, 
-    Outline = true, 
-    Flag = "FactorySlot",
-    Callback = function(v) M.S.FactorySlot = v end 
-})
-
-FCTSec:AddSlider({ 
-    Name = "Max Level", 
-    Min = 1, 
-    Max = 500, 
-    Default = M.S.FactoryMaxLevel, 
-    Increment = 1, 
-    ValueName = "Lv", 
-    Outline = true, 
-    Flag = "FactoryMaxLevel",
-    Callback = function(v) M.S.FactoryMaxLevel = math.floor(v) end 
-})
-
-local FCSP = FCTSec:AddParagraph({
-    Title = "Factory Status", 
-    Desc = "Idle", 
-    Image = "factory",
-    ImageSize = 30
-})
-
-FCTSec:AddToggle({ 
-    Name = "🔁 Factory Loop", 
-    Default = false, 
-    Outline = true, 
-    Flag = "FactoryToggle",
-    Callback = function(v) 
-        if v then 
-            M.findBase() 
-            M.startFactoryLoop() 
-            OrionLib:MakeNotification({
-                Name = "Factory", 
-                Content = "Started!", 
-                Time = 2
-            })
-        else 
-            M.stopFactoryLoop() 
-            OrionLib:MakeNotification({
-                Name = "Factory", 
-                Content = "Stopped.", 
-                Time = 2
-            })
-        end 
-    end 
-})
-
--- ================== AUTOMATION TAB ==================
-local AutoTab = Window:MakeTab({ 
-    Name = "Automation", 
-    Icon = "rocket", 
-    Glass = true, 
-    Outline = true 
-})
-
-local UtilSec = AutoTab:AddSection({ 
-    Name = "💰 BASE UTILITY", 
-    Glass = true, 
-    Outline = true 
-})
-
-local MSP = UtilSec:AddParagraph({
-    Title = "Money Status", 
-    Desc = "Idle", 
-    Image = "dollar-sign",
-    ImageSize = 30
-})
-
-UtilSec:AddToggle({ 
-    Name = "💰 Auto Collect Money", 
-    Default = false, 
-    Outline = true, 
-    Flag = "MoneyToggle",
-    Callback = function(v) 
-        if v then 
-            M.findBase() 
-            M.startMoney() 
-            OrionLib:MakeNotification({
-                Name = "Auto Collect", 
-                Content = "Money collector started", 
-                Time = 2
-            })
-        else 
-            M.stopMoney() 
-            OrionLib:MakeNotification({
-                Name = "Auto Collect", 
-                Content = "Stopped", 
-                Time = 2
-            })
-        end 
-    end 
-})
-
-local USP = UtilSec:AddParagraph({
-    Title = "Upgrade Status", 
-    Desc = "Idle", 
-    Image = "trending-up",
-    ImageSize = 30
-})
-
-UtilSec:AddToggle({ 
-    Name = "⬆️ Auto Upgrade Slots", 
-    Default = false, 
-    Outline = true, 
-    Flag = "UpgradeToggle",
-    Callback = function(v) 
-        if v then 
-            M.findBase() 
-            M.startAutoUpgrade() 
-            OrionLib:MakeNotification({
-                Name = "Auto Upgrade", 
-                Content = "Started", 
-                Time = 2
-            })
-        else 
-            M.stopAutoUpgrade() 
-            OrionLib:MakeNotification({
-                Name = "Auto Upgrade", 
-                Content = "Stopped", 
-                Time = 2
-            })
-        end 
-    end 
-})
-
--- ================== CONFIG TAB ==================
-local ConfTab = Window:MakeTab({ 
-    Name = "Config", 
-    Icon = "settings", 
-    Glass = true, 
-    Outline = true 
-})
-
-local TweakSec = ConfTab:AddSection({ 
-    Name = "⚙️ TWEAKS", 
-    Glass = true, 
-    Outline = true 
-})
-
-TweakSec:AddSlider({
-    Name = "Farm Tween Speed",
-    Min = 1, 
-    Max = 100, 
-    Default = 60, 
-    Increment = 5,
-    ValueName = "Speed", 
-    Outline = true, 
-    Flag = "TweenSpeed",
-    Callback = function(v) 
-        M.S.TweenSpeed = math.floor(v) * 16.67 
-    end
-})
-
-TweakSec:AddDropdown({ 
-    Name = "Corridor Speed", 
-    Default = "400", 
-    Options = CSPD, 
-    Multi = false, 
-    Outline = true, 
-    Flag = "CorridorSpeed",
-    Callback = function(v) 
-        M.S.CorridorSpeed = tonumber(v) or 400 
-    end 
-})
-
-TweakSec:AddButton({ 
-    Name = "🏠 Find My Base", 
-    Outline = true, 
-    Callback = function() 
-        M.findBase() 
-        if M.baseGUID then
-            OrionLib:MakeNotification({
-                Name = "Base Found", 
-                Content = "Base ID: " .. M.baseGUID, 
-                Time = 3
-            })
-        else
-            OrionLib:MakeNotification({
-                Name = "Base Not Found", 
-                Content = "Could not locate your base", 
-                Time = 3
-            })
-        end
-    end 
-})
-
-TweakSec:AddButton({ 
-    Name = "📍 Set Home Position", 
-    Outline = true, 
-    Callback = function() 
-        M.setHomePosition() 
-        OrionLib:MakeNotification({
-            Name = "Home Position", 
-            Content = "Position saved!", 
-            Time = 2
-        })
-    end 
-})
-
-TweakSec:AddToggle({
-    Name = "👻 Noclip",
-    Default = false,
-    Outline = true,
-    Flag = "NoclipToggle",
-    Callback = function(v)
-        if v then
-            M.enableNoclip()
-            OrionLib:MakeNotification({
-                Name = "Noclip", 
-                Content = "Enabled - Walk through walls", 
-                Time = 2
-            })
-        else
-            M.disableNoclip()
-            OrionLib:MakeNotification({
-                Name = "Noclip", 
-                Content = "Disabled", 
-                Time = 2
-            })
-        end
-    end
-})
-
-local IPSec = ConfTab:AddSection({ 
-    Name = "ℹ️ PLAYER INFO", 
-    Glass = true, 
-    Outline = true 
-})
-
-local IP = IPSec:AddParagraph({
-    Title = "Player Info", 
-    Desc = "Loading...", 
+local PlayerInfoPara = PlayerInfoSec:AddParagraph({
+    Title = "MacaDepanMu",
+    Desc = "Status: Online\nBase: Not Found\nTsunami: Nonaktif",
     Image = "user",
     ImageSize = 38
 })
 
--- ================== UPDATE LOOP ==================
+-- Update player info periodically
 task.spawn(function()
-    while task.wait(0.5) do
+    while task.wait(1) do
         pcall(function()
-            local farmStatus = M.S.Farming and M.Status.farm or "Idle"
-            FSP:Set({
-                Title = "Master Farm Status", 
-                Desc = "Status: " .. farmStatus .. "\nBrainrots: #" .. M.Status.farmCount .. "\nLucky Blocks: #" .. M.Status.luckyBlockCount
-            })
-        end)
-        
-        pcall(function() 
-            FPP:Set({ 
-                Title = "Statistics", 
-                Desc = "Placed: " .. M.Status.placeCount .. "\nUpgraded: " .. M.Status.upgradeCount 
-            }) 
-        end)
-        
-        pcall(function() 
-            FCSP:Set({ 
-                Title = "Factory Status", 
-                Desc = "Status: " .. (M.Status.factory or "Idle") .. "\nCompleted: #" .. M.Status.factoryCount 
-            }) 
-        end)
-        
-        pcall(function()
-            local tsunamiStatus = "❌ Nonaktif"
+            local tsunamiStatus = "Nonaktif"
             if M.S.TsunamiProtection then
-                tsunamiStatus = "✅ Aktif (" .. M.S.TsunamiMode .. ")"
+                tsunamiStatus = "Aktif (" .. M.S.TsunamiMode .. ")"
             end
             
-            IP:Set({ 
-                Title = "Player Info", 
-                Desc = string.format("Player: %s\nBase: %s\nNoclip: %s\nTsunami: %s\nFarming: %s", 
-                    LPlayer.Name, 
-                    (M.baseGUID or "Not Found"), 
-                    (M.S.NoclipEnabled and "✅" or "❌"),
-                    tsunamiStatus,
-                    (M.S.Farming and "✅" or "❌")
-                )
-            })
-        end)
-        
-        pcall(function() 
-            MSP:Set({
-                Title = "Money Status", 
-                Desc = "Status: " .. (M.S.AutoCollectMoney and "✅ Active" or "⏸️ Idle")
-            })
-        end)
-        
-        pcall(function() 
-            USP:Set({
-                Title = "Upgrade Status", 
-                Desc = "Status: " .. (M.S.AutoUpgrade and M.Status.upgrade or "Idle") .. "\nUpgraded: #" .. M.Status.upgradeCount
+            PlayerInfoPara:Set({
+                Title = LPlayer.DisplayName,
+                Desc = string.format("Status: Online\nBase: %s\nTsunami: %s",
+                    (M.baseGUID or "Not Found"),
+                    tsunamiStatus
+                ),
+                Image = "user",
+                ImageSize = 38
             })
         end)
     end
@@ -2141,10 +1675,7 @@ print("🔥 CATRAZ HUB - ESCAPE TSUNAMI FOR BRAINROTS 🔥")
 print("═══════════════════════════════════════════════════════")
 print("✅ Version: 3.0 ULTIMATE")
 print("✅ Tsunami Protection - 2 MODES (Bawah/Atas)")
-print("✅ Auto Farm - Brainrots + Lucky Blocks")
-print("✅ Factory Loop - Auto maxing")
-print("✅ Auto Collect Money & Upgrade")
-print("✅ Noclip + Tween System")
+print("✅ Simple UI - Home & Tsunami only")
 print("═══════════════════════════════════════════════════════")
 print("🚀 Script siap digunakan!")
 print("═══════════════════════════════════════════════════════")
