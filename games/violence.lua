@@ -1,5 +1,5 @@
 -- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.2 ====================
--- Fitur Baru: Teleport Generator dengan Dropdown & Refresh
+-- Fix: Menggunakan URL alternatif untuk Catraz Hub Library
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -13,9 +13,42 @@ end
 _G.VD_Loaded = true
 
 --==================================================
--- LOAD CATRAZ HUB LIBRARY
+-- LOAD CATRAZ HUB LIBRARY (DENGAN BEBERAPA ALTERNATIF URL)
 --==================================================
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
+local OrionLib
+local loadSuccess = false
+
+-- Coba URL 1 (utama)
+pcall(function()
+    OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
+    if OrionLib then loadSuccess = true end
+end)
+
+-- Jika gagal, coba URL 2 (alternatif)
+if not loadSuccess then
+    pcall(function()
+        OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/main/source.lua"))()
+        if OrionLib then loadSuccess = true end
+    end)
+end
+
+-- Jika masih gagal, coba URL 3 (backup)
+if not loadSuccess then
+    pcall(function()
+        OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/master/source.lua"))()
+        if OrionLib then loadSuccess = true end
+    end)
+end
+
+-- Jika semua URL gagal, beri notifikasi
+if not loadSuccess then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Error",
+        Text = "Gagal load Catraz Hub Library. Cek koneksi!",
+        Duration = 5
+    })
+    return
+end
 
 --==================================================
 -- VARIABLES
@@ -33,7 +66,7 @@ local Camera = Workspace.CurrentCamera
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --==================================================
--- SAVE ORIGINAL SETTINGS (SEBELUM APAPUN)
+-- SAVE ORIGINAL SETTINGS
 --==================================================
 local originalLighting = {
     Brightness = Lighting.Brightness,
@@ -54,10 +87,9 @@ local originalCamera = {
 local originalQuality = settings().Rendering.QualityLevel
 
 --==================================================
--- RESTORE ORIGINAL SETTINGS (PASTIKAN TIDAK BERUBAH)
+-- RESTORE ORIGINAL SETTINGS
 --==================================================
 local function restoreOriginalSettings()
-    -- Restore Lighting
     Lighting.Brightness = originalLighting.Brightness
     Lighting.ClockTime = originalLighting.ClockTime
     Lighting.FogEnd = originalLighting.FogEnd
@@ -67,11 +99,7 @@ local function restoreOriginalSettings()
     Lighting.Ambient = originalLighting.Ambient
     Lighting.ColorShift_Bottom = originalLighting.ColorShift_Bottom
     Lighting.ColorShift_Top = originalLighting.ColorShift_Top
-    
-    -- Restore Camera
     Camera.FieldOfView = originalCamera.FieldOfView
-    
-    -- Restore Quality
     settings().Rendering.QualityLevel = originalQuality
     
     for _, v in pairs(Workspace:GetDescendants()) do
@@ -166,17 +194,13 @@ local Window = OrionLib:MakeWindow({
     SaveConfig = true,
     ConfigFolder = "CatrazHub_Violence",
     IntroEnabled = true,
-    IntroText = "Violence District CatrazHub",
+    IntroText = "Violence District",
     IntroIcon = "rbxassetid://105921924721005",
     Icon = "rbxassetid://105921924721005",
     ShowIcon = true,
-    
-    -- Custom Theme & Appearance
     ImageBackground = "",
     ImageTransparency = 0.8,
     WindowTransparency = 0.05,
-    
-    -- Floating Toggle 
     ToggleIcon = "rbxassetid://105921924721005",
     ToggleSize = 50
 })
@@ -184,7 +208,7 @@ local Window = OrionLib:MakeWindow({
 -- Set Theme
 OrionLib.SelectedTheme = "Ocean"
 
-Notify("Script loaded successfully! Graphics are normal.")
+Notify("Script loaded successfully!")
 
 --==================================================
 -- CREATE TABS
