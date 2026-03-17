@@ -610,12 +610,21 @@ local function createHighlight(player)
     if player == LocalPlayer then return end
     if not player.Character then return end
     
+    local char = player.Character
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
     local highlight = Instance.new("Highlight")
-    highlight.Parent = player.Character
-    highlight.Adornee = player.Character
-    highlight.FillTransparency = 0.5
-    highlight.OutlineTransparency = 0
+    highlight.Parent = char
     
+    -- 🔥 FIX UTAMA (jangan ke Character)
+    highlight.Adornee = hrp
+    
+    -- 🔥 Hilangkan efek tabung
+    highlight.FillTransparency = 1
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+
     if VDConfig.Highlight.TeamCheck then
         if isTeammate(player) then
             highlight.FillColor = TeamColor
