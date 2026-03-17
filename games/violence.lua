@@ -1,7 +1,4 @@
--- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION v5.1 ====================
--- Premium UI menggunakan Catraz Hub Library
--- Version: 5.1 FIXED - No automatic graphics changes
-
+-- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.1 ====================
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Violence District",
@@ -82,8 +79,6 @@ local function restoreOriginalSettings()
         end
     end
 end
-
--- Panggil segera untuk memastikan grafis normal
 restoreOriginalSettings()
 
 --==================================================
@@ -93,7 +88,7 @@ local TeamColor = Color3.fromRGB(0, 255, 0)
 local EnemyColor = Color3.fromRGB(255, 0, 0)
 
 --==================================================
--- CONFIG - SEMUA DEFAULT FALSE
+-- CONFIG
 --==================================================
 local Config = {
     ESP = {
@@ -163,16 +158,16 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
-    Subtext = "ULTIMATE Edition v5.1",
-    Version = "v5.1",
+    Subtext = "PREMIUM Edition v1.1",
+    Version = "v1.1",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "VD_ULTIMATE",
+    ConfigFolder = "CatrazHub_Violence",
     IntroEnabled = true,
-    IntroText = "Violence District ULTIMATE",
-    IntroIcon = "rbxassetid://8834748103",
-    Icon = "rbxassetid://8834748103",
+    IntroText = "Violence District CatrazHub",
+    IntroIcon = "rbxassetid://105921924721005",
+    Icon = "rbxassetid://105921924721005",
     ShowIcon = true,
     
     -- Custom Theme & Appearance
@@ -180,7 +175,7 @@ local Window = OrionLib:MakeWindow({
     ImageTransparency = 0.8,
     WindowTransparency = 0.05,
     
-    -- Floating Toggle Customization
+    -- Floating Toggle 
     ToggleIcon = "rbxassetid://105921924721005",
     ToggleSize = 50
 })
@@ -301,7 +296,7 @@ local function getPlayerColor(player)
 end
 
 --==================================================
--- PLAYER ESP SYSTEM - FONT SANGAT BESAR (SIZE 22) DAN TEBAL
+-- PLAYER ESP SYSTEM 
 --==================================================
 local ESPObjects = {}
 
@@ -328,17 +323,17 @@ local function createPlayerESP(player)
     
     -- NAME - SIZE 22 DAN TEBAL (FONT 3 = GothamBold)
     esp.Name.Visible = false
-    esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Putih
-    esp.Name.Size = 22 -- Ukuran font SANGAT BESAR
+    esp.Name.Color = Color3.fromRGB(255, 255, 255) 
+    esp.Name.Size = 22 
     esp.Name.Center = true
     esp.Name.Outline = true
     esp.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Name.Font = 3 -- Font tebal (GothamBold)
+    esp.Name.Font = 3 
     
     -- Distance settings
     esp.Distance.Visible = false
-    esp.Distance.Color = Color3.fromRGB(200, 200, 200)
-    esp.Distance.Size = 16 -- Ukuran lebih besar
+    esp.Distance.Color = Color3.fromRGB(255, 255, 0)
+    esp.Distance.Size = 16 
     esp.Distance.Center = true
     esp.Distance.Outline = true
     esp.Distance.OutlineColor = Color3.fromRGB(0, 0, 0)
@@ -430,9 +425,8 @@ local function updatePlayerESP()
         
         if Config.ESP.Names then
             esp.Name.Text = player.Name
-            -- Posisi disesuaikan untuk font besar (lebih ke atas)
             esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 55) 
-            esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Putih
+            esp.Name.Color = Color3.fromRGB(255, 255, 255)
             esp.Name.Visible = true
         else
             esp.Name.Visible = false
@@ -515,7 +509,7 @@ Players.PlayerAdded:Connect(setupPlayerESP)
 Players.PlayerRemoving:Connect(removePlayerESP)
 
 --==================================================
--- GENERATOR ESP (DARI RANZX999)
+-- GENERATOR ESP
 --==================================================
 local GeneratorESP = {}
 
@@ -578,7 +572,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- ANTI-FAIL SYSTEM (UNIFIED - DARI RANZX999)
+-- ANTI-FAIL SYSTEM 
 --==================================================
 local AntiFailHooked = false
 
@@ -726,7 +720,7 @@ local function updateHighlights()
 end
 
 --==================================================
--- WALLHACK FUNCTION (FIXED - Tidak mengubah semua part)
+-- WALLHACK FUNCTION 
 --==================================================
 local WallhackConnection = nil
 
@@ -760,7 +754,7 @@ local function updateWallhack()
 end
 
 --==================================================
--- VISUAL FEATURES (SEMUA DEFAULT FALSE)
+-- VISUAL FEATURES 
 --==================================================
 
 -- No Fog
@@ -829,7 +823,7 @@ local function resetVisualSettings()
     
     -- Restore all settings
     restoreOriginalSettings()
-    updateWallhack() -- Matikan wallhack
+    updateWallhack()
     
     Notify("All visual settings reset to normal")
 end
@@ -974,7 +968,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --==================================================
--- UPDATE LOOP (HANYA JALANKAN YANG DIAKTIFKAN)
+-- UPDATE LOOP 
 --==================================================
 RunService.Heartbeat:Connect(function()
     updateMovement()
@@ -1011,7 +1005,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 --==================================================
--- MAIN TAB - PLAYER INFO LENGKAP
+-- MAIN TAB - PLAYER INFO 
 --==================================================
 local PlayerInfoSection = MainTab:AddSection({
     Name = "📊 PLAYER INFORMATION",
@@ -1020,7 +1014,7 @@ local PlayerInfoSection = MainTab:AddSection({
     Outline = true
 })
 
--- Player info dengan tampilan besar dan jelas
+-- Player info 
 PlayerInfoSection:AddParagraph({
     Title = "👤 " .. Player.Name,
     Desc = "Display Name: " .. Player.DisplayName .. "\n" ..
@@ -1748,19 +1742,3 @@ end)
 OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
-print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v5.1 🔥")
-print("═══════════════════════════════════════════════════════")
-print("✅ Graphics are NORMAL at startup - No automatic changes")
-print("✅ All visual features default to OFF")
-print("✅ Wallhack FIXED - Tidak mengubah semua part")
-print("✅ Main Tab - Player Info + Server Info + Active Features")
-print("✅ Player ESP - Nama SIZE 22 BOLD PUTIH")
-print("✅ Highlight System - Team colors (Green/Red)")
-print("✅ Generator ESP - Auto-scan dengan progress %")
-print("✅ Anti-Fail System - Generator + Healing")
-print("✅ Visual - Wallhack, Fullbright, No Fog, Super Zoom")
-print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
-print("✅ Teleport - Player TP, Waypoints")
-print("✅ Misc - Anti AFK, Hide Skill Check UI")
-print("═══════════════════════════════════════════════════════")
