@@ -1,5 +1,4 @@
--- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.3 ====================
--- FIXED: Teleport Generator - Tanpa jarak di dropdown & Teleport berfungsi
+-- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.2 ===================
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -99,13 +98,13 @@ local Config = {
         Distance = false,
         Health = false,
         Tracers = false,
-        TeamCheck = true,
+        TeamCheck = false,
         MaxDistance = 2000,
         ShowTeammates = false
     },
     Highlight = {
         Enabled = false,
-        TeamCheck = true,
+        TeamCheck = false,
         ShowTeam = false
     },
     Generator = {
@@ -159,8 +158,8 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
-    Subtext = "PREMIUM Edition v1.3",
-    Version = "v1.3",
+    Subtext = "PREMIUM Edition v1.2",
+    Version = "v1.2",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -510,7 +509,7 @@ Players.PlayerAdded:Connect(setupPlayerESP)
 Players.PlayerRemoving:Connect(removePlayerESP)
 
 --==================================================
--- GENERATOR ESP & TELEPORT FUNCTIONS (FIXED - TANPA JARAK)
+-- GENERATOR ESP & TELEPORT
 --==================================================
 local GeneratorESP = {}
 local GeneratorList = {} -- Untuk menyimpan daftar generator
@@ -580,7 +579,7 @@ local function getGeneratorNames()
     return names
 end
 
--- Fungsi untuk teleport ke generator terpilih (FIXED - PASTI BISA!)
+-- Fungsi untuk teleport ke generator terpilih
 local function teleportToGenerator(selectedName)
     -- Cek karakter
     if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
@@ -595,7 +594,7 @@ local function teleportToGenerator(selectedName)
     for i, gen in ipairs(gens) do
         local status = gen.Progress >= 100 and "✅" or "🔄"
         local progressText = string.format("%.0f", gen.Progress) .. "%"
-        -- Sesuaikan format dengan yang di dropdown (TANPA JARAK)
+        -- Sesuaikan format dengan yang di dropdown
         local checkName = string.format("%s %s (%s)", status, gen.Name, progressText)
         
         if checkName == selectedName then
@@ -781,9 +780,7 @@ task.spawn(function()
     end
 end)
 
---==================================================
--- ANTI-FAIL SYSTEM (DINONAKTIFKAN - MENGHINDARI ERROR)
---==================================================
+-- ANTI-FAIL SYSTEM DINONAKTIFKAN MENGHINDARI ERROR
 print("⚠️ Anti-Fail System dinonaktifkan untuk menghindari error")
 
 --==================================================
@@ -1458,11 +1455,11 @@ GenSection:AddParagraph({
     Title = "GENERATOR INFO",
     Desc = "🔵 Cyan = In Progress\n🟢 Green = Complete (100%)\n✅ Hold left click to repair",
     Image = "info",
-    ImageSize = 38
+    ImageSize = 30
 })
 
 --==================================================
--- TELEPORT GENERATOR SECTION (FIXED - TANPA JARAK)
+-- TELEPORT GENERATOR SECTION
 --==================================================
 local TeleportGenSection = GeneratorTab:AddSection({
     Name = "📍 TELEPORT TO GENERATOR",
@@ -1474,7 +1471,7 @@ local TeleportGenSection = GeneratorTab:AddSection({
 local SelectedGenerator = ""
 local GeneratorDropdown = nil
 
--- Dropdown untuk generator list (TANPA JARAK)
+-- Dropdown untuk generator list
 GeneratorDropdown = TeleportGenSection:AddDropdown({
     Name = "PILIH GENERATOR",
     Default = "🔍 Scanning generators...",
@@ -1534,10 +1531,9 @@ TeleportGenSection:AddButton({
 })
 
 TeleportGenSection:AddParagraph({
-    Title = "GENERATOR TELEPORT",
-    Desc = "! MENGGUNAKAN TELEPORT GENERATOR WAJIB MENGHIDUPKAN NO-CLIP AGAR TIDAK NYANGKUT ",
+    Title = "TP GENERATOR WAJIB MENYALAKAN NO-CLIP",
     Image = "info",
-    ImageSize = 25
+    ImageSize = 30
 })
 
 -- Auto-refresh pertama kali
@@ -1976,13 +1972,3 @@ end)
 OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
-print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - PREMIUM CATRAZ v1.3 🔥")
-print("═══════════════════════════════════════════════════════")
-print("✅ FIXED: Teleport Generator - Tanpa jarak di dropdown")
-print("✅ FIXED: Teleport Generator - PASTI BERFUNGSI!")
-print("✅ Menampilkan progress % generator")
-print("✅ Tombol Refresh untuk update daftar generator")
-print("✅ Tombol Teleport ke Generator Terdekat")
-print("⚠️ Anti-Fail System dinonaktifkan (hindari error)")
-print("═══════════════════════════════════════════════════════")
