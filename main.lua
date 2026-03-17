@@ -18,7 +18,7 @@ local supportedGames = {
     [75992362647444] = { -- Ganti dengan ID game tapsimu
         name = "Tap simulator",
         file = "tapsim.lua"
-    }
+    },
     [131623223084840] = { -- Ganti dengan ID game tapsimu
         name = "Escape Tsunami For Brainrots",
         file = "EscapeTsunamiForBrainrots!.lua"
