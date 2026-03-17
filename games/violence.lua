@@ -624,8 +624,8 @@ local function createHighlight(player)
     if hrp then
         highlight.Adornee = hrp
     end
-    highlight.FillTransparency = 0.3 -- Transparan agar tidak seperti tabung
-    highlight.OutlineTransparency = 0.5 -- Outline tipis
+    highlight.FillTransparency = 1 -- Transparan agar tidak seperti tabung
+    highlight.OutlineTransparency = 0 -- Outline tipis
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     
     -- Set warna berdasarkan kondisi game
@@ -866,8 +866,8 @@ local function createGeneratorESP(gen)
     highlight.Adornee = gen
     highlight.FillColor = CYAN
     highlight.DepthMode = "AlwaysOnTop"
-    highlight.FillTransparency = 1
-    highlight.OutlineTransparency = 0
+    highlight.FillTransparency = 0.3
+    highlight.OutlineTransparency = 0.5
     
     local billboard = Instance.new("BillboardGui", folder)
     billboard.Size = UDim2.new(0, 80, 0, 40)
