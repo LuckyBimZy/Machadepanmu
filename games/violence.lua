@@ -1,5 +1,5 @@
 -- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.2 ====================
--- Added: Teleport to Generator with Auto-Refresh Dropdown + Progress Display
+-- Fitur Baru: Teleport Generator dengan Dropdown & Refresh
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -110,8 +110,7 @@ local Config = {
     },
     Generator = {
         ESPEnabled = false,
-        AntiFailEnabled = false,
-        TeleportTarget = nil
+        AntiFailEnabled = false
     },
     Healing = {
         AntiFailEnabled = false
@@ -511,80 +510,73 @@ Players.PlayerAdded:Connect(setupPlayerESP)
 Players.PlayerRemoving:Connect(removePlayerESP)
 
 --==================================================
--- GENERATOR ESP (MODIFIED UNTUK MENYIMPAN DATA)
+-- GENERATOR ESP & TELEPORT FUNCTIONS
 --==================================================
 local GeneratorESP = {}
-local GeneratorData = {} -- Untuk menyimpan data generator (nama, progress, posisi)
+local GeneratorList = {} -- Untuk menyimpan daftar generator
 
--- Function untuk mendapatkan semua generator dengan data progress
-local function getAllGenerators()
+-- Fungsi untuk mendapatkan semua generator di map
+local function scanGenerators()
     local generators = {}
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj.Name == "Generator" and obj:IsA("Model") then
+            local name = "Generator " .. #generators + 1
             local progress = obj:GetAttribute("RepairProgress") or 0
-            local pos = obj.PrimaryPart and obj.PrimaryPart.Position or (obj:FindFirstChild("HitBox") and obj:FindFirstChild("HitBox").Position or Vector3.new(0,0,0))
+            local distance = 0
+            
+            if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                if obj.PrimaryPart then
+                    distance = (Player.Character.HumanoidRootPart.Position - obj.PrimaryPart.Position).Magnitude
+                end
+            end
+            
             table.insert(generators, {
                 Model = obj,
-                Progress = math.floor(progress),
-                Position = pos,
-                Name = "Generator " .. math.floor(progress) .. "%"
+                Name = name,
+                Progress = progress,
+                Distance = math.floor(distance),
+                Position = obj.PrimaryPart and obj.PrimaryPart.Position or nil
             })
         end
     end
-    -- Urutkan berdasarkan progress (terendah ke tertinggi)
-    table.sort(generators, function(a, b)
-        return a.Progress < b.Progress
-    end)
     return generators
 end
 
--- Function untuk mendapatkan list nama generator untuk dropdown
-local function getGeneratorList()
-    local list = {}
-    local gens = getAllGenerators()
+-- Fungsi untuk mendapatkan list nama generator untuk dropdown
+local function getGeneratorNames()
+    local names = {}
+    local gens = scanGenerators()
     for i, gen in ipairs(gens) do
-        table.insert(list, gen.Name)
+        local status = gen.Progress >= 100 and "✅" or "🔄"
+        local name = string.format("%s %s (%d%%) [%dm]", status, gen.Name, gen.Progress, gen.Distance)
+        table.insert(names, name)
     end
-    return list
+    if #names == 0 then
+        table.insert(names, "No generators found")
+    end
+    return names
 end
 
--- Function untuk teleport ke generator berdasarkan nama
-local function teleportToGenerator(genName)
-    if not genName or genName == "" or genName == "Select a generator" then
-        Notify("Please select a generator first!")
-        return false
-    end
-    
-    -- Parse progress dari nama
-    local progress = tonumber(genName:match("(%d+)%%"))
-    local gens = getAllGenerators()
-    
-    for _, gen in ipairs(gens) do
-        if gen.Progress == progress then
-            if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                Player.Character.HumanoidRootPart.CFrame = CFrame.new(gen.Position) * CFrame.new(0, 3, 0)
-                Notify("Teleported to Generator (" .. progress .. "%)")
+-- Fungsi untuk teleport ke generator terpilih
+local function teleportToGenerator(selectedName)
+    local gens = scanGenerators()
+    for i, gen in ipairs(gens) do
+        local status = gen.Progress >= 100 and "✅" or "🔄"
+        local checkName = string.format("%s %s (%d%%) [%dm]", status, gen.Name, gen.Progress, gen.Distance)
+        
+        if checkName == selectedName then
+            if gen.Position and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                Player.Character.HumanoidRootPart.CFrame = CFrame.new(gen.Position.X, gen.Position.Y + 3, gen.Position.Z)
+                Notify("Teleported to " .. gen.Name .. " (" .. gen.Progress .. "%)")
                 return true
             end
         end
     end
-    Notify("Generator not found!")
+    Notify("Generator not found or invalid position")
     return false
 end
 
--- Function untuk refresh dropdown generator
-local function refreshGeneratorDropdown(dropdown)
-    if dropdown then
-        local newOptions = getGeneratorList()
-        if #newOptions == 0 then
-            dropdown:Refresh({"No generators found"}, true)
-        else
-            dropdown:Refresh(newOptions, true)
-        end
-    end
-end
-
--- Generator ESP creator
+-- Fungsi untuk membuat ESP Generator (existing)
 local function createGeneratorESP(gen)
     if not gen:IsA("Model") or gen:FindFirstChild("GenESP") then return end
     
@@ -629,7 +621,7 @@ local function createGeneratorESP(gen)
     GeneratorESP[gen] = folder
 end
 
--- Generator scanner thread
+-- Generator scanner thread (hanya berjalan jika diaktifkan)
 task.spawn(function()
     while true do
         if Config.Generator.ESPEnabled then
@@ -814,6 +806,7 @@ local function updateWallhack()
         WallhackConnection = RunService.RenderStepped:Connect(function()
             for _, v in pairs(Workspace:GetDescendants()) do
                 if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
+                    -- Hanya ubah part yang opacity-nya rendah, jangan semua
                     if v.Transparency < 0.3 then
                         v.Material = Enum.Material.ForceField
                         v.Transparency = 0.3
@@ -822,6 +815,7 @@ local function updateWallhack()
             end
         end)
     else
+        -- Restore normal materials hanya untuk part yang diubah
         for _, v in pairs(Workspace:GetDescendants()) do
             if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) and v.Material == Enum.Material.ForceField then
                 v.Material = Enum.Material.Plastic
@@ -899,6 +893,7 @@ local function resetVisualSettings()
     Config.Visual.AntiAliasingEnabled = false
     Config.Visual.PerformanceMode = false
     
+    -- Restore all settings
     restoreOriginalSettings()
     updateWallhack()
     
@@ -1051,13 +1046,34 @@ RunService.Heartbeat:Connect(function()
     updateMovement()
     updatePlayerESP()
     
-    if Config.Visual.NoFogEnabled then updateNoFog() end
-    if Config.Visual.FullbrightEnabled then updateFullbright() end
-    if Config.Visual.SuperZoomEnabled then updateSuperZoom() end
-    if Config.Visual.WallhackEnabled then updateWallhack() end
-    if Config.Visual.AntiAliasingEnabled then updateGraphicsQuality() end
-    if Config.Visual.PerformanceMode then updatePerformanceMode() end
-    if Config.Highlight.Enabled then updateHighlights() end
+    -- Visual features hanya berjalan jika diaktifkan
+    if Config.Visual.NoFogEnabled then
+        updateNoFog()
+    end
+    
+    if Config.Visual.FullbrightEnabled then
+        updateFullbright()
+    end
+    
+    if Config.Visual.SuperZoomEnabled then
+        updateSuperZoom()
+    end
+    
+    if Config.Visual.WallhackEnabled then
+        updateWallhack()
+    end
+    
+    if Config.Visual.AntiAliasingEnabled then
+        updateGraphicsQuality()
+    end
+    
+    if Config.Visual.PerformanceMode then
+        updatePerformanceMode()
+    end
+    
+    if Config.Highlight.Enabled then
+        updateHighlights()
+    end
 end)
 
 --==================================================
@@ -1070,6 +1086,7 @@ local PlayerInfoSection = MainTab:AddSection({
     Outline = true
 })
 
+-- Player info 
 PlayerInfoSection:AddParagraph({
     Title = "👤 " .. Player.Name,
     Desc = "Display Name: " .. Player.DisplayName .. "\n" ..
@@ -1120,6 +1137,7 @@ local ServerInfoPara = ServerInfoSection:AddParagraph({
     }
 })
 
+-- Auto refresh server info
 task.spawn(function()
     while true do
         task.wait(1)
@@ -1141,6 +1159,7 @@ local ActiveFeaturesPara = ActiveFeaturesSection:AddParagraph({
     ImageSize = 38
 })
 
+-- Update active features setiap detik
 task.spawn(function()
     while true do
         local active = GetActiveFeatures()
@@ -1373,8 +1392,17 @@ GenSection:AddToggle({
     end
 })
 
--- SECTION BARU: TELEPORT KE GENERATOR
-local GenTeleportSection = GeneratorTab:AddSection({
+GenSection:AddParagraph({
+    Title = "GENERATOR INFO",
+    Desc = "🔵 Cyan = In Progress\n🟢 Green = Complete (100%)\n✅ Hold left click to repair",
+    Image = "info",
+    ImageSize = 38
+})
+
+--==================================================
+-- TELEPORT GENERATOR SECTION (BARU!)
+--==================================================
+local TeleportGenSection = GeneratorTab:AddSection({
     Name = "📍 TELEPORT TO GENERATOR",
     TextSize = 18,
     Glass = true,
@@ -1382,13 +1410,12 @@ local GenTeleportSection = GeneratorTab:AddSection({
 })
 
 local SelectedGenerator = ""
-local GenDropdown
 
--- Buat dropdown untuk generator (akan di-refresh otomatis)
-GenDropdown = GenTeleportSection:AddDropdown({
-    Name = "SELECT GENERATOR (BY PROGRESS)",
-    Default = "Select a generator",
-    Options = getGeneratorList(),
+-- Dropdown untuk generator list
+local GeneratorDropdown = TeleportGenSection:AddDropdown({
+    Name = "SELECT GENERATOR",
+    Default = "Scanning generators...",
+    Options = {"Scanning..."},
     Multi = false,
     Search = true,
     AllowNone = true,
@@ -1398,40 +1425,41 @@ GenDropdown = GenTeleportSection:AddDropdown({
     end
 })
 
-GenTeleportSection:AddButton({
+-- Tombol Teleport ke Generator
+TeleportGenSection:AddButton({
     Name = "🚀 TELEPORT TO SELECTED GENERATOR",
     Icon = "map-pin",
     Outline = true,
     Callback = function()
-        teleportToGenerator(SelectedGenerator)
+        if SelectedGenerator and SelectedGenerator ~= "" and SelectedGenerator ~= "No generators found" and SelectedGenerator ~= "Scanning..." then
+            teleportToGenerator(SelectedGenerator)
+        else
+            Notify("Please select a generator first!")
+        end
     end
 })
 
-GenTeleportSection:AddButton({
+-- Tombol Refresh Generator List
+TeleportGenSection:AddButton({
     Name = "🔄 REFRESH GENERATOR LIST",
     Icon = "refresh-cw",
     Outline = true,
     Callback = function()
-        refreshGeneratorDropdown(GenDropdown)
-        Notify("Generator list refreshed!")
-    end
-})
-
-GenTeleportSection:AddParagraph({
-    Title = "📊 GENERATOR INFO",
-    Desc = "• Generators sorted by progress\n• Shows current completion %\n• Auto-refresh available",
-    Image = "info",
-    ImageSize = 38
-})
-
--- Auto-refresh generator list setiap 5 detik
-task.spawn(function()
-    while true do
-        task.wait(5)
-        if GenDropdown then
-            refreshGeneratorDropdown(GenDropdown)
+        local options = getGeneratorNames()
+        GeneratorDropdown:Refresh(options, true)
+        if #options > 0 and options[1] ~= "No generators found" then
+            Notify("Found " .. #options .. " generators in map")
+        elseif options[1] == "No generators found" then
+            Notify("No generators found in this map")
         end
     end
+})
+
+-- Auto-refresh pertama kali
+task.spawn(function()
+    task.wait(1)
+    local options = getGeneratorNames()
+    GeneratorDropdown:Refresh(options, true)
 end)
 
 --==================================================
@@ -1725,6 +1753,7 @@ local TeleportMainSection = TeleportTab:AddSection({
 
 local SelectedPlayer = ""
 
+-- Dropdown untuk player list
 TeleportMainSection:AddDropdown({
     Name = "SELECT PLAYER",
     Default = "Select a player",
@@ -1832,11 +1861,17 @@ Player.CharacterAdded:Connect(function(char)
     Player.Character = char
     task.wait(1)
     
-    if Config.Movement.Noclip then enableNoclip() end
+    -- Re-apply noclip if enabled
+    if Config.Movement.Noclip then
+        enableNoclip()
+    end
+    
+    -- Reset speed/jump if enabled
     if Config.Movement.SpeedEnabled then
         local hum = char:FindFirstChildOfClass("Humanoid")
         if hum then hum.WalkSpeed = Config.Movement.SpeedValue end
     end
+    
     if Config.Movement.JumpEnabled then
         local hum = char:FindFirstChildOfClass("Humanoid")
         if hum then hum.JumpPower = Config.Movement.JumpValue end
@@ -1852,13 +1887,8 @@ Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
 print("🔥 VIOLENCE DISTRICT - PREMIUM CATRAZ v1.2 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ NEW: Teleport to Generator with Progress %")
-print("✅ NEW: Auto-Refresh Generator List (every 5s)")
-print("✅ Player ESP - Size 22 Bold White")
-print("✅ Highlight System - Team Colors")
-print("✅ Anti-Fail Generator & Healing")
-print("✅ Visual - Wallhack, Fullbright, No Fog, Super Zoom")
-print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
-print("✅ Teleport - Player TP, Waypoints")
-print("✅ Misc - Anti AFK, Hide Skill Check UI")
+print("✅ NEW FEATURE: Teleport Generator dengan Dropdown!")
+print("✅ Generator List - Auto scan sesuai map")
+print("✅ Tampilkan Progress % dan Jarak Generator")
+print("✅ Tombol Refresh untuk update daftar generator")
 print("═══════════════════════════════════════════════════════")
