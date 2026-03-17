@@ -72,7 +72,6 @@ local function restoreOriginalSettings()
     -- Restore Quality
     settings().Rendering.QualityLevel = originalQuality
     
-    -- Restore materials (fix tabung issue)
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("BasePart") and v.Material == Enum.Material.ForceField then
             v.Material = Enum.Material.Plastic
@@ -1154,7 +1153,7 @@ ESPSection:AddToggle({
 })
 
 ESPSection:AddToggle({
-    Name = "SHOW NAMES (WHITE - SIZE 22 BOLD)",
+    Name = "SHOW NAMES",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -1226,7 +1225,7 @@ ESPSection:AddSlider({
 
 ESPSection:AddParagraph({
     Title = "COLOR GUIDE",
-    Desc = "🟢 GREEN = Teammate\n🔴 RED = Enemy\n⚪ WHITE = Names (Size 22 Bold)",
+    Desc = "🟢 GREEN = Teammate\n🔴 RED = Enemy\n⚪ WHITE = Normal Players",
     Image = "info",
     ImageSize = 38
 })
@@ -1750,16 +1749,3 @@ end)
 OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
-print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - PREMIUM CATRAZ v1.1 🔥")
-print("═══════════════════════════════════════════════════════")
-print("✅ Graphics are NORMAL at startup - No automatic changes")
-print("✅ Player ESP - Nama SIZE 22 BOLD PUTIH")
-print("✅ Highlight System - Team colors (Green/Red)")
-print("✅ Generator ESP - Auto-scan dengan progress %")
-print("✅ Anti-Fail System - Generator + Healing (UPDATED)")
-print("✅ Visual - Wallhack, Fullbright, No Fog, Super Zoom")
-print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
-print("✅ Teleport - Player TP, Waypoints")
-print("✅ Misc - Anti AFK, Hide Skill Check UI")
-print("═══════════════════════════════════════════════════════")
