@@ -1,6 +1,6 @@
 -- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 3.0 COMPLETE
+-- Version: 3.1 COMPLETE with Player Info
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -32,6 +32,7 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local Camera = Workspace.CurrentCamera
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Stats = game:GetService("Stats")
 
 -- Saved position for waypoints
 local SavedPosition = nil
@@ -194,7 +195,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
     Subtext = "ULTIMATE Edition",
-    Version = "v3.0",
+    Version = "v3.1",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -223,6 +224,13 @@ Notify("Script loaded successfully!")
 --==================================================
 -- CREATE TABS
 --==================================================
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "home",
+    Glass = true,
+    Outline = true
+})
+
 local ESPTab = Window:MakeTab({
     Name = "Player ESP",
     Icon = "eye",
@@ -277,6 +285,113 @@ local MiscTab = Window:MakeTab({
     Icon = "settings",
     Glass = true,
     Outline = true
+})
+
+--==================================================
+-- MAIN TAB - PLAYER INFO (NEW)
+--==================================================
+local PlayerInfoSection = MainTab:AddSection({
+    Name = "Player Information",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+-- Function to update player info
+local function updatePlayerInfo()
+    local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+    local playersCount = #Players:GetPlayers()
+    
+    if playerInfoParagraph then
+        playerInfoParagraph:SetDesc(
+            "Name: " .. Player.Name .. "\n" ..
+            "Display: " .. Player.DisplayName .. "\n" ..
+            "User ID: " .. Player.UserId .. "\n" ..
+            "Account Age: " .. Player.AccountAge .. " days\n" ..
+            "Team: " .. (Player.Team and Player.Team.Name or "No Team") .. "\n\n" ..
+            "📊 Server Status:\n" ..
+            "Players: " .. playersCount .. "\n" ..
+            "Ping: " .. ping .. " ms"
+        )
+    end
+end
+
+local playerInfoParagraph = PlayerInfoSection:AddParagraph({
+    Title = "Player Stats",
+    Desc = "Loading player info...",
+    Image = "user",
+    ImageSize = 48,
+    Buttons = {
+        {
+            Title = "🔄 Refresh",
+            Callback = function()
+                updatePlayerInfo()
+                Notify("Player info refreshed!")
+            end
+        }
+    }
+})
+
+-- Initial update
+task.spawn(function()
+    task.wait(0.5)
+    updatePlayerInfo()
+end)
+
+-- Update ping periodically
+task.spawn(function()
+    while true do
+        task.wait(2)
+        updatePlayerInfo()
+    end
+end)
+
+local QuickActionsSection = MainTab:AddSection({
+    Name = "Quick Actions",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+QuickActionsSection:AddButton({
+    Name = "🔄 Rejoin Server",
+    Icon = "refresh-cw",
+    Outline = true,
+    Callback = function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
+    end
+})
+
+QuickActionsSection:AddButton({
+    Name = "📋 Copy User ID",
+    Icon = "copy",
+    Outline = true,
+    Callback = function()
+        setclipboard(tostring(Player.UserId))
+        Notify("User ID copied to clipboard!")
+    end
+})
+
+local CreditsSection = MainTab:AddSection({
+    Name = "Credits",
+    TextSize = 17,
+    Glass = true,
+    Outline = true
+})
+
+CreditsSection:AddParagraph({
+    Title = "Violence District",
+    Desc = "ULTIMATE Edition v3.1\n" ..
+           "Created by: RanZx999 & Contributors\n" ..
+           "UI Library: Catraz Hub\n\n" ..
+           "🔥 All features working!\n" ..
+           "✅ ESP with White Text\n" ..
+           "✅ Wallhack + Fullbright\n" ..
+           "✅ Movement Hacks\n" ..
+           "✅ Teleport System\n" ..
+           "✅ Anti-Fail Systems",
+    Image = "award",
+    ImageSize = 48
 })
 
 --==================================================
@@ -1544,8 +1659,9 @@ OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.0 🔥")
+print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.1 🔥")
 print("═══════════════════════════════════════════════════════")
+print("✅ Main Tab - Player Info (Real-time updates)")
 print("✅ Player ESP - Auto-detect + White Text (Improved!)")
 print("✅ Wallhack - See through walls")
 print("✅ Fullbright + No Fog - Complete visual control")
