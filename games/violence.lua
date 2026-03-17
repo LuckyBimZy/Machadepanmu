@@ -620,7 +620,10 @@ local function createHighlight(player)
     local highlight = Instance.new("Highlight")
     highlight.Name = "VD_Highlight"
     highlight.Parent = player.Character
-    highlight.Adornee = player.Character
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        highlight.Adornee = hrp
+    end
     highlight.FillTransparency = 0.3 -- Transparan agar tidak seperti tabung
     highlight.OutlineTransparency = 0.5 -- Outline tipis
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
