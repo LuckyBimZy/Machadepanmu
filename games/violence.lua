@@ -1,4 +1,5 @@
--- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.2 ===================
+-- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.3 ====================
+-- FIXED: ESP Presisi Pas Pada Tubuh Player
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -98,7 +99,7 @@ local Config = {
         Distance = false,
         Health = false,
         Tracers = false,
-        TeamCheck = false,
+        TeamCheck = true,
         MaxDistance = 2000,
         ShowTeammates = false
     },
@@ -158,8 +159,8 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
-    Subtext = "PREMIUM Edition v1.2",
-    Version = "v1.2",
+    Subtext = "PREMIUM Edition v1.3",
+    Version = "v1.3",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -296,7 +297,7 @@ local function getPlayerColor(player)
 end
 
 --==================================================
--- PLAYER ESP SYSTEM 
+-- PLAYER ESP SYSTEM - FIXED (PAS PADA TUBUH)
 --==================================================
 local ESPObjects = {}
 
@@ -367,6 +368,7 @@ local function removePlayerESP(player)
     end
 end
 
+-- FUNGSI ESP YANG DIPERBAIKI - PAS PADA TUBUH PLAYER
 local function updatePlayerESP()
     if not Config.ESP.Enabled then
         for _, esp in pairs(ESPObjects) do
@@ -407,11 +409,6 @@ local function updatePlayerESP()
         -- Dapatkan posisi di layar
         local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
         local rootPos, rootOnScreen = Camera:WorldToViewportPoint(hrp.Position)
-        local torsoPos, torsoOnScreen = Vector2.new(0,0), false
-        
-        if torso then
-            torsoPos, torsoOnScreen = Camera:WorldToViewportPoint(torso.Position)
-        end
         
         if not headOnScreen or not rootOnScreen then
             for _, obj in pairs(esp) do obj.Visible = false end
@@ -1559,7 +1556,8 @@ TeleportGenSection:AddButton({
 })
 
 TeleportGenSection:AddParagraph({
-    Title = "TP GENERATOR WAJIB MENYALAKAN NO-CLIP",
+    Title = "⚠️ WAJIB NYALAKAN NOCLIP SEBELUM TP",
+    Desc = "Noclip diperlukan agar tidak stuck di tembok",
     Image = "info",
     ImageSize = 30
 })
@@ -2000,3 +1998,14 @@ end)
 OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
+print("═══════════════════════════════════════════════════════")
+print("🔥 VIOLENCE DISTRICT - PREMIUM CATRAZ v1.3 🔥")
+print("═══════════════════════════════════════════════════════")
+print("✅ FIXED: ESP PRESISI PAS PADA TUBUH PLAYER!")
+print("✅ Box mengikuti proporsi tubuh")
+print("✅ Nama di atas kepala dengan font besar")
+print("✅ Health bar di samping kiri box")
+print("✅ Tracer dari bawah layar")
+print("✅ Teleport Generator - Tanpa jarak di dropdown")
+print("✅ Tombol Teleport ke Generator Terdekat")
+print("═══════════════════════════════════════════════════════")
