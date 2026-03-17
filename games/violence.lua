@@ -1,52 +1,81 @@
--- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION ====================
--- Premium UI menggunakan Catraz Hub Library
--- Version: 3.0 COMPLETE - HIGHLIGHT ONLY (No Boxes)
+--[[
+═══════════════════════════════════════════════════════════════
+  VIOLENCE DISTRICT - ULTIMATE EDITION (ENHANCED)
+  Created by RanZx999 (Modified)
+  UI: Rayfield Premium
+═══════════════════════════════════════════════════════════════
 
-if _G.VD_Loaded then 
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Violence District",
-        Text = "Script already loaded!",
-        Duration = 2
-    })
-    return 
-end
+Features:
+✅ Player Name ESP (White Large Font) - NO BOXES!
+✅ Highlight System (Lobby: White | Game: Green/Red)
+✅ Generator ESP dengan progress %
+✅ Anti-Fail Generator & Healing
+✅ Hide Skill Check UI
+✅ Fullbright, No Fog, Wallhack, Infinite Zoom
+✅ Speed Hack (16-200) with slider
+✅ Jump Hack (50-300) with slider
+✅ Infinite Jump
+✅ Noclip
+✅ Teleport to Player with dropdown
+✅ Waypoints (Save/Load Position)
+✅ Anti AFK
+✅ Active Features Counter
+✅ Player Info di Main Tab
 
-_G.VD_Loaded = true
+Created by RanZx999
+═══════════════════════════════════════════════════════════════
+]]
 
---==================================================
--- LOAD CATRAZ HUB LIBRARY
---==================================================
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
---==================================================
--- VARIABLES
---==================================================
-local Player = game.Players.LocalPlayer
-local Mouse = Player:GetMouse()
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local VirtualUser = game:GetService("VirtualUser")
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
-local Camera = Workspace.CurrentCamera
+local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
---==================================================
--- COLORS
---==================================================
-local TeamColor = Color3.fromRGB(0, 255, 0)    -- Hijau untuk teammate
-local EnemyColor = Color3.fromRGB(255, 0, 0)    -- Merah untuk enemy/killer
-local LobbyColor = Color3.fromRGB(255, 255, 255) -- Putih untuk lobby
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
 
---==================================================
--- CONFIG
---==================================================
-local Config = {
+--// SAVE ORIGINAL LIGHTING
+local originalLighting = {
+    Brightness = Lighting.Brightness,
+    ClockTime = Lighting.ClockTime,
+    FogEnd = Lighting.FogEnd,
+    FogStart = Lighting.FogStart,
+    GlobalShadows = Lighting.GlobalShadows,
+    OutdoorAmbient = Lighting.OutdoorAmbient
+}
+
+local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+if atm then
+    originalLighting.Atmosphere = {
+        Density = atm.Density,
+        Offset = atm.Offset,
+        Glare = atm.Glare,
+        Haze = atm.Haze
+    }
+end
+
+local blur = Lighting:FindFirstChildOfClass("BlurEffect")
+if blur then
+    originalLighting.Blur = { Size = blur.Size }
+end
+
+--// COLORS
+local TeamColor = Color3.fromRGB(0, 255, 0)      -- Hijau untuk teammate
+local EnemyColor = Color3.fromRGB(255, 0, 0)      -- Merah untuk enemy
+local LobbyColor = Color3.fromRGB(255, 255, 255)  -- Putih untuk lobby
+
+--// CONFIG
+getgenv().VDConfig = {
+    Main = {
+        PlayerInfo = true
+    },
     ESP = {
         Enabled = false,
-        Names = false,
+        Names = true,        -- Always true when ESP enabled
         Distance = false,
         TeamCheck = true,
         MaxDistance = 2000,
@@ -90,296 +119,103 @@ local Config = {
 }
 
 --==================================================
+-- TEAM CHECK FUNCTION
+--==================================================
+local function isTeammate(player)
+    if not LocalPlayer.Team then return false end
+    if not player.Team then return false end
+    return player.Team == LocalPlayer.Team
+end
+
+--==================================================
 -- ACTIVE FEATURES COUNTER
 --==================================================
 local function GetActiveFeatures()
     local active = {}
     
-    if Config.ESP.Enabled then table.insert(active, "ESP Names") end
-    if Config.Highlight.Enabled then table.insert(active, "Highlight") end
-    if Config.Generator.ESPEnabled then table.insert(active, "GenESP") end
-    if Config.Generator.AntiFailEnabled then table.insert(active, "Anti-Gen") end
-    if Config.Healing.AntiFailEnabled then table.insert(active, "Anti-Heal") end
-    if Config.UI.HideSkillCheck then table.insert(active, "HideSC") end
-    if Config.Visual.FullbrightEnabled then table.insert(active, "Fullbright") end
-    if Config.Visual.NoFogEnabled then table.insert(active, "NoFog") end
-    if Config.Visual.WallhackEnabled then table.insert(active, "Wallhack") end
-    if Config.Visual.InfiniteZoom then table.insert(active, "InfZoom") end
-    if Config.Movement.SpeedEnabled then table.insert(active, "Speed") end
-    if Config.Movement.JumpEnabled then table.insert(active, "Jump") end
-    if Config.Movement.InfiniteJump then table.insert(active, "InfJump") end
-    if Config.Movement.Noclip then table.insert(active, "Noclip") end
-    if Config.Misc.AntiAFK then table.insert(active, "AntiAFK") end
+    if VDConfig.ESP.Enabled then table.insert(active, "ESP") end
+    if VDConfig.Highlight.Enabled then table.insert(active, "Highlight") end
+    if VDConfig.Generator.ESPEnabled then table.insert(active, "GenESP") end
+    if VDConfig.Generator.AntiFailEnabled then table.insert(active, "AntiGen") end
+    if VDConfig.Healing.AntiFailEnabled then table.insert(active, "AntiHeal") end
+    if VDConfig.UI.HideSkillCheck then table.insert(active, "HideSC") end
+    if VDConfig.Visual.FullbrightEnabled then table.insert(active, "Fullbright") end
+    if VDConfig.Visual.NoFogEnabled then table.insert(active, "NoFog") end
+    if VDConfig.Visual.WallhackEnabled then table.insert(active, "Wallhack") end
+    if VDConfig.Visual.InfiniteZoom then table.insert(active, "InfZoom") end
+    if VDConfig.Movement.SpeedEnabled then table.insert(active, "Speed") end
+    if VDConfig.Movement.JumpEnabled then table.insert(active, "Jump") end
+    if VDConfig.Movement.InfiniteJump then table.insert(active, "InfJump") end
+    if VDConfig.Movement.Noclip then table.insert(active, "Noclip") end
+    if VDConfig.Misc.AntiAFK then table.insert(active, "AntiAFK") end
     
     return active
 end
 
 --==================================================
--- SAVE ORIGINAL LIGHTING
---==================================================
-local originalLighting = {
-    Brightness = Lighting.Brightness,
-    ClockTime = Lighting.ClockTime,
-    FogEnd = Lighting.FogEnd,
-    FogStart = Lighting.FogStart,
-    GlobalShadows = Lighting.GlobalShadows,
-    OutdoorAmbient = Lighting.OutdoorAmbient
-}
-
---==================================================
--- NOTIFICATION
---==================================================
-local function Notify(msg)
-    OrionLib:MakeNotification({
-        Name = "Violence District",
-        Content = msg,
-        Image = "info",
-        Time = 2.5
-    })
-end
-
---==================================================
--- CREATE MAIN WINDOW
---==================================================
-local Window = OrionLib:MakeWindow({
-    Name = "Violence District",
-    Subtext = "ULTIMATE Edition",
-    Version = "v3.0",
-    VersionIcon = "shield-check",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "VD_ULTIMATE",
-    IntroEnabled = true,
-    IntroText = "Violence District ULTIMATE",
-    IntroIcon = "rbxassetid://8834748103",
-    Icon = "rbxassetid://8834748103",
-    ShowIcon = true,
-    
-    -- Custom Theme & Appearance
-    ImageBackground = "",
-    ImageTransparency = 0.8,
-    WindowTransparency = 0.05,
-    
-    -- Floating Toggle Customization
-    ToggleIcon = "rbxassetid://105921924721005",
-    ToggleSize = 50
-})
-
--- Set Theme
-OrionLib.SelectedTheme = "Ocean"
-
-Notify("Script loaded successfully!")
-
---==================================================
--- CREATE TABS
---==================================================
-local MainTab = Window:MakeTab({
-    Name = "Main",
-    Icon = "home",
-    Glass = true,
-    Outline = true
-})
-
-local ESPTab = Window:MakeTab({
-    Name = "Player ESP",
-    Icon = "eye",
-    Glass = true,
-    Outline = true
-})
-
-local HighlightTab = Window:MakeTab({
-    Name = "Highlight",
-    Icon = "sparkles",
-    Glass = true,
-    Outline = true
-})
-
-local GeneratorTab = Window:MakeTab({
-    Name = "Generator",
-    Icon = "zap",
-    Glass = true,
-    Outline = true
-})
-
-local HealingTab = Window:MakeTab({
-    Name = "Healing",
-    Icon = "heart",
-    Glass = true,
-    Outline = true
-})
-
-local VisualTab = Window:MakeTab({
-    Name = "Visual",
-    Icon = "sun",
-    Glass = true,
-    Outline = true
-})
-
-local MovementTab = Window:MakeTab({
-    Name = "Movement",
-    Icon = "footprints",
-    Glass = true,
-    Outline = true
-})
-
-local TeleportTab = Window:MakeTab({
-    Name = "Teleport",
-    Icon = "map-pin",
-    Glass = true,
-    Outline = true
-})
-
-local MiscTab = Window:MakeTab({
-    Name = "Misc",
-    Icon = "settings",
-    Glass = true,
-    Outline = true
-})
-
---==================================================
--- MAIN TAB - PLAYER INFO
---==================================================
-local PlayerInfoSection = MainTab:AddSection({
-    Name = "📊 PLAYER INFORMATION",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
--- Player info dengan tampilan lebih besar dan jelas
-PlayerInfoSection:AddParagraph({
-    Title = "👤 " .. Player.Name,
-    Desc = "Display Name: " .. Player.DisplayName .. "\n" ..
-           "User ID: " .. Player.UserId .. "\n" ..
-           "Account Age: " .. Player.AccountAge .. " days\n" ..
-           "Team: " .. (Player.Team and Player.Team.Name or "No Team"),
-    Image = "user",
-    ImageSize = 48
-})
-
-local ServerInfoSection = MainTab:AddSection({
-    Name = "🌐 SERVER INFORMATION",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-local function UpdateServerInfo()
-    local players = Players:GetPlayers()
-    local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() * 100) / 100
-    
-    return "Players: " .. #players .. "/" .. (Players.MaxPlayers or "??") .. "\n" ..
-           "Ping: " .. ping .. "ms\n" ..
-           "Server Time: " .. os.date("%H:%M:%S")
-end
-
-local ServerInfoPara = ServerInfoSection:AddParagraph({
-    Title = "Server Status",
-    Desc = UpdateServerInfo(),
-    Image = "server",
-    ImageSize = 48,
-    Buttons = {
-        {
-            Title = "🔄 Refresh",
-            Callback = function()
-                ServerInfoPara:SetDesc(UpdateServerInfo())
-            end
-        }
-    }
-})
-
--- Auto refresh server info
-task.spawn(function()
-    while true do
-        task.wait(5)
-        ServerInfoPara:SetDesc(UpdateServerInfo())
-    end
-end)
-
-local ActiveFeaturesSection = MainTab:AddSection({
-    Name = "⚡ ACTIVE FEATURES",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-local ActiveFeaturesPara = ActiveFeaturesSection:AddParagraph({
-    Title = "Currently Active",
-    Desc = "No active features",
-    Image = "activity",
-    ImageSize = 38
-})
-
--- Update active features setiap detik
-task.spawn(function()
-    while true do
-        local active = GetActiveFeatures()
-        if #active > 0 then
-            ActiveFeaturesPara:SetDesc(table.concat(active, " • "))
-        else
-            ActiveFeaturesPara:SetDesc("No active features")
-        end
-        task.wait(1)
-    end
-end)
-
---==================================================
--- TEAM CHECK FUNCTION
---==================================================
-local function isTeammate(player)
-    if not Player.Team then return false end
-    if not player.Team then return false end
-    return player.Team == Player.Team
-end
-
---==================================================
--- PLAYER NAME ESP ONLY (NO BOXES!)
+-- PLAYER NAME ESP ONLY (NO BOXES, NO DRAWINGS)
 --==================================================
 local ESPObjects = {}
 
 local function createPlayerESP(player)
-    if player == Player then return end
+    if player == LocalPlayer then return end
     if ESPObjects[player] then return end
     
+    -- Hanya menggunakan BillboardGui untuk nama (lebih stabil, tidak ada kotak)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "VD_NameESP"
+    billboard.Parent = player.Character
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.ResetOnSpawn = false
+    billboard.Enabled = false  -- Akan di-update
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Parent = billboard
+    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = player.Name
+    nameLabel.TextColor3 = Color3.new(1, 1, 1)  -- Putih
+    nameLabel.TextStrokeTransparency = 0.3
+    nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextScaled = true
+    
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Parent = billboard
+    distanceLabel.Size = UDim2.new(1, 0, 0, 20)
+    distanceLabel.Position = UDim2.new(0, 0, 1, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.Text = ""
+    distanceLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+    distanceLabel.TextStrokeTransparency = 0.3
+    distanceLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.TextScaled = true
+    
     ESPObjects[player] = {
-        Name = Drawing.new("Text"),
-        Distance = Drawing.new("Text")
+        Billboard = billboard,
+        NameLabel = nameLabel,
+        DistanceLabel = distanceLabel
     }
-    
-    local esp = ESPObjects[player]
-    
-    -- Name settings - FONT BESAR PUTIH
-    esp.Name.Visible = false
-    esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Putih
-    esp.Name.Size = 18 -- Ukuran font besar
-    esp.Name.Center = true
-    esp.Name.Outline = true
-    esp.Name.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Name.Font = 3 -- Font tebal
-    
-    -- Distance settings
-    esp.Distance.Visible = false
-    esp.Distance.Color = Color3.fromRGB(200, 200, 200)
-    esp.Distance.Size = 15
-    esp.Distance.Center = true
-    esp.Distance.Outline = true
-    esp.Distance.OutlineColor = Color3.fromRGB(0, 0, 0)
-    esp.Distance.Font = 3
 end
 
 local function removePlayerESP(player)
     if ESPObjects[player] then
-        for _, obj in pairs(ESPObjects[player]) do
-            pcall(function() obj:Remove() end)
+        if ESPObjects[player].Billboard then
+            pcall(function() ESPObjects[player].Billboard:Destroy() end)
         end
         ESPObjects[player] = nil
     end
 end
 
 local function updatePlayerESP()
-    if not Config.ESP.Enabled then
+    if not VDConfig.ESP.Enabled then
         for _, esp in pairs(ESPObjects) do
-            for _, obj in pairs(esp) do obj.Visible = false end
+            if esp.Billboard then
+                esp.Billboard.Enabled = false
+            end
         end
         return
     end
@@ -390,53 +226,37 @@ local function updatePlayerESP()
             continue
         end
         
-        if Config.ESP.TeamCheck and isTeammate(player) and not Config.ESP.ShowTeammates then
-            for _, obj in pairs(esp) do obj.Visible = false end
+        -- Team check
+        if VDConfig.ESP.TeamCheck and isTeammate(player) and not VDConfig.ESP.ShowTeammates then
+            esp.Billboard.Enabled = false
             continue
         end
         
-        local char = player.Character
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local head = char:FindFirstChild("Head")
-        
-        if not hrp or not head then
-            for _, obj in pairs(esp) do obj.Visible = false end
+        -- Distance check
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then
+            esp.Billboard.Enabled = false
             continue
         end
         
         local distance = (hrp.Position - Camera.CFrame.Position).Magnitude
-        
-        if distance > Config.ESP.MaxDistance then
-            for _, obj in pairs(esp) do obj.Visible = false end
+        if distance > VDConfig.ESP.MaxDistance then
+            esp.Billboard.Enabled = false
             continue
         end
         
-        local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-        local rootPos = Camera:WorldToViewportPoint(hrp.Position)
+        -- Update nama (selalu putih)
+        esp.NameLabel.Text = player.Name
+        esp.NameLabel.TextColor3 = Color3.new(1, 1, 1)  -- Putih
         
-        if not onScreen then
-            for _, obj in pairs(esp) do obj.Visible = false end
-            continue
-        end
-        
-        -- NAME (Putih besar di atas kepala)
-        if Config.ESP.Names then
-            esp.Name.Text = player.Name
-            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 45)
-            esp.Name.Color = Color3.fromRGB(255, 255, 255) -- Putih
-            esp.Name.Visible = true
+        -- Update jarak jika diaktifkan
+        if VDConfig.ESP.Distance then
+            esp.DistanceLabel.Text = string.format("[%.0fm]", distance)
         else
-            esp.Name.Visible = false
+            esp.DistanceLabel.Text = ""
         end
         
-        -- DISTANCE
-        if Config.ESP.Distance then
-            esp.Distance.Text = string.format("[%.0fm]", distance)
-            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + 35)
-            esp.Distance.Visible = true
-        else
-            esp.Distance.Visible = false
-        end
+        esp.Billboard.Enabled = true
     end
 end
 
@@ -444,7 +264,7 @@ local function setupPlayerESP(player)
     player.CharacterAdded:Connect(function(char)
         char:WaitForChild("HumanoidRootPart")
         task.wait(0.5)
-        if Config.ESP.Enabled then
+        if VDConfig.ESP.Enabled then
             createPlayerESP(player)
         end
     end)
@@ -453,7 +273,7 @@ local function setupPlayerESP(player)
         task.spawn(function()
             player.Character:WaitForChild("HumanoidRootPart")
             task.wait(0.5)
-            if Config.ESP.Enabled then
+            if VDConfig.ESP.Enabled then
                 createPlayerESP(player)
             end
         end)
@@ -462,7 +282,7 @@ end
 
 -- Initialize ESP for existing players
 for _, player in pairs(Players:GetPlayers()) do
-    if player ~= Player then
+    if player ~= LocalPlayer then
         setupPlayerESP(player)
     end
 end
@@ -476,7 +296,7 @@ Players.PlayerRemoving:Connect(removePlayerESP)
 local Highlights = {}
 
 local function createHighlight(player)
-    if player == Player then return end
+    if player == LocalPlayer then return end
     if not player.Character then return end
     
     -- Hapus highlight lama jika ada
@@ -492,7 +312,7 @@ local function createHighlight(player)
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     
     -- Set warna berdasarkan kondisi
-    if not Player.Team or not player.Team then
+    if not LocalPlayer.Team or not player.Team then
         -- Lobby: semua putih
         highlight.FillColor = LobbyColor
         highlight.OutlineColor = LobbyColor
@@ -501,7 +321,7 @@ local function createHighlight(player)
         highlight.FillColor = TeamColor
         highlight.OutlineColor = TeamColor
     else
-        -- Enemy/Killer: merah
+        -- Enemy: merah
         highlight.FillColor = EnemyColor
         highlight.OutlineColor = EnemyColor
     end
@@ -524,17 +344,17 @@ local function updateHighlights()
         end
         
         -- Update warna berdasarkan kondisi terbaru
-        if not Player.Team or not player.Team then
+        if not LocalPlayer.Team or not player.Team then
             -- Lobby: semua putih
             highlight.FillColor = LobbyColor
             highlight.OutlineColor = LobbyColor
-            highlight.Enabled = Config.Highlight.Enabled
+            highlight.Enabled = VDConfig.Highlight.Enabled
         elseif isTeammate(player) then
             -- Teammate: hijau (atau hide jika ShowTeam = false)
-            if Config.Highlight.ShowTeam then
+            if VDConfig.Highlight.ShowTeam then
                 highlight.FillColor = TeamColor
                 highlight.OutlineColor = TeamColor
-                highlight.Enabled = Config.Highlight.Enabled
+                highlight.Enabled = VDConfig.Highlight.Enabled
             else
                 highlight.Enabled = false
             end
@@ -542,7 +362,7 @@ local function updateHighlights()
             -- Enemy: merah
             highlight.FillColor = EnemyColor
             highlight.OutlineColor = EnemyColor
-            highlight.Enabled = Config.Highlight.Enabled
+            highlight.Enabled = VDConfig.Highlight.Enabled
         end
     end
 end
@@ -558,10 +378,10 @@ local function updateWallhack()
         WallhackConnection = nil
     end
     
-    if Config.Visual.WallhackEnabled then
+    if VDConfig.Visual.WallhackEnabled then
         WallhackConnection = RunService.RenderStepped:Connect(function()
             for _, v in pairs(Workspace:GetDescendants()) do
-                if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
+                if v:IsA("BasePart") and not v:IsDescendantOf(LocalPlayer.Character) then
                     if v.Transparency < 0.5 then
                         v.Material = Enum.Material.ForceField
                         v.Transparency = 0.5
@@ -572,7 +392,7 @@ local function updateWallhack()
     else
         -- Restore normal materials
         for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
+            if v:IsA("BasePart") and not v:IsDescendantOf(LocalPlayer.Character) then
                 v.Material = Enum.Material.Plastic
                 v.Transparency = 0
             end
@@ -581,10 +401,10 @@ local function updateWallhack()
 end
 
 --==================================================
--- NO FOG FUNCTION
+-- VISUAL FUNCTIONS
 --==================================================
 local function updateNoFog()
-    if Config.Visual.NoFogEnabled then
+    if VDConfig.Visual.NoFogEnabled then
         Lighting.FogEnd = 1e9
         Lighting.FogStart = 0
     else
@@ -593,22 +413,16 @@ local function updateNoFog()
     end
 end
 
---==================================================
--- INFINITE ZOOM FUNCTION
---==================================================
 local function updateInfiniteZoom()
-    if Config.Visual.InfiniteZoom and Camera then
+    if VDConfig.Visual.InfiniteZoom and Camera then
         Camera.FieldOfView = 120
     elseif Camera then
         Camera.FieldOfView = 70
     end
 end
 
---==================================================
--- FULLBRIGHT FUNCTION
---==================================================
 local function updateFullbright()
-    if Config.Visual.FullbrightEnabled then
+    if VDConfig.Visual.FullbrightEnabled then
         Lighting.Brightness = 2
         Lighting.ClockTime = 14
         Lighting.GlobalShadows = false
@@ -625,36 +439,31 @@ end
 -- MOVEMENT SYSTEM
 --==================================================
 local noclipConnection = nil
-local infiniteJumpConnection = nil
 
 local function updateMovement()
-    local char = Player.Character
+    local char = LocalPlayer.Character
     if not char then return end
     
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum then return end
     
-    if Config.Movement.SpeedEnabled then
-        hum.WalkSpeed = Config.Movement.SpeedValue
+    if VDConfig.Movement.SpeedEnabled then
+        hum.WalkSpeed = VDConfig.Movement.SpeedValue
     else
         hum.WalkSpeed = 16
     end
     
-    if Config.Movement.JumpEnabled then
-        hum.JumpPower = Config.Movement.JumpValue
+    if VDConfig.Movement.JumpEnabled then
+        hum.JumpPower = VDConfig.Movement.JumpValue
     else
         hum.JumpPower = 50
     end
 end
 
 -- Infinite Jump
-if infiniteJumpConnection then
-    infiniteJumpConnection:Disconnect()
-end
-
-infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
-    if Config.Movement.InfiniteJump then
-        local char = Player.Character
+UserInputService.JumpRequest:Connect(function()
+    if VDConfig.Movement.InfiniteJump then
+        local char = LocalPlayer.Character
         if char then
             local hum = char:FindFirstChildOfClass("Humanoid")
             if hum then
@@ -669,9 +478,9 @@ local function enableNoclip()
     if noclipConnection then noclipConnection:Disconnect() end
     
     noclipConnection = RunService.Stepped:Connect(function()
-        if not Config.Movement.Noclip then return end
+        if not VDConfig.Movement.Noclip then return end
         
-        local char = Player.Character
+        local char = LocalPlayer.Character
         if not char then return end
         
         for _, part in pairs(char:GetDescendants()) do
@@ -690,7 +499,7 @@ local function disableNoclip()
     
     task.wait(0.1)
     
-    local char = Player.Character
+    local char = LocalPlayer.Character
     if char then
         for _, part in pairs(char:GetDescendants()) do
             if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
@@ -703,6 +512,7 @@ end
 --==================================================
 -- ANTI AFK SYSTEM
 --==================================================
+local VirtualUser = game:GetService("VirtualUser")
 local antiAFKConnection = nil
 
 local function setupAntiAFK()
@@ -711,8 +521,8 @@ local function setupAntiAFK()
         antiAFKConnection = nil
     end
     
-    if Config.Misc.AntiAFK then
-        antiAFKConnection = Player.Idled:Connect(function()
+    if VDConfig.Misc.AntiAFK then
+        antiAFKConnection = LocalPlayer.Idled:Connect(function()
             VirtualUser:CaptureController()
             VirtualUser:ClickButton2(Vector2.new())
         end)
@@ -725,7 +535,7 @@ end
 local function getPlayerList()
     local list = {}
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= Player then
+        if player ~= LocalPlayer then
             table.insert(list, player.Name)
         end
     end
@@ -735,20 +545,23 @@ end
 local function teleportToPlayer(playerName)
     local target = Players:FindFirstChild(playerName)
     if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        Player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-        Notify("Teleported to " .. playerName)
+        LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+        Rayfield:Notify({
+            Title = "Teleport",
+            Content = "Teleported to " .. playerName,
+            Duration = 2
+        })
         return true
     end
-    Notify("Player not found or invalid")
     return false
 end
 
 --==================================================
--- HIDE SKILL CHECK UI
+-- HIDE SKILLCHECK UI
 --==================================================
 RunService.RenderStepped:Connect(function()
-    if Config.UI.HideSkillCheck then
-        local PlayerGui = Player:WaitForChild("PlayerGui")
+    if VDConfig.UI.HideSkillCheck then
+        local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
         
         local targetUI = PlayerGui:FindFirstChild("SkillCheckPromptGui")
         local targetUICon = PlayerGui:FindFirstChild("SkillCheckPromptGui-con")
@@ -764,27 +577,53 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --==================================================
--- ANTI-FAIL SYSTEM
+-- ANTI-FAIL SYSTEM (DARI CODE ASLI)
 --==================================================
 local AntiFailHooked = false
 
-local function setupAntiFail()
+local function setupUnifiedAntiFail()
     if AntiFailHooked then return end
     
     task.spawn(function()
         local success = pcall(function()
+            -- Wait for remotes
+            local Remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
+            if not Remotes then 
+                warn("⚠️ Remotes not found")
+                return 
+            end
+            
+            -- Wait for Events folder
+            local EventsFolder = ReplicatedStorage:WaitForChild("Events", 10)
+            if not EventsFolder then
+                warn("⚠️ Events folder not found")
+            end
+            
+            -- Generator remotes
+            local GenRemotes = Remotes:WaitForChild("Generator", 5)
+            local GenResultEvent = GenRemotes and GenRemotes:WaitForChild("SkillCheckResultEvent", 5)
+            local GenFailEvent = GenRemotes and GenRemotes:FindFirstChild("SkillCheckFailEvent")
+            
+            -- Healing remotes
+            local Healing = EventsFolder and EventsFolder:FindFirstChild("Healing")
+            local HealResultEvent = Healing and Healing:FindFirstChild("SkillCheckResultEvent")
+            local HealFailEvent = Healing and Healing:FindFirstChild("SkillCheckFailEvent")
+            
+            -- Hook metamethod
             local oldNamecall
             oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
                 local method = getnamecallmethod()
                 local args = {...}
                 
                 -- GENERATOR ANTI-FAIL
-                if Config.Generator.AntiFailEnabled then
-                    if tostring(self):find("SkillCheckFailEvent") and method == "FireServer" then
+                if GenResultEvent and VDConfig.Generator.AntiFailEnabled then
+                    -- Block fail event
+                    if GenFailEvent and self == GenFailEvent and method == "FireServer" then
                         return nil
                     end
                     
-                    if tostring(self):find("SkillCheckResultEvent") and method == "FireServer" then
+                    -- Force success on generator
+                    if self == GenResultEvent and method == "FireServer" then
                         if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
                             args[1] = true
                             return oldNamecall(self, unpack(args))
@@ -795,12 +634,14 @@ local function setupAntiFail()
                 end
                 
                 -- HEALING ANTI-FAIL
-                if Config.Healing.AntiFailEnabled then
-                    if tostring(self):find("Heal") and tostring(self):find("Fail") and method == "FireServer" then
+                if HealResultEvent and VDConfig.Healing.AntiFailEnabled then
+                    -- Block fail event
+                    if HealFailEvent and self == HealFailEvent and method == "FireServer" then
                         return nil
                     end
                     
-                    if tostring(self):find("Heal") and tostring(self):find("Result") and method == "FireServer" then
+                    -- Force success on healing
+                    if self == HealResultEvent and method == "FireServer" then
                         args[1] = true
                         return oldNamecall(self, unpack(args))
                     end
@@ -810,14 +651,15 @@ local function setupAntiFail()
             end)
             
             AntiFailHooked = true
+            print("✅ Unified Anti-Fail System hooked successfully!")
         end)
     end)
 end
 
-setupAntiFail()
+setupUnifiedAntiFail()
 
 --==================================================
--- GENERATOR ESP
+-- GENERATOR ESP (DARI CODE ASLI)
 --==================================================
 local GeneratorESP = {}
 
@@ -849,8 +691,8 @@ local function createGeneratorESP(gen)
         while gen.Parent and folder.Parent do
             local progress = gen:GetAttribute("RepairProgress") or 0
             textLabel.Text = math.floor(progress) .. "%"
-            highlight.Enabled = Config.Generator.ESPEnabled
-            textLabel.Visible = Config.Generator.ESPEnabled
+            highlight.Enabled = VDConfig.Generator.ESPEnabled
+            textLabel.Visible = VDConfig.Generator.ESPEnabled
             
             if progress >= 100 then
                 highlight.FillColor = Color3.new(0, 1, 0)
@@ -867,7 +709,7 @@ end
 
 task.spawn(function()
     while true do
-        if Config.Generator.ESPEnabled then
+        if VDConfig.Generator.ESPEnabled then
             for _, obj in pairs(Workspace:GetDescendants()) do
                 if obj.Name == "Generator" and obj:IsA("Model") then
                     createGeneratorESP(obj)
@@ -892,571 +734,569 @@ RunService.Heartbeat:Connect(function()
 end)
 
 --==================================================
+-- RAYFIELD UI WINDOW
+--==================================================
+local Window = Rayfield:CreateWindow({
+   Name = "VIOLENCE DISTRICT - ULTIMATE EDITION",
+   LoadingTitle = "Loading VIOLENCE DISTRICT...",
+   LoadingSubtitle = "by RanZx999 (Enhanced)",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "ViolenceDistrict",
+      FileName = "Config"
+   },
+   Discord = {
+      Enabled = false,
+   },
+   KeySystem = false,
+})
+
+--==================================================
+-- MAIN TAB (PLAYER INFO)
+--==================================================
+local MainTab = Window:CreateTab("🏠 Main", 4483362458)
+
+MainTab:CreateSection("📊 PLAYER INFORMATION")
+
+MainTab:CreateLabel("👤 Name: " .. LocalPlayer.Name)
+MainTab:CreateLabel("📝 Display: " .. LocalPlayer.DisplayName)
+MainTab:CreateLabel("🆔 User ID: " .. LocalPlayer.UserId)
+MainTab:CreateLabel("📅 Account Age: " .. LocalPlayer.AccountAge .. " days")
+MainTab:CreateLabel("🎯 Team: " .. (LocalPlayer.Team and LocalPlayer.Team.Name or "No Team"))
+
+MainTab:CreateSection("🌐 SERVER INFORMATION")
+
+local function updateServerInfo()
+    local players = #Players:GetPlayers()
+    local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() * 100) / 100
+    return "Players: " .. players .. "/" .. (Players.MaxPlayers or "??") .. "\nPing: " .. ping .. "ms"
+end
+
+MainTab:CreateLabel(updateServerInfo())
+
+MainTab:CreateSection("⚡ ACTIVE FEATURES")
+
+local ActiveLabel = MainTab:CreateLabel("No active features")
+
+-- Update active features setiap detik
+task.spawn(function()
+    while true do
+        local active = GetActiveFeatures()
+        if #active > 0 then
+            ActiveLabel:Set(table.concat(active, " • "))
+        else
+            ActiveLabel:Set("No active features")
+        end
+        task.wait(1)
+    end
+end)
+
+--==================================================
 -- ESP TAB (NAMES ONLY - NO BOXES)
 --==================================================
-local ESPSection = ESPTab:AddSection({
-    Name = "🎯 PLAYER NAME ESP",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+local ESPTab = Window:CreateTab("👤 Player ESP", 4483362458)
+
+ESPTab:CreateSection("PLAYER NAME ESP (NO BOXES)")
+
+ESPTab:CreateToggle({
+   Name = "Enable Name ESP",
+   CurrentValue = false,
+   Flag = "EnableESP",
+   Callback = function(Value)
+       VDConfig.ESP.Enabled = Value
+       
+       if Value then
+           for _, player in pairs(Players:GetPlayers()) do
+               if player ~= LocalPlayer then
+                   createPlayerESP(player)
+               end
+           end
+           Rayfield:Notify({
+               Title = "Name ESP Enabled",
+               Content = "White names above heads",
+               Duration = 2
+           })
+       else
+           for player, _ in pairs(ESPObjects) do
+               removePlayerESP(player)
+           end
+       end
+   end,
 })
 
-ESPSection:AddToggle({
-    Name = "ENABLE NAME ESP",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPEnable",
-    Save = true,
-    Callback = function(Value)
-        Config.ESP.Enabled = Value
-        
-        if Value then
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= Player then
-                    createPlayerESP(player)
-                end
-            end
-            Notify("Name ESP Enabled")
-        else
-            for player, _ in pairs(ESPObjects) do
-                removePlayerESP(player)
-            end
-        end
-    end
+ESPTab:CreateToggle({
+   Name = "Show Distance",
+   CurrentValue = false,
+   Callback = function(Value) VDConfig.ESP.Distance = Value end,
 })
 
-ESPSection:AddToggle({
-    Name = "SHOW NAMES (WHITE - LARGE FONT)",
-    Default = true,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPNames",
-    Save = true,
-    Callback = function(Value) Config.ESP.Names = Value end
+ESPTab:CreateToggle({
+   Name = "Team Check (Hide Teammates)",
+   CurrentValue = true,
+   Callback = function(Value) VDConfig.ESP.TeamCheck = Value end,
 })
 
-ESPSection:AddToggle({
-    Name = "SHOW DISTANCE",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPDistance",
-    Save = true,
-    Callback = function(Value) Config.ESP.Distance = Value end
+ESPTab:CreateToggle({
+   Name = "Show Teammates (Override)",
+   CurrentValue = false,
+   Callback = function(Value) VDConfig.ESP.ShowTeammates = Value end,
 })
 
-ESPSection:AddToggle({
-    Name = "TEAM CHECK (HIDE TEAMMATES)",
-    Default = true,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPTeamCheck",
-    Save = true,
-    Callback = function(Value) Config.ESP.TeamCheck = Value end
+ESPTab:CreateSlider({
+   Name = "Max ESP Distance",
+   Range = {500, 5000},
+   Increment = 100,
+   Suffix = "m",
+   CurrentValue = 2000,
+   Callback = function(Value) VDConfig.ESP.MaxDistance = Value end,
 })
 
-ESPSection:AddToggle({
-    Name = "SHOW TEAMMATES (OVERRIDE)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ESPShowTeam",
-    Save = true,
-    Callback = function(Value) Config.ESP.ShowTeammates = Value end
-})
-
-ESPSection:AddSlider({
-    Name = "MAX ESP DISTANCE",
-    Min = 500,
-    Max = 5000,
-    Default = 2000,
-    Increment = 100,
-    ValueName = "meters",
-    Outline = true,
-    Callback = function(Value) Config.ESP.MaxDistance = Value end
-})
-
-ESPSection:AddParagraph({
-    Title = "INFO",
-    Desc = "⚪ White names above head\n📏 Distance display optional",
-    Image = "info",
-    ImageSize = 38
-})
+ESPTab:CreateLabel("⚪ Names are always WHITE")
 
 --==================================================
 -- HIGHLIGHT TAB
 --==================================================
-local HighlightSection = HighlightTab:AddSection({
-    Name = "✨ CHARACTER HIGHLIGHT",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+local HighlightTab = Window:CreateTab("✨ Highlight", 4483362458)
+
+HighlightTab:CreateSection("CHARACTER HIGHLIGHT")
+
+HighlightTab:CreateToggle({
+   Name = "Enable Highlight",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Highlight.Enabled = Value
+       
+       if Value then
+           for _, player in pairs(Players:GetPlayers()) do
+               if player ~= LocalPlayer then
+                   createHighlight(player)
+               end
+           end
+           
+           Players.PlayerAdded:Connect(function(player)
+               if VDConfig.Highlight.Enabled then
+                   repeat task.wait() until player.Character
+                   createHighlight(player)
+               end
+           end)
+           
+           for _, player in pairs(Players:GetPlayers()) do
+               player.CharacterAdded:Connect(function()
+                   if VDConfig.Highlight.Enabled then
+                       task.wait(0.5)
+                       createHighlight(player)
+                   end
+               end)
+           end
+           
+           Rayfield:Notify({
+               Title = "Highlight Enabled",
+               Content = "Players are now highlighted!",
+               Duration = 2
+           })
+       else
+           for player, _ in pairs(Highlights) do
+               removeHighlight(player)
+           end
+       end
+   end,
 })
 
-HighlightSection:AddToggle({
-    Name = "ENABLE HIGHLIGHT",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HighlightEnable",
-    Save = true,
-    Callback = function(Value)
-        Config.Highlight.Enabled = Value
-        
-        if Value then
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= Player then
-                    createHighlight(player)
-                end
-            end
-            
-            Players.PlayerAdded:Connect(function(player)
-                if Config.Highlight.Enabled then
-                    repeat task.wait() until player.Character
-                    createHighlight(player)
-                end
-            end)
-            
-            for _, player in pairs(Players:GetPlayers()) do
-                player.CharacterAdded:Connect(function()
-                    if Config.Highlight.Enabled then
-                        task.wait(0.5)
-                        createHighlight(player)
-                    end
-                end)
-            end
-            
-            Notify("Highlight Enabled")
-        else
-            for player, _ in pairs(Highlights) do
-                removeHighlight(player)
-            end
-        end
-    end
+HighlightTab:CreateToggle({
+   Name = "Show Team Highlight",
+   CurrentValue = false,
+   Callback = function(Value) VDConfig.Highlight.ShowTeam = Value end,
 })
 
-HighlightSection:AddToggle({
-    Name = "SHOW TEAM HIGHLIGHT",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HighlightShowTeam",
-    Save = true,
-    Callback = function(Value) Config.Highlight.ShowTeam = Value end
+HighlightTab:CreateLabel("⚪ Lobby: All White")
+HighlightTab:CreateLabel("🟢 Game: Teammate Green")
+HighlightTab:CreateLabel("🔴 Game: Enemy Red")
+
+--==================================================
+-- VISUAL TAB (WALLHACK, FULLBRIGHT, NO FOG, INFINITE ZOOM)
+--==================================================
+local VisualTab = Window:CreateTab("☀️ Visual", 4483362458)
+
+VisualTab:CreateSection("VISUAL ENHANCEMENTS")
+
+VisualTab:CreateToggle({
+   Name = "Wallhack (See Through Walls)",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Visual.WallhackEnabled = Value
+       updateWallhack()
+   end,
 })
 
-HighlightSection:AddParagraph({
-    Title = "COLOR GUIDE",
-    Desc = "⚪ Lobby: All White\n🟢 In Game: Teammate Green\n🔴 In Game: Enemy/Killer Red",
-    Image = "info",
-    ImageSize = 38
+VisualTab:CreateToggle({
+   Name = "Fullbright (Bright Map)",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Visual.FullbrightEnabled = Value
+   end,
+})
+
+VisualTab:CreateToggle({
+   Name = "No Fog",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Visual.NoFogEnabled = Value
+   end,
+})
+
+VisualTab:CreateToggle({
+   Name = "Infinite Zoom Out",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Visual.InfiniteZoom = Value
+   end,
 })
 
 --==================================================
--- MOVEMENT TAB
+-- MOVEMENT TAB (SPEED, JUMP, INFINITE JUMP, NOCLIP)
 --==================================================
-local SpeedSection = MovementTab:AddSection({
-    Name = "⚡ SPEED HACK",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+local MovementTab = Window:CreateTab("🏃 Movement", 4483362458)
+
+MovementTab:CreateSection("⚡ SPEED HACK")
+
+MovementTab:CreateToggle({
+   Name = "Enable Speed Boost",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Movement.SpeedEnabled = Value
+       if not Value then
+           local char = LocalPlayer.Character
+           if char then
+               local hum = char:FindFirstChildOfClass("Humanoid")
+               if hum then hum.WalkSpeed = 16 end
+           end
+       end
+   end,
 })
 
-SpeedSection:AddToggle({
-    Name = "ENABLE SPEED BOOST",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "SpeedEnable",
-    Save = true,
-    Callback = function(Value)
-        Config.Movement.SpeedEnabled = Value
-        if not Value then
-            local char = Player.Character
-            if char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then hum.WalkSpeed = 16 end
-            end
-        end
-    end
+MovementTab:CreateSlider({
+   Name = "Speed Value",
+   Range = {16, 200},
+   Increment = 1,
+   Suffix = "WS",
+   CurrentValue = 16,
+   Callback = function(Value) VDConfig.Movement.SpeedValue = Value end,
 })
 
-SpeedSection:AddSlider({
-    Name = "SPEED VALUE",
-    Min = 16,
-    Max = 200,
-    Default = 50,
-    Increment = 1,
-    ValueName = "WS",
-    Outline = true,
-    Callback = function(Value)
-        Config.Movement.SpeedValue = Value
-    end
+MovementTab:CreateSection("🦘 JUMP HACK")
+
+MovementTab:CreateToggle({
+   Name = "Enable Jump Boost",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Movement.JumpEnabled = Value
+       if not Value then
+           local char = LocalPlayer.Character
+           if char then
+               local hum = char:FindFirstChildOfClass("Humanoid")
+               if hum then hum.JumpPower = 50 end
+           end
+       end
+   end,
 })
 
-local JumpSection = MovementTab:AddSection({
-    Name = "🦘 JUMP HACK",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+MovementTab:CreateSlider({
+   Name = "Jump Power",
+   Range = {50, 300},
+   Increment = 5,
+   Suffix = "JP",
+   CurrentValue = 50,
+   Callback = function(Value) VDConfig.Movement.JumpValue = Value end,
 })
 
-JumpSection:AddToggle({
-    Name = "ENABLE JUMP BOOST",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "JumpEnable",
-    Save = true,
-    Callback = function(Value)
-        Config.Movement.JumpEnabled = Value
-        if not Value then
-            local char = Player.Character
-            if char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then hum.JumpPower = 50 end
-            end
-        end
-    end
+MovementTab:CreateSection("🚀 EXTRA MOVEMENT")
+
+MovementTab:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Callback = function(Value) VDConfig.Movement.InfiniteJump = Value end,
 })
 
-JumpSection:AddSlider({
-    Name = "JUMP POWER",
-    Min = 50,
-    Max = 300,
-    Default = 100,
-    Increment = 5,
-    ValueName = "JP",
-    Outline = true,
-    Callback = function(Value)
-        Config.Movement.JumpValue = Value
-    end
-})
-
-local ExtraSection = MovementTab:AddSection({
-    Name = "🚀 EXTRA MOVEMENT",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-ExtraSection:AddToggle({
-    Name = "INFINITE JUMP",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "InfiniteJump",
-    Save = true,
-    Callback = function(Value)
-        Config.Movement.InfiniteJump = Value
-        Notify(Value and "Infinite Jump Enabled" or "Infinite Jump Disabled")
-    end
-})
-
-ExtraSection:AddToggle({
-    Name = "NOCLIP (WALK THROUGH WALLS)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Noclip",
-    Save = true,
-    Callback = function(Value)
-        Config.Movement.Noclip = Value
-        
-        if Value then
-            enableNoclip()
-            Notify("Noclip Enabled - You can walk through walls!")
-        else
-            disableNoclip()
-            Notify("Noclip Disabled - Collision restored")
-        end
-    end
-})
-
---==================================================
--- VISUAL TAB
---==================================================
-local VisualMainSection = VisualTab:AddSection({
-    Name = "☀️ VISUAL ENHANCEMENTS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-VisualMainSection:AddToggle({
-    Name = "WALLHACK (SEE THROUGH WALLS)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Wallhack",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.WallhackEnabled = Value
-        updateWallhack()
-        Notify(Value and "Wallhack Enabled" or "Wallhack Disabled")
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "FULLBRIGHT (BRIGHT MAP)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Fullbright",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.FullbrightEnabled = Value
-        updateFullbright()
-        Notify(Value and "Fullbright Enabled" or "Fullbright Disabled")
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "NO FOG",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "NoFog",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.NoFogEnabled = Value
-        updateNoFog()
-        Notify(Value and "No Fog Enabled" or "No Fog Disabled")
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "INFINITE ZOOM OUT",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "InfiniteZoom",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.InfiniteZoom = Value
-        updateInfiniteZoom()
-        Notify(Value and "Infinite Zoom Enabled" or "Infinite Zoom Disabled")
-    end
+MovementTab:CreateToggle({
+   Name = "Noclip (Walk Through Walls)",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Movement.Noclip = Value
+       
+       if Value then
+           enableNoclip()
+           Rayfield:Notify({
+               Title = "Noclip Enabled",
+               Content = "Walk through walls!",
+               Duration = 2
+           })
+       else
+           disableNoclip()
+           Rayfield:Notify({
+               Title = "Noclip Disabled",
+               Content = "Collision restored",
+               Duration = 2
+           })
+       end
+   end,
 })
 
 --==================================================
 -- TELEPORT TAB
 --==================================================
-local TeleportMainSection = TeleportTab:AddSection({
-    Name = "📍 TELEPORT TO PLAYER",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
+local TeleportTab = Window:CreateTab("📍 Teleport", 4483362458)
+
+TeleportTab:CreateSection("TELEPORT TO PLAYER")
 
 local SelectedPlayer = ""
+local PlayerDropdown
 
-TeleportMainSection:AddDropdown({
-    Name = "SELECT PLAYER",
-    Default = "Select a player",
-    Options = getPlayerList(),
-    Multi = false,
-    Search = true,
-    AllowNone = true,
-    Outline = true,
-    Callback = function(Value)
-        SelectedPlayer = Value
-    end
-})
-
-TeleportMainSection:AddButton({
-    Name = "🚀 TELEPORT TO SELECTED PLAYER",
-    Icon = "map-pin",
-    Outline = true,
-    Callback = function()
-        if SelectedPlayer and SelectedPlayer ~= "" then
-            teleportToPlayer(SelectedPlayer)
-        else
-            Notify("Please select a player first!")
+-- Function to refresh dropdown
+local function refreshPlayerDropdown()
+    local players = getPlayerList()
+    if #players > 0 then
+        if PlayerDropdown then
+            PlayerDropdown:Set(players[1])
         end
+        SelectedPlayer = players[1] or ""
     end
+end
+
+PlayerDropdown = TeleportTab:CreateDropdown({
+   Name = "Select Player",
+   Options = getPlayerList(),
+   CurrentOption = "Select a player",
+   Callback = function(Value)
+       SelectedPlayer = Value
+   end,
 })
 
-TeleportMainSection:AddButton({
-    Name = "🔄 REFRESH PLAYER LIST",
-    Icon = "refresh-cw",
-    Outline = true,
-    Callback = function()
-        Notify("Player list refreshed")
-    end
+TeleportTab:CreateButton({
+   Name = "🚀 Teleport to Selected Player",
+   Callback = function()
+       if SelectedPlayer and SelectedPlayer ~= "" and SelectedPlayer ~= "Select a player" then
+           if teleportToPlayer(SelectedPlayer) then
+               -- Success
+           else
+               Rayfield:Notify({
+                   Title = "Error",
+                   Content = "Failed to teleport",
+                   Duration = 2
+               })
+           end
+       else
+           Rayfield:Notify({
+               Title = "Error",
+               Content = "Please select a player first",
+               Duration = 2
+           })
+       end
+   end,
 })
 
-local WaypointSection = TeleportTab:AddSection({
-    Name = "📍 WAYPOINTS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+TeleportTab:CreateButton({
+   Name = "🔄 Refresh Player List",
+   Callback = function()
+       refreshPlayerDropdown()
+       Rayfield:Notify({
+           Title = "Refreshed",
+           Content = "Player list updated",
+           Duration = 2
+       })
+   end,
 })
 
-WaypointSection:AddButton({
-    Name = "💾 SAVE CURRENT POSITION",
-    Icon = "save",
-    Outline = true,
-    Callback = function()
-        if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-            Config.Teleport.SavedPosition = Player.Character.HumanoidRootPart.CFrame
-            Notify("Position saved!")
-        end
-    end
+TeleportTab:CreateSection("📍 WAYPOINTS")
+
+TeleportTab:CreateButton({
+   Name = "💾 Save Current Position",
+   Callback = function()
+       if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+           VDConfig.Teleport.SavedPosition = LocalPlayer.Character.HumanoidRootPart.CFrame
+           Rayfield:Notify({
+               Title = "Saved",
+               Content = "Position saved!",
+               Duration = 2
+           })
+       end
+   end,
 })
 
-WaypointSection:AddButton({
-    Name = "📂 LOAD SAVED POSITION",
-    Icon = "upload",
-    Outline = true,
-    Callback = function()
-        if Config.Teleport.SavedPosition then
-            Player.Character.HumanoidRootPart.CFrame = Config.Teleport.SavedPosition
-            Notify("Teleported to saved position")
-        else
-            Notify("No saved position found!")
-        end
-    end
+TeleportTab:CreateButton({
+   Name = "📂 Load Saved Position",
+   Callback = function()
+       if VDConfig.Teleport.SavedPosition then
+           LocalPlayer.Character.HumanoidRootPart.CFrame = VDConfig.Teleport.SavedPosition
+           Rayfield:Notify({
+               Title = "Teleported",
+               Content = "Returned to saved position",
+               Duration = 2
+           })
+       else
+           Rayfield:Notify({
+               Title = "Error",
+               Content = "No saved position found",
+               Duration = 2
+           })
+       end
+   end,
 })
 
 --==================================================
--- GENERATOR TAB
+-- GENERATOR TAB (DARI CODE ASLI)
 --==================================================
-local GenSection = GeneratorTab:AddSection({
-    Name = "⚡ GENERATOR FEATURES",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+local GeneratorTab = Window:CreateTab("⚡ Generator", 4483362458)
+
+GeneratorTab:CreateSection("GENERATOR ESP")
+
+GeneratorTab:CreateToggle({
+   Name = "Enable Generator ESP",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Generator.ESPEnabled = Value
+       
+       if Value then
+           Rayfield:Notify({
+               Title = "Generator ESP Enabled",
+               Content = "Scanning for generators...",
+               Duration = 2
+           })
+       else
+           for gen, folder in pairs(GeneratorESP) do
+               if folder then pcall(function() folder:Destroy() end) end
+           end
+           GeneratorESP = {}
+       end
+   end,
 })
 
-GenSection:AddToggle({
-    Name = "ENABLE GENERATOR ESP",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "GenESP",
-    Save = true,
-    Callback = function(Value)
-        Config.Generator.ESPEnabled = Value
-    end
+GeneratorTab:CreateLabel("🔵 Cyan = In Progress")
+GeneratorTab:CreateLabel("🟢 Green = Complete (100%)")
+
+GeneratorTab:CreateSection("ANTI-FAIL GENERATOR")
+
+GeneratorTab:CreateToggle({
+   Name = "Enable Anti-Fail Generator",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Generator.AntiFailEnabled = Value
+   end,
 })
 
-GenSection:AddToggle({
-    Name = "ENABLE ANTI-FAIL GENERATOR",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "GenAntiFail",
-    Save = true,
-    Callback = function(Value)
-        Config.Generator.AntiFailEnabled = Value
-    end
-})
+GeneratorTab:CreateLabel("✅ Auto-pass generator skill checks")
 
 --==================================================
 -- HEALING TAB
 --==================================================
-local HealSection = HealingTab:AddSection({
-    Name = "❤️ HEALING FEATURES",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+local HealingTab = Window:CreateTab("❤️ Healing", 4483362458)
+
+HealingTab:CreateSection("ANTI-FAIL HEALING")
+
+HealingTab:CreateToggle({
+   Name = "Enable Anti-Fail Heal",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Healing.AntiFailEnabled = Value
+   end,
 })
 
-HealSection:AddToggle({
-    Name = "ENABLE ANTI-FAIL HEALING",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HealAntiFail",
-    Save = true,
-    Callback = function(Value)
-        Config.Healing.AntiFailEnabled = Value
-    end
+HealingTab:CreateToggle({
+   Name = "Hide Skill Check UI",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.UI.HideSkillCheck = Value
+   end,
 })
 
-HealSection:AddToggle({
-    Name = "HIDE SKILL CHECK UI",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HideSkillCheck",
-    Save = true,
-    Callback = function(Value)
-        Config.UI.HideSkillCheck = Value
-    end
+HealingTab:CreateLabel("✅ Auto-pass healing skill checks")
+HealingTab:CreateLabel("✅ Clean screen while healing")
+
+--==================================================
+-- MISC TAB (ANTI AFK)
+--==================================================
+local MiscTab = Window:CreateTab("⚙️ Misc", 4483362458)
+
+MiscTab:CreateSection("UTILITY")
+
+MiscTab:CreateToggle({
+   Name = "Anti AFK (Prevent Idle Kick)",
+   CurrentValue = false,
+   Callback = function(Value)
+       VDConfig.Misc.AntiAFK = Value
+       setupAntiAFK()
+   end,
+})
+
+MiscTab:CreateSection("SCRIPT INFO")
+
+MiscTab:CreateLabel("Violence District - ULTIMATE Edition")
+MiscTab:CreateLabel("Version: 3.0")
+MiscTab:CreateLabel("Created by: RanZx999 (Enhanced)")
+MiscTab:CreateLabel("Toggle UI: Right CTRL")
+
+MiscTab:CreateButton({
+   Name = "Destroy Script",
+   Callback = function()
+       -- Cleanup ESP
+       for player, _ in pairs(ESPObjects) do
+           removePlayerESP(player)
+       end
+       
+       -- Cleanup Highlights
+       for player, _ in pairs(Highlights) do
+           removeHighlight(player)
+       end
+       
+       -- Cleanup Generator ESP
+       for gen, folder in pairs(GeneratorESP) do
+           if folder then pcall(function() folder:Destroy() end) end
+       end
+       
+       -- Cleanup connections
+       if noclipConnection then noclipConnection:Disconnect() end
+       if WallhackConnection then WallhackConnection:Disconnect() end
+       if antiAFKConnection then antiAFKConnection:Disconnect() end
+       
+       -- Restore lighting
+       Lighting.Brightness = originalLighting.Brightness
+       Lighting.ClockTime = originalLighting.ClockTime
+       Lighting.FogEnd = originalLighting.FogEnd
+       Lighting.FogStart = originalLighting.FogStart
+       Lighting.GlobalShadows = originalLighting.GlobalShadows
+       Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+       
+       Rayfield:Notify({
+           Title = "Script Destroyed",
+           Content = "VIOLENCE DISTRICT unloaded!",
+           Duration = 2
+       })
+       
+       task.wait(1)
+       Rayfield:Destroy()
+   end,
 })
 
 --==================================================
--- MISC TAB
+-- SETTINGS TAB (CONFIG)
 --==================================================
-local MiscMainSection = MiscTab:AddSection({
-    Name = "⚙️ UTILITY FEATURES",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
+local SettingsTab = Window:CreateTab("⚙️ Settings", 4483362458)
 
-MiscMainSection:AddToggle({
-    Name = "ANTI AFK (PREVENT IDLE KICK)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "AntiAFK",
-    Save = true,
-    Callback = function(Value)
-        Config.Misc.AntiAFK = Value
-        setupAntiAFK()
-        Notify(Value and "Anti AFK Enabled" or "Anti AFK Disabled")
-    end
-})
+SettingsTab:CreateSection("CONFIGURATION")
 
---==================================================
--- CHARACTER UPDATES
---==================================================
-Player.CharacterAdded:Connect(function(char)
-    Player.Character = char
-    task.wait(1)
-    
-    -- Re-apply noclip if enabled
-    if Config.Movement.Noclip then
-        enableNoclip()
-    end
-    
-    -- Reset speed/jump if enabled
-    if Config.Movement.SpeedEnabled then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = Config.Movement.SpeedValue end
-    end
-    
-    if Config.Movement.JumpEnabled then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then hum.JumpPower = Config.Movement.JumpValue end
-    end
-end)
-
---==================================================
--- ADD CONFIG TAB
---==================================================
-Window:AddConfigTab({
-    Name = "Settings",
-    Icon = "settings"
-})
+-- Load configuration
+Rayfield:LoadConfiguration()
 
 --==================================================
 -- INITIALIZE
 --==================================================
-OrionLib:Init()
-
-Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v3.0 🔥")
+print("🔥 VIOLENCE DISTRICT - ULTIMATE EDITION 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ Player Name ESP - Large White Font (NO BOXES!)")
-print("✅ Highlight System - Lobby: White | Game: Green/Red")
-print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
+print("✅ Player Name ESP - White large font (NO BOXES!)")
+print("✅ Highlight - Lobby: White | Game: Green/Red")
 print("✅ Visual - Wallhack, Fullbright, No Fog, Infinite Zoom")
+print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
 print("✅ Teleport - Player TP, Waypoints, Refresh List")
 print("✅ Misc - Anti AFK, Active Features Counter")
+print("✅ Player Info - Complete stats on Main Tab")
 print("═══════════════════════════════════════════════════════")
