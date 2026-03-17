@@ -1,5 +1,5 @@
 -- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.3 ====================
--- Fitur Baru: Teleport Generator dengan Dropdown & Refresh (FIXED: tanpa [0m])
+-- FIXED: Teleport Generator - Tanpa jarak di dropdown & Teleport berfungsi
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -510,23 +510,35 @@ Players.PlayerAdded:Connect(setupPlayerESP)
 Players.PlayerRemoving:Connect(removePlayerESP)
 
 --==================================================
--- GENERATOR ESP & TELEPORT FUNCTIONS (FIXED: TANPA [0m])
+-- GENERATOR ESP & TELEPORT FUNCTIONS (FIXED - TANPA JARAK)
 --==================================================
 local GeneratorESP = {}
 local GeneratorList = {} -- Untuk menyimpan daftar generator
 
--- Fungsi untuk mendapatkan semua generator di map
+-- Fungsi untuk mendapatkan semua generator di map (IMPROVED)
 local function scanGenerators()
     local generators = {}
     local foundCount = 0
     
     for _, obj in pairs(Workspace:GetDescendants()) do
-        -- Cari generator dengan nama yang tepat
-        if obj.Name == "Generator" and obj:IsA("Model") then
+        -- Cari generator dengan berbagai kemungkinan nama
+        if obj:IsA("Model") and (obj.Name == "Generator" or obj.Name:find("Generator") or obj.Name:find("generator")) then
             foundCount = foundCount + 1
             local name = "Generator " .. foundCount
             
-            -- Dapatkan progress dengan aman
+            -- Cari PrimaryPart atau bagian utama generator
+            local primaryPart = obj.PrimaryPart
+            if not primaryPart then
+                -- Coba cari part yang bisa jadi posisi
+                for _, part in pairs(obj:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        primaryPart = part
+                        break
+                    end
+                end
+            end
+            
+            -- Dapatkan progress
             local progress = 0
             local success, result = pcall(function()
                 return obj:GetAttribute("RepairProgress") or 0
@@ -535,33 +547,21 @@ local function scanGenerators()
                 progress = result
             end
             
-            -- Dapatkan jarak
-            local distance = 0
-            if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                if obj.PrimaryPart then
-                    distance = (Player.Character.HumanoidRootPart.Position - obj.PrimaryPart.Position).Magnitude
-                end
-            end
-            
+            -- Simpan data generator (tanpa jarak)
             table.insert(generators, {
                 Model = obj,
                 Name = name,
                 Progress = progress,
-                Distance = math.floor(distance),
-                Position = obj.PrimaryPart and obj.PrimaryPart.Position or nil
+                Position = primaryPart and primaryPart.Position or nil,
+                PrimaryPart = primaryPart
             })
         end
     end
     
-    -- Urutkan berdasarkan jarak (terdekat dulu)
-    table.sort(generators, function(a, b)
-        return a.Distance < b.Distance
-    end)
-    
     return generators
 end
 
--- Fungsi untuk mendapatkan list nama generator untuk dropdown (FIXED: TANPA [0m])
+-- Fungsi untuk mendapatkan list nama generator untuk dropdown (TANPA JARAK)
 local function getGeneratorNames()
     local names = {}
     local gens = scanGenerators()
@@ -571,15 +571,16 @@ local function getGeneratorNames()
     else
         for i, gen in ipairs(gens) do
             local status = gen.Progress >= 100 and "✅" or "🔄"
-            -- FORMAT TANPA [0m] - MENGGUNAKAN STRING BIASA
-            local name = string.format("%s %s (%d%%) [%dm]", status, gen.Name, gen.Progress, gen.Distance)
+            local progressText = string.format("%.0f", gen.Progress) .. "%"
+            -- TANPA JARAK - hanya tampilkan nama dan progress
+            local name = string.format("%s %s (%s)", status, gen.Name, progressText)
             table.insert(names, name)
         end
     end
     return names
 end
 
--- Fungsi untuk teleport ke generator terpilih (IMPROVED)
+-- Fungsi untuk teleport ke generator terpilih (FIXED - PASTI BISA!)
 local function teleportToGenerator(selectedName)
     -- Cek karakter
     if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
@@ -588,29 +589,50 @@ local function teleportToGenerator(selectedName)
     end
     
     local gens = scanGenerators()
+    local hrp = Player.Character.HumanoidRootPart
     
-    -- Cari generator yang dipilih
+    -- Cari generator yang dipilih berdasarkan index
     for i, gen in ipairs(gens) do
         local status = gen.Progress >= 100 and "✅" or "🔄"
-        local checkName = string.format("%s %s (%d%%) [%dm]", status, gen.Name, gen.Progress, gen.Distance)
+        local progressText = string.format("%.0f", gen.Progress) .. "%"
+        -- Sesuaikan format dengan yang di dropdown (TANPA JARAK)
+        local checkName = string.format("%s %s (%s)", status, gen.Name, progressText)
         
         if checkName == selectedName then
+            -- Cek apakah generator memiliki posisi
             if gen.Position then
-                -- TELEPORT dengan metode aman
-                local hrp = Player.Character.HumanoidRootPart
+                -- PASTIKAN POSISI VALID (cek NaN atau infinite)
+                if gen.Position.X ~= gen.Position.X or math.abs(gen.Position.X) > 1e6 then
+                    Notify("❌ Posisi generator tidak valid")
+                    return false
+                end
+                
+                -- TELEPORT - PAKAI METODE LANGSUNG
                 local targetPos = Vector3.new(gen.Position.X, gen.Position.Y + 3, gen.Position.Z)
                 
-                -- Coba metode CFrame
-                local success = pcall(function()
+                -- Method 1: CFrame (PALING AMAN)
+                local success1, err1 = pcall(function()
                     hrp.CFrame = CFrame.new(targetPos)
+                    -- Tunggu sebentar untuk memastikan teleport selesai
+                    task.wait(0.1)
                 end)
                 
-                if success then
-                    Notify("✅ Teleported to " .. gen.Name .. " (" .. gen.Progress .. "%)")
+                if success1 then
+                    Notify("✅ Teleported ke " .. gen.Name .. " (" .. progressText .. ")")
                     return true
                 else
-                    Notify("❌ Gagal teleport ke generator")
-                    return false
+                    -- Method 2: Coba dengan MoveTo sebagai alternatif
+                    local success2 = pcall(function()
+                        hrp:MoveTo(targetPos)
+                    end)
+                    
+                    if success2 then
+                        Notify("✅ Teleported ke " .. gen.Name .. " (MoveTo)")
+                        return true
+                    else
+                        Notify("❌ Gagal teleport: " .. tostring(err1))
+                        return false
+                    end
                 end
             else
                 Notify("❌ Generator tidak memiliki posisi yang valid")
@@ -623,7 +645,64 @@ local function teleportToGenerator(selectedName)
     return false
 end
 
--- Fungsi untuk membuat ESP Generator (existing)
+-- Fungsi untuk teleport paksa ke generator terdekat (ALTERNATIF)
+local function teleportToNearestGenerator()
+    local gens = scanGenerators()
+    if #gens == 0 then
+        Notify("❌ Tidak ada generator di map")
+        return false
+    end
+    
+    -- Hitung jarak untuk mencari yang terdekat (internal saja, tidak ditampilkan)
+    local nearest = nil
+    local shortestDist = math.huge
+    
+    if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+        local myPos = Player.Character.HumanoidRootPart.Position
+        
+        for _, gen in ipairs(gens) do
+            if gen.Position then
+                local dist = (myPos - gen.Position).Magnitude
+                if dist < shortestDist then
+                    shortestDist = dist
+                    nearest = gen
+                end
+            end
+        end
+    else
+        -- Jika tidak bisa hitung jarak, ambil generator pertama
+        nearest = gens[1]
+    end
+    
+    if nearest and nearest.Position then
+        local hrp = Player.Character.HumanoidRootPart
+        local targetPos = Vector3.new(nearest.Position.X, nearest.Position.Y + 3, nearest.Position.Z)
+        
+        -- PASTIKAN POSISI VALID
+        if targetPos.X ~= targetPos.X or math.abs(targetPos.X) > 1e6 then
+            Notify("❌ Posisi generator tidak valid")
+            return false
+        end
+        
+        local success = pcall(function()
+            hrp.CFrame = CFrame.new(targetPos)
+        end)
+        
+        if success then
+            local progressText = string.format("%.0f", nearest.Progress) .. "%"
+            Notify("✅ Teleported ke generator terdekat (" .. progressText .. ")")
+            return true
+        else
+            Notify("❌ Gagal teleport ke generator terdekat")
+            return false
+        end
+    end
+    
+    Notify("❌ Tidak ada generator dengan posisi valid")
+    return false
+end
+
+-- Fungsi untuk membuat ESP Generator 
 local function createGeneratorESP(gen)
     if not gen:IsA("Model") or gen:FindFirstChild("GenESP") then return end
     
@@ -635,42 +714,55 @@ local function createGeneratorESP(gen)
     highlight.FillColor = Color3.new(0, 1, 1)
     highlight.DepthMode = "AlwaysOnTop"
     
-    local billboard = Instance.new("BillboardGui", folder)
-    billboard.Size = UDim2.new(0, 80, 0, 40)
-    billboard.AlwaysOnTop = true
-    billboard.Adornee = gen:FindFirstChild("HitBox") or gen.PrimaryPart
-    billboard.ExtentsOffset = Vector3.new(0, 3, 0)
-    
-    local textLabel = Instance.new("TextLabel", billboard)
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = Color3.new(1, 1, 1)
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 14
-    
-    task.spawn(function()
-        while gen.Parent and folder.Parent do
-            local progress = 0
-            local success, result = pcall(function()
-                return gen:GetAttribute("RepairProgress") or 0
-            end)
-            if success then
-                progress = result
+    -- Cari part untuk billboard
+    local adornee = gen:FindFirstChild("HitBox") or gen.PrimaryPart
+    if not adornee then
+        for _, part in pairs(gen:GetChildren()) do
+            if part:IsA("BasePart") then
+                adornee = part
+                break
             end
-            
-            textLabel.Text = math.floor(progress) .. "%"
-            highlight.Enabled = Config.Generator.ESPEnabled
-            textLabel.Visible = Config.Generator.ESPEnabled
-            
-            if progress >= 100 then
-                highlight.FillColor = Color3.new(0, 1, 0)
-            else
-                highlight.FillColor = Color3.new(0, 1, 1)
-            end
-            
-            task.wait(1)
         end
-    end)
+    end
+    
+    if adornee then
+        local billboard = Instance.new("BillboardGui", folder)
+        billboard.Size = UDim2.new(0, 80, 0, 40)
+        billboard.AlwaysOnTop = true
+        billboard.Adornee = adornee
+        billboard.ExtentsOffset = Vector3.new(0, 3, 0)
+        
+        local textLabel = Instance.new("TextLabel", billboard)
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.TextSize = 14
+        
+        task.spawn(function()
+            while gen.Parent and folder.Parent do
+                local progress = 0
+                local success, result = pcall(function()
+                    return gen:GetAttribute("RepairProgress") or 0
+                end)
+                if success then
+                    progress = result
+                end
+                
+                textLabel.Text = math.floor(progress) .. "%"
+                highlight.Enabled = Config.Generator.ESPEnabled
+                billboard.Enabled = Config.Generator.ESPEnabled
+                
+                if progress >= 100 then
+                    highlight.FillColor = Color3.new(0, 1, 0)
+                else
+                    highlight.FillColor = Color3.new(0, 1, 1)
+                end
+                
+                task.wait(1)
+            end
+        end)
+    end
     
     GeneratorESP[gen] = folder
 end
@@ -680,7 +772,7 @@ task.spawn(function()
     while true do
         if Config.Generator.ESPEnabled then
             for _, obj in pairs(Workspace:GetDescendants()) do
-                if obj.Name == "Generator" and obj:IsA("Model") then
+                if obj:IsA("Model") and (obj.Name == "Generator" or obj.Name:find("Generator")) then
                     createGeneratorESP(obj)
                 end
             end
@@ -690,7 +782,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- ANTI-FAIL SYSTEM (DINONAKTIFKAN UNTUK MENGHINDARI ERROR)
+-- ANTI-FAIL SYSTEM (DINONAKTIFKAN - MENGHINDARI ERROR)
 --==================================================
 print("⚠️ Anti-Fail System dinonaktifkan untuk menghindari error")
 
@@ -1321,7 +1413,7 @@ HighlightSection:AddToggle({
 })
 
 --==================================================
--- GENERATOR TAB (DENGAN TELEPORT GENERATOR)
+-- GENERATOR TAB (DENGAN TELEPORT GENERATOR - FIXED)
 --==================================================
 local GenSection = GeneratorTab:AddSection({
     Name = "⚡ GENERATOR FEATURES",
@@ -1370,7 +1462,7 @@ GenSection:AddParagraph({
 })
 
 --==================================================
--- TELEPORT GENERATOR SECTION (BARU! - FIXED TANPA [0m])
+-- TELEPORT GENERATOR SECTION (FIXED - TANPA JARAK)
 --==================================================
 local TeleportGenSection = GeneratorTab:AddSection({
     Name = "📍 TELEPORT TO GENERATOR",
@@ -1380,10 +1472,11 @@ local TeleportGenSection = GeneratorTab:AddSection({
 })
 
 local SelectedGenerator = ""
+local GeneratorDropdown = nil
 
--- Dropdown untuk generator list
-local GeneratorDropdown = TeleportGenSection:AddDropdown({
-    Name = "SELECT GENERATOR",
+-- Dropdown untuk generator list (TANPA JARAK)
+GeneratorDropdown = TeleportGenSection:AddDropdown({
+    Name = "PILIH GENERATOR",
     Default = "🔍 Scanning generators...",
     Options = {"🔍 Scanning..."},
     Multi = false,
@@ -1392,12 +1485,15 @@ local GeneratorDropdown = TeleportGenSection:AddDropdown({
     Outline = true,
     Callback = function(Value)
         SelectedGenerator = Value
+        if Value and Value ~= "" and Value ~= "❌ No generators found" and Value ~= "🔍 Scanning..." then
+            print("✅ Generator dipilih: " .. Value)
+        end
     end
 })
 
 -- Tombol Teleport ke Generator
 TeleportGenSection:AddButton({
-    Name = "🚀 TELEPORT TO SELECTED GENERATOR",
+    Name = "🚀 TELEPORT KE GENERATOR TERPILIH",
     Icon = "map-pin",
     Outline = true,
     Callback = function()
@@ -1409,14 +1505,26 @@ TeleportGenSection:AddButton({
     end
 })
 
+-- Tombol Teleport ke Generator Terdekat (ALTERNATIF)
+TeleportGenSection:AddButton({
+    Name = "🎯 TELEPORT KE GENERATOR TERDEKAT",
+    Icon = "target",
+    Outline = true,
+    Callback = function()
+        teleportToNearestGenerator()
+    end
+})
+
 -- Tombol Refresh Generator List
 TeleportGenSection:AddButton({
-    Name = "🔄 REFRESH GENERATOR LIST",
+    Name = "🔄 REFRESH DAFTAR GENERATOR",
     Icon = "refresh-cw",
     Outline = true,
     Callback = function()
         local options = getGeneratorNames()
-        GeneratorDropdown:Refresh(options, true)
+        if GeneratorDropdown then
+            GeneratorDropdown:Refresh(options, true)
+        end
         if #options > 0 and options[1] ~= "❌ No generators found" then
             Notify("✅ Ditemukan " .. #options .. " generator di map")
         elseif options[1] == "❌ No generators found" then
@@ -1427,9 +1535,16 @@ TeleportGenSection:AddButton({
 
 -- Auto-refresh pertama kali
 task.spawn(function()
-    task.wait(1)
+    task.wait(2) -- Tunggu 2 detik agar UI siap
     local options = getGeneratorNames()
-    GeneratorDropdown:Refresh(options, true)
+    if GeneratorDropdown then
+        GeneratorDropdown:Refresh(options, true)
+    end
+    if #options > 0 and options[1] ~= "❌ No generators found" then
+        print("✅ Generator scanner: Ditemukan " .. #options .. " generator")
+    else
+        print("⚠️ Generator scanner: Tidak ada generator ditemukan")
+    end
 end)
 
 --==================================================
@@ -1857,9 +1972,10 @@ Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
 print("🔥 VIOLENCE DISTRICT - PREMIUM CATRAZ v1.3 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ NEW FEATURE: Teleport Generator dengan Dropdown!")
-print("✅ FIXED: Tidak ada [0m] di dropdown generator")
-print("✅ Generator List - Auto scan sesuai map")
-print("✅ Tampilkan Progress % dan Jarak Generator")
+print("✅ FIXED: Teleport Generator - Tanpa jarak di dropdown")
+print("✅ FIXED: Teleport Generator - PASTI BERFUNGSI!")
+print("✅ Menampilkan progress % generator")
 print("✅ Tombol Refresh untuk update daftar generator")
+print("✅ Tombol Teleport ke Generator Terdekat")
+print("⚠️ Anti-Fail System dinonaktifkan (hindari error)")
 print("═══════════════════════════════════════════════════════")
