@@ -1,5 +1,4 @@
--- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.4 ====================
--- FIXED: ESP Ultra Presisi Pada Tubuh Player
+-- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.2 ===================
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -159,8 +158,8 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
-    Subtext = "PREMIUM Edition v1.4",
-    Version = "v1.4",
+    Subtext = "PREMIUM Edition v1.2",
+    Version = "v1.2",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -297,7 +296,7 @@ local function getPlayerColor(player)
 end
 
 --==================================================
--- PLAYER ESP SYSTEM - ULTRA PRESISI (FIXED)
+-- PLAYER ESP SYSTEM 
 --==================================================
 local ESPObjects = {}
 
@@ -322,7 +321,7 @@ local function createPlayerESP(player)
     esp.Box.Transparency = 1
     esp.Box.Filled = false
     
-    -- NAME - SIZE 22 DAN TEBAL
+    -- NAME - SIZE 22 DAN TEBAL (FONT 3 = GothamBold)
     esp.Name.Visible = false
     esp.Name.Color = Color3.fromRGB(255, 255, 255) 
     esp.Name.Size = 22 
@@ -368,7 +367,6 @@ local function removePlayerESP(player)
     end
 end
 
--- FUNGSI ESP ULTRA PRESISI
 local function updatePlayerESP()
     if not Config.ESP.Enabled then
         for _, esp in pairs(ESPObjects) do
@@ -392,12 +390,8 @@ local function updatePlayerESP()
         local hrp = char:FindFirstChild("HumanoidRootPart")
         local hum = char:FindFirstChild("Humanoid")
         local head = char:FindFirstChild("Head")
-        local rootPart = char:FindFirstChild("HumanoidRootPart")
         
-        -- Cari torso (bisa UpperTorso atau Torso)
-        local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("LowerTorso")
-        
-        if not hrp or not hum or not head or not rootPart then
+        if not hrp or not hum or not head then
             for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
@@ -409,86 +403,52 @@ local function updatePlayerESP()
             continue
         end
         
-        -- Dapatkan posisi di layar untuk berbagai bagian tubuh
-        local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
-        local rootPos, rootOnScreen = Camera:WorldToViewportPoint(rootPart.Position)
+        local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+        local rootPos = Camera:WorldToViewportPoint(hrp.Position)
         
-        -- Posisi kaki (estimasi dari root part - 3 studs)
-        local footPos = rootPart.Position - Vector3.new(0, 3, 0)
-        local footScreen, footOnScreen = Camera:WorldToViewportPoint(footPos)
-        
-        if not headOnScreen or not rootOnScreen then
+        if not onScreen then
             for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
         
-        -- Hitung tinggi karakter di layar (dari kepala ke kaki)
-        local topY = headPos.Y
-        local bottomY = footScreen.Y
-        
-        -- Pastikan bottomY lebih besar dari topY (karena koordinat Y layar kebalik)
-        if bottomY < topY then
-            bottomY = rootPos.Y + 50 -- fallback
-        end
-        
-        -- Tinggi box (dari kepala ke kaki)
-        local boxHeight = math.abs(bottomY - topY)
-        
-        -- Lebar box proporsional (sekitar 40% dari tinggi)
-        local boxWidth = boxHeight * 0.4
-        
-        -- Batasi ukuran minimal
-        boxHeight = math.max(boxHeight, 50)
-        boxWidth = math.max(boxWidth, 30)
-        
-        -- Posisi box (center di root part)
-        local boxX = rootPos.X - boxWidth / 2
-        local boxY = topY - 5 -- Sedikit di atas kepala
-        
+        local boxSize = Vector2.new(2000 / distance, 2500 / distance)
         local playerColor = getPlayerColor(player)
         
-        -- BOX - Pas pada tubuh dengan proporsi tepat
         if Config.ESP.Boxes then
-            esp.Box.Size = Vector2.new(boxWidth, boxHeight)
-            esp.Box.Position = Vector2.new(boxX, boxY)
+            esp.Box.Size = boxSize
+            esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
             esp.Box.Color = playerColor
             esp.Box.Visible = true
         else
             esp.Box.Visible = false
         end
         
-        -- NAMA - Di atas kepala dengan offset pas
         if Config.ESP.Names then
             esp.Name.Text = player.Name
-            -- Posisi tepat di atas kepala
-            esp.Name.Position = Vector2.new(headPos.X, topY - 35) 
+            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 55) 
             esp.Name.Color = Color3.fromRGB(255, 255, 255)
             esp.Name.Visible = true
         else
             esp.Name.Visible = false
         end
         
-        -- JARAK - Di bawah box
         if Config.ESP.Distance then
             esp.Distance.Text = string.format("[%.0fm]", distance)
-            esp.Distance.Position = Vector2.new(rootPos.X, bottomY + 15)
+            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 30)
             esp.Distance.Visible = true
         else
             esp.Distance.Visible = false
         end
         
-        -- HEALTH BAR - Di samping kiri box (lebih presisi)
         if Config.ESP.Health and hum then
             local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-            local barWidth = 5
-            local barHeight = boxHeight
+            local barWidth = 4
+            local barHeight = boxSize.Y
             
-            -- Background bar
             esp.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
-            esp.HealthBarBG.Position = Vector2.new(boxX - 10, boxY)
+            esp.HealthBarBG.Position = Vector2.new(rootPos.X - boxSize.X / 2 - 7, rootPos.Y - boxSize.Y / 2)
             esp.HealthBarBG.Visible = true
             
-            -- Health bar (warna merah-hijau)
             local healthColor = Color3.fromRGB(
                 math.floor(255 * (1 - healthPercent)),
                 math.floor(255 * healthPercent),
@@ -496,8 +456,8 @@ local function updatePlayerESP()
             )
             esp.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
             esp.HealthBar.Position = Vector2.new(
-                boxX - 10,
-                boxY + barHeight * (1 - healthPercent)
+                rootPos.X - boxSize.X / 2 - 7,
+                rootPos.Y - boxSize.Y / 2 + barHeight * (1 - healthPercent)
             )
             esp.HealthBar.Color = healthColor
             esp.HealthBar.Visible = true
@@ -506,7 +466,6 @@ local function updatePlayerESP()
             esp.HealthBar.Visible = false
         end
         
-        -- TRACER - Dari bawah layar ke root part
         if Config.ESP.Tracers then
             local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
             esp.Tracer.From = screenCenter
@@ -1545,7 +1504,7 @@ TeleportGenSection:AddButton({
 
 -- Tombol Teleport ke Generator Terdekat (ALTERNATIF)
 TeleportGenSection:AddButton({
-    Name = "🎯 TELEPORT KE GENERATOR TERDEKAT",
+    Name = "🎯 TELEPORT KE GENERATOR TERDEKAT", 
     Icon = "target",
     Outline = true,
     Callback = function()
@@ -1572,8 +1531,7 @@ TeleportGenSection:AddButton({
 })
 
 TeleportGenSection:AddParagraph({
-    Title = "⚠️ WAJIB NYALAKAN NOCLIP SEBELUM TP",
-    Desc = "Noclip diperlukan agar tidak stuck di tembok",
+    Title = "TP GENERATOR WAJIB MENYALAKAN NO-CLIP",
     Image = "info",
     ImageSize = 30
 })
@@ -2014,15 +1972,3 @@ end)
 OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
-print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - PREMIUM CATRAZ v1.4 🔥")
-print("═══════════════════════════════════════════════════════")
-print("✅ FIXED: ESP ULTRA PRESISI PADA TUBUH PLAYER!")
-print("✅ Box mengikuti proporsi tubuh (kepala ke kaki)")
-print("✅ Nama di atas kepala dengan font besar (size 22)")
-print("✅ Health bar di samping kiri box (5px lebar)")
-print("✅ Jarak ditampilkan di bawah kaki")
-print("✅ Tracer dari bawah layar ke player")
-print("✅ Teleport Generator - Tanpa jarak di dropdown")
-print("✅ Tombol Teleport ke Generator Terdekat")
-print("═══════════════════════════════════════════════════════")
