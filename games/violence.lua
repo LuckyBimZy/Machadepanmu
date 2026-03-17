@@ -98,13 +98,13 @@ local Config = {
         Distance = false,
         Health = false,
         Tracers = false,
-        TeamCheck = true,
+        TeamCheck = false,
         MaxDistance = 2000,
         ShowTeammates = false
     },
     Highlight = {
         Enabled = false,
-        TeamCheck = true,
+        TeamCheck = false,
         ShowTeam = false
     },
     Generator = {
@@ -1318,7 +1318,7 @@ ESPSection:AddToggle({
 
 ESPSection:AddToggle({
     Name = "TEAM CHECK (HIDE TEAMMATES)",
-    Default = true,
+    Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "ESPTeamCheck",
@@ -1391,7 +1391,7 @@ HighlightSection:AddToggle({
 
 HighlightSection:AddToggle({
     Name = "AUTO TEAM COLORS",
-    Default = true,
+    Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "HighlightTeam",
