@@ -607,30 +607,27 @@ Players.PlayerRemoving:Connect(removePlayerESP)
 local Highlights = {}
 
 local function createHighlight(player)
-    if player == Player then return end
+    if player == LocalPlayer then return end
     if not player.Character then return end
     
-    -- Hapus highlight lama jika ada
-    local oldHighlight = player.Character:FindFirstChild("VD_Highlight")
-    if oldHighlight then
-        oldHighlight:Destroy()
-    end
-    
-    -- Buat highlight baru tanpa outline berlebihan
     local highlight = Instance.new("Highlight")
-    highlight.Name = "VD_Highlight"
     highlight.Parent = player.Character
-    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        highlight.Adornee = hrp
-    end
-    highlight.FillTransparency = 1 -- Transparan agar tidak seperti tabung
-    highlight.OutlineTransparency = 0 -- Outline tipis
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Adornee = player.Character
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
     
-    -- Set warna berdasarkan kondisi game
-    highlight.FillColor = getPlayerHighlightColor(player)
-    highlight.OutlineColor = highlight.FillColor
+    if VDConfig.Highlight.TeamCheck then
+        if isTeammate(player) then
+            highlight.FillColor = TeamColor
+            highlight.OutlineColor = TeamColor
+        else
+            highlight.FillColor = EnemyColor
+            highlight.OutlineColor = EnemyColor
+        end
+    else
+        highlight.FillColor = Color3.fromRGB(255, 255, 255)
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    end
     
     Highlights[player] = highlight
 end
@@ -649,11 +646,34 @@ local function updateHighlights()
             continue
         end
         
-        -- Update warna berdasarkan kondisi game terkini
-        highlight.FillColor = getPlayerHighlightColor(player)
-        highlight.OutlineColor = highlight.FillColor
+        if VDConfig.Highlight.TeamCheck and isTeammate(player) and not VDConfig.Highlight.ShowTeam then
+            highlight.Enabled = false
+            continue
+        else
+            highlight.Enabled = true
+        end
+        
+        if VDConfig.Highlight.TeamCheck then
+            if isTeammate(player) then
+                highlight.FillColor = TeamColor
+                highlight.OutlineColor = TeamColor
+            else
+                highlight.FillColor = EnemyColor
+                highlight.OutlineColor = EnemyColor
+            end
+        else
+            highlight.FillColor = Color3.fromRGB(255, 255, 255)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        end
     end
 end
+
+RunService.Heartbeat:Connect(function()
+    if VDConfig.Highlight.Enabled then
+        updateHighlights()
+    end
+end)
+
 
 --==================================================
 -- WALLHACK FUNCTION
