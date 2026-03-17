@@ -1,6 +1,6 @@
--- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION v5.0 ====================
+-- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION v5.1 ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 5.0 COMPLETE + Generator ESP + Anti-Fail
+-- Version: 5.1 FIXED - No automatic graphics changes
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -34,13 +34,66 @@ local Camera = Workspace.CurrentCamera
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --==================================================
+-- SAVE ORIGINAL SETTINGS (SEBELUM APAPUN)
+--==================================================
+local originalLighting = {
+    Brightness = Lighting.Brightness,
+    ClockTime = Lighting.ClockTime,
+    FogEnd = Lighting.FogEnd,
+    FogStart = Lighting.FogStart,
+    GlobalShadows = Lighting.GlobalShadows,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    Ambient = Lighting.Ambient,
+    ColorShift_Bottom = Lighting.ColorShift_Bottom,
+    ColorShift_Top = Lighting.ColorShift_Top
+}
+
+local originalCamera = {
+    FieldOfView = Camera.FieldOfView
+}
+
+local originalQuality = settings().Rendering.QualityLevel
+
+--==================================================
+-- RESTORE ORIGINAL SETTINGS (PASTIKAN TIDAK BERUBAH)
+--==================================================
+local function restoreOriginalSettings()
+    -- Restore Lighting
+    Lighting.Brightness = originalLighting.Brightness
+    Lighting.ClockTime = originalLighting.ClockTime
+    Lighting.FogEnd = originalLighting.FogEnd
+    Lighting.FogStart = originalLighting.FogStart
+    Lighting.GlobalShadows = originalLighting.GlobalShadows
+    Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+    Lighting.Ambient = originalLighting.Ambient
+    Lighting.ColorShift_Bottom = originalLighting.ColorShift_Bottom
+    Lighting.ColorShift_Top = originalLighting.ColorShift_Top
+    
+    -- Restore Camera
+    Camera.FieldOfView = originalCamera.FieldOfView
+    
+    -- Restore Quality
+    settings().Rendering.QualityLevel = originalQuality
+    
+    -- Restore materials (fix tabung issue)
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("BasePart") and v.Material == Enum.Material.ForceField then
+            v.Material = Enum.Material.Plastic
+        end
+    end
+end
+
+-- Panggil segera untuk memastikan grafis normal
+restoreOriginalSettings()
+
+--==================================================
 -- COLORS
 --==================================================
 local TeamColor = Color3.fromRGB(0, 255, 0)
 local EnemyColor = Color3.fromRGB(255, 0, 0)
 
 --==================================================
--- CONFIG
+-- CONFIG - SEMUA DEFAULT FALSE
 --==================================================
 local Config = {
     ESP = {
@@ -94,25 +147,6 @@ local Config = {
 }
 
 --==================================================
--- SAVE ORIGINAL SETTINGS
---==================================================
-local originalLighting = {
-    Brightness = Lighting.Brightness,
-    ClockTime = Lighting.ClockTime,
-    FogEnd = Lighting.FogEnd,
-    FogStart = Lighting.FogStart,
-    GlobalShadows = Lighting.GlobalShadows,
-    OutdoorAmbient = Lighting.OutdoorAmbient,
-    Ambient = Lighting.Ambient,
-    ColorShift_Bottom = Lighting.ColorShift_Bottom,
-    ColorShift_Top = Lighting.ColorShift_Top
-}
-
-local originalCamera = {
-    FieldOfView = Camera.FieldOfView
-}
-
---==================================================
 -- NOTIFICATION
 --==================================================
 local function Notify(msg)
@@ -129,8 +163,8 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
-    Subtext = "ULTIMATE Edition v5.0",
-    Version = "v5.0",
+    Subtext = "ULTIMATE Edition v5.1",
+    Version = "v5.1",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -154,7 +188,7 @@ local Window = OrionLib:MakeWindow({
 -- Set Theme
 OrionLib.SelectedTheme = "Ocean"
 
-Notify("Script loaded successfully!")
+Notify("Script loaded successfully! Graphics are normal.")
 
 --==================================================
 -- CREATE TABS
@@ -529,7 +563,7 @@ local function createGeneratorESP(gen)
     GeneratorESP[gen] = folder
 end
 
--- Generator scanner thread
+-- Generator scanner thread (hanya berjalan jika diaktifkan)
 task.spawn(function()
     while true do
         if Config.Generator.ESPEnabled then
@@ -554,25 +588,24 @@ local function setupUnifiedAntiFail()
     task.spawn(function()
         local success = pcall(function()
             -- Wait for remotes
-            local Remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
+            local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
             if not Remotes then 
-                warn("⚠️ Remotes not found")
                 return 
             end
             
             -- Wait for Events folder
-            local EventsFolder = ReplicatedStorage:WaitForChild("Events", 10)
+            local EventsFolder = ReplicatedStorage:FindFirstChild("Events")
             if not EventsFolder then
-                warn("⚠️ Events folder not found")
+                return
             end
             
             -- Generator remotes
-            local GenRemotes = Remotes:WaitForChild("Generator", 5)
-            local GenResultEvent = GenRemotes and GenRemotes:WaitForChild("SkillCheckResultEvent", 5)
+            local GenRemotes = Remotes:FindFirstChild("Generator")
+            local GenResultEvent = GenRemotes and GenRemotes:FindFirstChild("SkillCheckResultEvent")
             local GenFailEvent = GenRemotes and GenRemotes:FindFirstChild("SkillCheckFailEvent")
             
-            -- Healing remotes (Events -> Healing)
-            local Healing = EventsFolder and EventsFolder:FindFirstChild("Healing")
+            -- Healing remotes
+            local Healing = EventsFolder:FindFirstChild("Healing")
             local HealResultEvent = Healing and Healing:FindFirstChild("SkillCheckResultEvent")
             local HealFailEvent = Healing and Healing:FindFirstChild("SkillCheckFailEvent")
             
@@ -618,14 +651,7 @@ local function setupUnifiedAntiFail()
             end)
             
             AntiFailHooked = true
-            print("✅ Unified Anti-Fail System hooked successfully!")
-            if GenResultEvent then print("  ✅ Generator Anti-Fail ready") end
-            if HealResultEvent then print("  ✅ Healing Anti-Fail ready") end
         end)
-        
-        if not success then
-            warn("⚠️ Anti-Fail System hook failed")
-        end
     end)
 end
 
@@ -700,7 +726,7 @@ local function updateHighlights()
 end
 
 --==================================================
--- WALLHACK FUNCTION
+-- WALLHACK FUNCTION (FIXED - Tidak mengubah semua part)
 --==================================================
 local WallhackConnection = nil
 
@@ -714,17 +740,18 @@ local function updateWallhack()
         WallhackConnection = RunService.RenderStepped:Connect(function()
             for _, v in pairs(Workspace:GetDescendants()) do
                 if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
-                    if v.Transparency < 0.5 then
+                    -- Hanya ubah part yang opacity-nya rendah, jangan semua
+                    if v.Transparency < 0.3 then
                         v.Material = Enum.Material.ForceField
-                        v.Transparency = 0.5
+                        v.Transparency = 0.3
                     end
                 end
             end
         end)
     else
-        -- Restore normal materials
+        -- Restore normal materials hanya untuk part yang diubah
         for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
+            if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) and v.Material == Enum.Material.ForceField then
                 v.Material = Enum.Material.Plastic
                 v.Transparency = 0
             end
@@ -733,7 +760,7 @@ local function updateWallhack()
 end
 
 --==================================================
--- VISUAL FEATURES
+-- VISUAL FEATURES (SEMUA DEFAULT FALSE)
 --==================================================
 
 -- No Fog
@@ -747,7 +774,7 @@ local function updateNoFog()
     end
 end
 
--- Super Zoom / Infinite Zoom
+-- Super Zoom
 local function updateSuperZoom()
     if Config.Visual.SuperZoomEnabled then
         Camera.FieldOfView = 120
@@ -763,25 +790,20 @@ local function updateFullbright()
         Lighting.ClockTime = 14
         Lighting.GlobalShadows = false
         Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-        Lighting.Ambient = Color3.fromRGB(128, 128, 128)
-        Lighting.ColorShift_Bottom = Color3.fromRGB(255, 255, 255)
-        Lighting.ColorShift_Top = Color3.fromRGB(255, 255, 255)
     else
         Lighting.Brightness = originalLighting.Brightness
         Lighting.ClockTime = originalLighting.ClockTime
         Lighting.GlobalShadows = originalLighting.GlobalShadows
         Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
-        Lighting.Ambient = originalLighting.Ambient
-        Lighting.ColorShift_Bottom = originalLighting.ColorShift_Bottom
-        Lighting.ColorShift_Top = originalLighting.ColorShift_Top
     end
 end
 
--- Anti-Aliasing & Graphics Quality
+-- Anti-Aliasing
 local function updateGraphicsQuality()
     if Config.Visual.AntiAliasingEnabled then
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level21
-        UserInputService.MouseIconEnabled = true
+    else
+        settings().Rendering.QualityLevel = originalQuality
     end
 end
 
@@ -790,13 +812,9 @@ local function updatePerformanceMode()
     if Config.Visual.PerformanceMode then
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
         Lighting.GlobalShadows = false
-        for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("Part") or v:IsA("MeshPart") then
-                v.Material = Enum.Material.SmoothPlastic
-            end
-        end
     else
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level10
+        settings().Rendering.QualityLevel = originalQuality
+        Lighting.GlobalShadows = originalLighting.GlobalShadows
     end
 end
 
@@ -810,12 +828,10 @@ local function resetVisualSettings()
     Config.Visual.PerformanceMode = false
     
     -- Restore all settings
-    updateFullbright()
-    updateNoFog()
-    updateWallhack()
-    updateSuperZoom()
+    restoreOriginalSettings()
+    updateWallhack() -- Matikan wallhack
     
-    Notify("All visual settings reset to default")
+    Notify("All visual settings reset to normal")
 end
 
 --==================================================
@@ -941,33 +957,54 @@ end
 --==================================================
 RunService.RenderStepped:Connect(function()
     if Config.UI.HideSkillCheck then
-        local PlayerGui = Player:WaitForChild("PlayerGui")
-        
-        local targetUI = PlayerGui:FindFirstChild("SkillCheckPromptGui")
-        local targetUICon = PlayerGui:FindFirstChild("SkillCheckPromptGui-con")
-        
-        if targetUI and targetUI.Enabled then
-            targetUI.Enabled = false
-        end
-        
-        if targetUICon and targetUICon.Enabled then
-            targetUICon.Enabled = false
+        local PlayerGui = Player:FindFirstChild("PlayerGui")
+        if PlayerGui then
+            local targetUI = PlayerGui:FindFirstChild("SkillCheckPromptGui")
+            local targetUICon = PlayerGui:FindFirstChild("SkillCheckPromptGui-con")
+            
+            if targetUI and targetUI.Enabled then
+                targetUI.Enabled = false
+            end
+            
+            if targetUICon and targetUICon.Enabled then
+                targetUICon.Enabled = false
+            end
         end
     end
 end)
 
 --==================================================
--- UPDATE LOOP
+-- UPDATE LOOP (HANYA JALANKAN YANG DIAKTIFKAN)
 --==================================================
 RunService.Heartbeat:Connect(function()
     updateMovement()
     updatePlayerESP()
-    updateNoFog()
-    updateFullbright()
-    updateSuperZoom()
-    updateWallhack()
-    updateGraphicsQuality()
-    updatePerformanceMode()
+    
+    -- Visual features hanya berjalan jika diaktifkan
+    if Config.Visual.NoFogEnabled then
+        updateNoFog()
+    end
+    
+    if Config.Visual.FullbrightEnabled then
+        updateFullbright()
+    end
+    
+    if Config.Visual.SuperZoomEnabled then
+        updateSuperZoom()
+    end
+    
+    if Config.Visual.WallhackEnabled then
+        updateWallhack()
+    end
+    
+    if Config.Visual.AntiAliasingEnabled then
+        updateGraphicsQuality()
+    end
+    
+    if Config.Visual.PerformanceMode then
+        updatePerformanceMode()
+    end
+    
     if Config.Highlight.Enabled then
         updateHighlights()
     end
@@ -989,8 +1026,7 @@ PlayerInfoSection:AddParagraph({
     Desc = "Display Name: " .. Player.DisplayName .. "\n" ..
            "User ID: " .. Player.UserId .. "\n" ..
            "Account Age: " .. Player.AccountAge .. " days\n" ..
-           "Team: " .. (Player.Team and Player.Team.Name or "No Team") .. "\n" ..
-           "Status: " .. (Player.PlayerGui and "In Game" or "Loading"),
+           "Team: " .. (Player.Team and Player.Team.Name or "No Team"),
     Image = "user",
     ImageSize = 48
 })
@@ -1014,12 +1050,10 @@ end
 local function UpdateServerInfo()
     local players = Players:GetPlayers()
     local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() * 100) / 100
-    local fps = math.floor(1 / RunService.RenderStepped:Wait())
     
     return "Players: " .. #players .. "/" .. (Players.MaxPlayers or "??") .. "\n" ..
            "Ping: " .. ping .. "ms\n" ..
-           "Uptime: " .. getUptime() .. "\n" ..
-           "FPS: " .. fps
+           "Uptime: " .. getUptime()
 end
 
 local ServerInfoPara = ServerInfoSection:AddParagraph({
@@ -1221,23 +1255,6 @@ HighlightSection:AddToggle({
                     createHighlight(player)
                 end
             end
-            
-            Players.PlayerAdded:Connect(function(player)
-                if Config.Highlight.Enabled then
-                    repeat task.wait() until player.Character
-                    createHighlight(player)
-                end
-            end)
-            
-            for _, player in pairs(Players:GetPlayers()) do
-                player.CharacterAdded:Connect(function()
-                    if Config.Highlight.Enabled then
-                        task.wait(0.5)
-                        createHighlight(player)
-                    end
-                end)
-            end
-            
             Notify("Highlight Enabled")
         else
             for player, _ in pairs(Highlights) do
@@ -1267,15 +1284,8 @@ HighlightSection:AddToggle({
     Callback = function(Value) Config.Highlight.ShowTeam = Value end
 })
 
-HighlightSection:AddParagraph({
-    Title = "COLOR GUIDE",
-    Desc = "🟢 GREEN = Teammate\n🔴 RED = Enemy",
-    Image = "info",
-    ImageSize = 38
-})
-
 --==================================================
--- GENERATOR TAB (DENGAN FITUR DARI RANZX999)
+-- GENERATOR TAB
 --==================================================
 local GenSection = GeneratorTab:AddSection({
     Name = "⚡ GENERATOR FEATURES",
@@ -1316,15 +1326,8 @@ GenSection:AddToggle({
     end
 })
 
-GenSection:AddParagraph({
-    Title = "INFO",
-    Desc = "🔵 Cyan = In Progress\n🟢 Green = Complete (100%)\n✅ Auto-pass skill checks\n✅ Hold left click to repair",
-    Image = "info",
-    ImageSize = 38
-})
-
 --==================================================
--- HEALING TAB (DENGAN FITUR DARI RANZX999)
+-- HEALING TAB
 --==================================================
 local HealSection = HealingTab:AddSection({
     Name = "❤️ HEALING FEATURES",
@@ -1344,13 +1347,6 @@ HealSection:AddToggle({
         Config.Healing.AntiFailEnabled = Value
         Notify(Value and "Anti-Fail Healing Enabled" or "Anti-Fail Healing Disabled")
     end
-})
-
-HealSection:AddParagraph({
-    Title = "INFO",
-    Desc = "✅ Auto-pass healing skill checks\n✅ Never fail healing",
-    Image = "info",
-    ImageSize = 38
 })
 
 --==================================================
@@ -1452,13 +1448,6 @@ VisualMainSection:AddButton({
     Icon = "refresh-cw",
     Outline = true,
     Callback = resetVisualSettings
-})
-
-VisualMainSection:AddParagraph({
-    Title = "VISUAL FEATURES",
-    Desc = "👁️ Wallhack: See through walls\n☀️ Fullbright: Remove shadows\n🌫️ No Fog: Clear view\n🔍 Super Zoom: Max FOV\n🎨 Anti-Aliasing: Smooth edges\n⚡ Performance: Boost FPS",
-    Image = "sun",
-    ImageSize = 38
 })
 
 VisualTab:AddSection({
@@ -1721,13 +1710,6 @@ MiscMainSection:AddToggle({
     end
 })
 
-MiscMainSection:AddParagraph({
-    Title = "ACTIVE FEATURES MONITOR",
-    Desc = "Check Main Tab for live active features list",
-    Image = "activity",
-    ImageSize = 38
-})
-
 --==================================================
 -- ADD CONFIG TAB
 --==================================================
@@ -1767,16 +1749,18 @@ OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v5.0 🔥")
+print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v5.1 🔥")
 print("═══════════════════════════════════════════════════════")
+print("✅ Graphics are NORMAL at startup - No automatic changes")
+print("✅ All visual features default to OFF")
+print("✅ Wallhack FIXED - Tidak mengubah semua part")
 print("✅ Main Tab - Player Info + Server Info + Active Features")
 print("✅ Player ESP - Nama SIZE 22 BOLD PUTIH")
 print("✅ Highlight System - Team colors (Green/Red)")
 print("✅ Generator ESP - Auto-scan dengan progress %")
-print("✅ Anti-Fail System - Generator + Healing (dari RanZx999)")
+print("✅ Anti-Fail System - Generator + Healing")
 print("✅ Visual - Wallhack, Fullbright, No Fog, Super Zoom")
-print("✅ Visual - Anti-Aliasing, Performance Mode, Reset Button")
 print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
-print("✅ Teleport - Player TP, Waypoints, Refresh List")
+print("✅ Teleport - Player TP, Waypoints")
 print("✅ Misc - Anti AFK, Hide Skill Check UI")
 print("═══════════════════════════════════════════════════════")
