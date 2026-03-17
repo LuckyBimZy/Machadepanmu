@@ -572,7 +572,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- ANTI-FAIL SYSTEM 
+-- ANTI-FAIL SYSTEM (UPDATED DARI RANZX999)
 --==================================================
 local AntiFailHooked = false
 
@@ -582,24 +582,25 @@ local function setupUnifiedAntiFail()
     task.spawn(function()
         local success = pcall(function()
             -- Wait for remotes
-            local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            local Remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
             if not Remotes then 
+                warn("⚠️ Remotes not found")
                 return 
             end
             
-            -- Wait for Events folder
-            local EventsFolder = ReplicatedStorage:FindFirstChild("Events")
+            -- Wait for Events folder (FIXED PATH!)
+            local EventsFolder = ReplicatedStorage:WaitForChild("Events", 10)
             if not EventsFolder then
-                return
+                warn("⚠️ Events folder not found")
             end
             
             -- Generator remotes
-            local GenRemotes = Remotes:FindFirstChild("Generator")
-            local GenResultEvent = GenRemotes and GenRemotes:FindFirstChild("SkillCheckResultEvent")
+            local GenRemotes = Remotes:WaitForChild("Generator", 5)
+            local GenResultEvent = GenRemotes and GenRemotes:WaitForChild("SkillCheckResultEvent", 5)
             local GenFailEvent = GenRemotes and GenRemotes:FindFirstChild("SkillCheckFailEvent")
             
-            -- Healing remotes
-            local Healing = EventsFolder:FindFirstChild("Healing")
+            -- Healing remotes (FIXED PATH: Events -> Healing)
+            local Healing = EventsFolder and EventsFolder:FindFirstChild("Healing")
             local HealResultEvent = Healing and Healing:FindFirstChild("SkillCheckResultEvent")
             local HealFailEvent = Healing and Healing:FindFirstChild("SkillCheckFailEvent")
             
@@ -645,7 +646,14 @@ local function setupUnifiedAntiFail()
             end)
             
             AntiFailHooked = true
+            print("✅ Unified Anti-Fail System hooked successfully!")
+            if GenResultEvent then print("  ✅ Generator Anti-Fail ready") end
+            if HealResultEvent then print("  ✅ Healing Anti-Fail ready") end
         end)
+        
+        if not success then
+            warn("⚠️ Anti-Fail System hook failed")
+        end
     end)
 end
 
@@ -1742,3 +1750,16 @@ end)
 OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
+print("═══════════════════════════════════════════════════════")
+print("🔥 VIOLENCE DISTRICT - PREMIUM CATRAZ v1.1 🔥")
+print("═══════════════════════════════════════════════════════")
+print("✅ Graphics are NORMAL at startup - No automatic changes")
+print("✅ Player ESP - Nama SIZE 22 BOLD PUTIH")
+print("✅ Highlight System - Team colors (Green/Red)")
+print("✅ Generator ESP - Auto-scan dengan progress %")
+print("✅ Anti-Fail System - Generator + Healing (UPDATED)")
+print("✅ Visual - Wallhack, Fullbright, No Fog, Super Zoom")
+print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
+print("✅ Teleport - Player TP, Waypoints")
+print("✅ Misc - Anti AFK, Hide Skill Check UI")
+print("═══════════════════════════════════════════════════════")
