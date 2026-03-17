@@ -1,5 +1,4 @@
--- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.5 ====================
--- FIXED: ESP ULTRA PRESISI PADA TUBUH PLAYER
+-- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.2 ===================
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -159,8 +158,8 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
-    Subtext = "PREMIUM Edition v1.5",
-    Version = "v1.5",
+    Subtext = "PREMIUM Edition v1.2",
+    Version = "v1.2",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -297,7 +296,7 @@ local function getPlayerColor(player)
 end
 
 --==================================================
--- PLAYER ESP SYSTEM - ULTRA PRESISI V2
+-- PLAYER ESP SYSTEM 
 --==================================================
 local ESPObjects = {}
 
@@ -322,7 +321,7 @@ local function createPlayerESP(player)
     esp.Box.Transparency = 1
     esp.Box.Filled = false
     
-    -- NAME - SIZE 22 DAN TEBAL
+    -- NAME - SIZE 22 DAN TEBAL (FONT 3 = GothamBold)
     esp.Name.Visible = false
     esp.Name.Color = Color3.fromRGB(255, 255, 255) 
     esp.Name.Size = 22 
@@ -368,7 +367,6 @@ local function removePlayerESP(player)
     end
 end
 
--- FUNGSI ESP ULTRA PRESISI - MENGGUNAKAN PART TERENDAH
 local function updatePlayerESP()
     if not Config.ESP.Enabled then
         for _, esp in pairs(ESPObjects) do
@@ -392,9 +390,8 @@ local function updatePlayerESP()
         local hrp = char:FindFirstChild("HumanoidRootPart")
         local hum = char:FindFirstChild("Humanoid")
         local head = char:FindFirstChild("Head")
-        local rootPart = char:FindFirstChild("HumanoidRootPart")
         
-        if not hrp or not hum or not head or not rootPart then
+        if not hrp or not hum or not head then
             for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
@@ -406,93 +403,52 @@ local function updatePlayerESP()
             continue
         end
         
-        -- Dapatkan posisi di layar
-        local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
-        local rootPos, rootOnScreen = Camera:WorldToViewportPoint(rootPart.Position)
+        local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+        local rootPos = Camera:WorldToViewportPoint(hrp.Position)
         
-        -- Cari part terendah (kaki) dari karakter
-        local lowestPart = nil
-        local lowestY_screen = -math.huge
-        local lowestPartPos = nil
-        
-        for _, part in pairs(char:GetChildren()) do
-            if part:IsA("BasePart") then
-                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                if onScreen and pos.Y > lowestY_screen then
-                    lowestY_screen = pos.Y
-                    lowestPart = part
-                    lowestPartPos = pos
-                end
-            end
-        end
-        
-        if not headOnScreen or not rootOnScreen or not lowestPart then
-            -- Fallback ke metode lama jika tidak ada part terdeteksi
+        if not onScreen then
             for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
         
-        -- Hitung box berdasarkan part terendah
-        local topY = headPos.Y
-        local bottomY = lowestY_screen
-        
-        -- Tinggi box (dari kepala ke part terendah)
-        local boxHeight = math.abs(bottomY - topY)
-        
-        -- Lebar box proporsional (35% dari tinggi - lebih ramping)
-        local boxWidth = boxHeight * 0.35
-        
-        -- Batasi ukuran minimal
-        boxHeight = math.max(boxHeight, 50)
-        boxWidth = math.max(boxWidth, 25)
-        
-        -- Posisi box (center di root part)
-        local boxX = rootPos.X - boxWidth / 2
-        local boxY = topY - 3 -- Hampir tidak ada offset
-        
+        local boxSize = Vector2.new(2000 / distance, 2500 / distance)
         local playerColor = getPlayerColor(player)
         
-        -- BOX - PAS BANGET!
         if Config.ESP.Boxes then
-            esp.Box.Size = Vector2.new(boxWidth, boxHeight)
-            esp.Box.Position = Vector2.new(boxX, boxY)
+            esp.Box.Size = boxSize
+            esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
             esp.Box.Color = playerColor
             esp.Box.Visible = true
         else
             esp.Box.Visible = false
         end
         
-        -- NAMA - Lebih dekat ke kepala
         if Config.ESP.Names then
             esp.Name.Text = player.Name
-            esp.Name.Position = Vector2.new(headPos.X, topY - 28) 
+            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 55) 
             esp.Name.Color = Color3.fromRGB(255, 255, 255)
             esp.Name.Visible = true
         else
             esp.Name.Visible = false
         end
         
-        -- JARAK - Di bawah kaki
         if Config.ESP.Distance then
             esp.Distance.Text = string.format("[%.0fm]", distance)
-            esp.Distance.Position = Vector2.new(rootPos.X, bottomY + 12)
+            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 30)
             esp.Distance.Visible = true
         else
             esp.Distance.Visible = false
         end
         
-        -- HEALTH BAR - Di samping kiri box
         if Config.ESP.Health and hum then
             local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             local barWidth = 4
-            local barHeight = boxHeight
+            local barHeight = boxSize.Y
             
-            -- Background bar
             esp.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
-            esp.HealthBarBG.Position = Vector2.new(boxX - 8, boxY)
+            esp.HealthBarBG.Position = Vector2.new(rootPos.X - boxSize.X / 2 - 7, rootPos.Y - boxSize.Y / 2)
             esp.HealthBarBG.Visible = true
             
-            -- Health bar (warna merah-hijau)
             local healthColor = Color3.fromRGB(
                 math.floor(255 * (1 - healthPercent)),
                 math.floor(255 * healthPercent),
@@ -500,8 +456,8 @@ local function updatePlayerESP()
             )
             esp.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
             esp.HealthBar.Position = Vector2.new(
-                boxX - 8,
-                boxY + barHeight * (1 - healthPercent)
+                rootPos.X - boxSize.X / 2 - 7,
+                rootPos.Y - boxSize.Y / 2 + barHeight * (1 - healthPercent)
             )
             esp.HealthBar.Color = healthColor
             esp.HealthBar.Visible = true
@@ -510,7 +466,6 @@ local function updatePlayerESP()
             esp.HealthBar.Visible = false
         end
         
-        -- TRACER - Dari bawah layar
         if Config.ESP.Tracers then
             local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
             esp.Tracer.From = screenCenter
@@ -557,20 +512,23 @@ Players.PlayerRemoving:Connect(removePlayerESP)
 -- GENERATOR ESP & TELEPORT
 --==================================================
 local GeneratorESP = {}
-local GeneratorList = {}
+local GeneratorList = {} -- Untuk menyimpan daftar generator
 
--- Fungsi untuk mendapatkan semua generator di map
+-- Fungsi untuk mendapatkan semua generator di map (IMPROVED)
 local function scanGenerators()
     local generators = {}
     local foundCount = 0
     
     for _, obj in pairs(Workspace:GetDescendants()) do
+        -- Cari generator dengan berbagai kemungkinan nama
         if obj:IsA("Model") and (obj.Name == "Generator" or obj.Name:find("Generator") or obj.Name:find("generator")) then
             foundCount = foundCount + 1
             local name = "Generator " .. foundCount
             
+            -- Cari PrimaryPart atau bagian utama generator
             local primaryPart = obj.PrimaryPart
             if not primaryPart then
+                -- Coba cari part yang bisa jadi posisi
                 for _, part in pairs(obj:GetChildren()) do
                     if part:IsA("BasePart") then
                         primaryPart = part
@@ -579,6 +537,7 @@ local function scanGenerators()
                 end
             end
             
+            -- Dapatkan progress
             local progress = 0
             local success, result = pcall(function()
                 return obj:GetAttribute("RepairProgress") or 0
@@ -587,6 +546,7 @@ local function scanGenerators()
                 progress = result
             end
             
+            -- Simpan data generator (tanpa jarak)
             table.insert(generators, {
                 Model = obj,
                 Name = name,
@@ -600,7 +560,7 @@ local function scanGenerators()
     return generators
 end
 
--- Fungsi untuk mendapatkan list nama generator untuk dropdown
+-- Fungsi untuk mendapatkan list nama generator untuk dropdown (TANPA JARAK)
 local function getGeneratorNames()
     local names = {}
     local gens = scanGenerators()
@@ -611,6 +571,7 @@ local function getGeneratorNames()
         for i, gen in ipairs(gens) do
             local status = gen.Progress >= 100 and "✅" or "🔄"
             local progressText = string.format("%.0f", gen.Progress) .. "%"
+            -- TANPA JARAK - hanya tampilkan nama dan progress
             local name = string.format("%s %s (%s)", status, gen.Name, progressText)
             table.insert(names, name)
         end
@@ -620,6 +581,7 @@ end
 
 -- Fungsi untuk teleport ke generator terpilih
 local function teleportToGenerator(selectedName)
+    -- Cek karakter
     if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then
         Notify("❌ Anda tidak memiliki karakter!")
         return false
@@ -628,22 +590,29 @@ local function teleportToGenerator(selectedName)
     local gens = scanGenerators()
     local hrp = Player.Character.HumanoidRootPart
     
+    -- Cari generator yang dipilih berdasarkan index
     for i, gen in ipairs(gens) do
         local status = gen.Progress >= 100 and "✅" or "🔄"
         local progressText = string.format("%.0f", gen.Progress) .. "%"
+        -- Sesuaikan format dengan yang di dropdown
         local checkName = string.format("%s %s (%s)", status, gen.Name, progressText)
         
         if checkName == selectedName then
+            -- Cek apakah generator memiliki posisi
             if gen.Position then
+                -- PASTIKAN POSISI VALID (cek NaN atau infinite)
                 if gen.Position.X ~= gen.Position.X or math.abs(gen.Position.X) > 1e6 then
                     Notify("❌ Posisi generator tidak valid")
                     return false
                 end
                 
+                -- TELEPORT - PAKAI METODE LANGSUNG
                 local targetPos = Vector3.new(gen.Position.X, gen.Position.Y + 3, gen.Position.Z)
                 
+                -- Method 1: CFrame (PALING AMAN)
                 local success1, err1 = pcall(function()
                     hrp.CFrame = CFrame.new(targetPos)
+                    -- Tunggu sebentar untuk memastikan teleport selesai
                     task.wait(0.1)
                 end)
                 
@@ -651,6 +620,7 @@ local function teleportToGenerator(selectedName)
                     Notify("✅ Teleported ke " .. gen.Name .. " (" .. progressText .. ")")
                     return true
                 else
+                    -- Method 2: Coba dengan MoveTo sebagai alternatif
                     local success2 = pcall(function()
                         hrp:MoveTo(targetPos)
                     end)
@@ -674,7 +644,7 @@ local function teleportToGenerator(selectedName)
     return false
 end
 
--- Fungsi untuk teleport ke generator terdekat
+-- Fungsi untuk teleport paksa ke generator terdekat (ALTERNATIF)
 local function teleportToNearestGenerator()
     local gens = scanGenerators()
     if #gens == 0 then
@@ -682,6 +652,7 @@ local function teleportToNearestGenerator()
         return false
     end
     
+    -- Hitung jarak untuk mencari yang terdekat (internal saja, tidak ditampilkan)
     local nearest = nil
     local shortestDist = math.huge
     
@@ -698,6 +669,7 @@ local function teleportToNearestGenerator()
             end
         end
     else
+        -- Jika tidak bisa hitung jarak, ambil generator pertama
         nearest = gens[1]
     end
     
@@ -705,6 +677,7 @@ local function teleportToNearestGenerator()
         local hrp = Player.Character.HumanoidRootPart
         local targetPos = Vector3.new(nearest.Position.X, nearest.Position.Y + 3, nearest.Position.Z)
         
+        -- PASTIKAN POSISI VALID
         if targetPos.X ~= targetPos.X or math.abs(targetPos.X) > 1e6 then
             Notify("❌ Posisi generator tidak valid")
             return false
@@ -728,7 +701,7 @@ local function teleportToNearestGenerator()
     return false
 end
 
--- Fungsi untuk membuat ESP Generator
+-- Fungsi untuk membuat ESP Generator 
 local function createGeneratorESP(gen)
     if not gen:IsA("Model") or gen:FindFirstChild("GenESP") then return end
     
@@ -740,6 +713,7 @@ local function createGeneratorESP(gen)
     highlight.FillColor = Color3.new(0, 1, 1)
     highlight.DepthMode = "AlwaysOnTop"
     
+    -- Cari part untuk billboard
     local adornee = gen:FindFirstChild("HitBox") or gen.PrimaryPart
     if not adornee then
         for _, part in pairs(gen:GetChildren()) do
@@ -792,7 +766,7 @@ local function createGeneratorESP(gen)
     GeneratorESP[gen] = folder
 end
 
--- Generator scanner thread
+-- Generator scanner thread (hanya berjalan jika diaktifkan)
 task.spawn(function()
     while true do
         if Config.Generator.ESPEnabled then
@@ -806,6 +780,7 @@ task.spawn(function()
     end
 end)
 
+-- ANTI-FAIL SYSTEM DINONAKTIFKAN MENGHINDARI ERROR
 print("⚠️ Anti-Fail System dinonaktifkan untuk menghindari error")
 
 --==================================================
@@ -876,7 +851,7 @@ local function updateHighlights()
 end
 
 --==================================================
--- WALLHACK FUNCTION
+-- WALLHACK FUNCTION 
 --==================================================
 local WallhackConnection = nil
 
@@ -890,6 +865,7 @@ local function updateWallhack()
         WallhackConnection = RunService.RenderStepped:Connect(function()
             for _, v in pairs(Workspace:GetDescendants()) do
                 if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) then
+                    -- Hanya ubah part yang opacity-nya rendah, jangan semua
                     if v.Transparency < 0.3 then
                         v.Material = Enum.Material.ForceField
                         v.Transparency = 0.3
@@ -898,6 +874,7 @@ local function updateWallhack()
             end
         end)
     else
+        -- Restore normal materials hanya untuk part yang diubah
         for _, v in pairs(Workspace:GetDescendants()) do
             if v:IsA("BasePart") and not v:IsDescendantOf(Player.Character) and v.Material == Enum.Material.ForceField then
                 v.Material = Enum.Material.Plastic
@@ -908,9 +885,10 @@ local function updateWallhack()
 end
 
 --==================================================
--- VISUAL FEATURES
+-- VISUAL FEATURES 
 --==================================================
 
+-- No Fog
 local function updateNoFog()
     if Config.Visual.NoFogEnabled then
         Lighting.FogEnd = 1e9
@@ -921,6 +899,7 @@ local function updateNoFog()
     end
 end
 
+-- Super Zoom
 local function updateSuperZoom()
     if Config.Visual.SuperZoomEnabled then
         Camera.FieldOfView = 120
@@ -929,6 +908,7 @@ local function updateSuperZoom()
     end
 end
 
+-- Fullbright
 local function updateFullbright()
     if Config.Visual.FullbrightEnabled then
         Lighting.Brightness = 2
@@ -943,6 +923,7 @@ local function updateFullbright()
     end
 end
 
+-- Anti-Aliasing
 local function updateGraphicsQuality()
     if Config.Visual.AntiAliasingEnabled then
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level21
@@ -951,6 +932,7 @@ local function updateGraphicsQuality()
     end
 end
 
+-- Performance Mode
 local function updatePerformanceMode()
     if Config.Visual.PerformanceMode then
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
@@ -961,6 +943,7 @@ local function updatePerformanceMode()
     end
 end
 
+-- Reset Visual Settings
 local function resetVisualSettings()
     Config.Visual.FullbrightEnabled = false
     Config.Visual.NoFogEnabled = false
@@ -969,6 +952,7 @@ local function resetVisualSettings()
     Config.Visual.AntiAliasingEnabled = false
     Config.Visual.PerformanceMode = false
     
+    -- Restore all settings
     restoreOriginalSettings()
     updateWallhack()
     
@@ -1001,6 +985,7 @@ local function updateMovement()
     end
 end
 
+-- Infinite Jump
 infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
     if Config.Movement.InfiniteJump then
         local char = Player.Character
@@ -1013,6 +998,7 @@ infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
     end
 end)
 
+-- Noclip
 local function enableNoclip()
     if noclipConnection then noclipConnection:Disconnect() end
     
@@ -1113,12 +1099,13 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --==================================================
--- UPDATE LOOP
+-- UPDATE LOOP 
 --==================================================
 RunService.Heartbeat:Connect(function()
     updateMovement()
     updatePlayerESP()
     
+    -- Visual features hanya berjalan jika diaktifkan
     if Config.Visual.NoFogEnabled then
         updateNoFog()
     end
@@ -1149,7 +1136,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 --==================================================
--- MAIN TAB - PLAYER INFO
+-- MAIN TAB - PLAYER INFO 
 --==================================================
 local PlayerInfoSection = MainTab:AddSection({
     Name = "📊 PLAYER INFORMATION",
@@ -1158,6 +1145,7 @@ local PlayerInfoSection = MainTab:AddSection({
     Outline = true
 })
 
+-- Player info 
 PlayerInfoSection:AddParagraph({
     Title = "👤 " .. Player.Name,
     Desc = "Display Name: " .. Player.DisplayName .. "\n" ..
@@ -1208,6 +1196,7 @@ local ServerInfoPara = ServerInfoSection:AddParagraph({
     }
 })
 
+-- Auto refresh server info
 task.spawn(function()
     while true do
         task.wait(1)
@@ -1229,6 +1218,7 @@ local ActiveFeaturesPara = ActiveFeaturesSection:AddParagraph({
     ImageSize = 38
 })
 
+-- Update active features setiap detik
 task.spawn(function()
     while true do
         local active = GetActiveFeatures()
@@ -1420,7 +1410,7 @@ HighlightSection:AddToggle({
 })
 
 --==================================================
--- GENERATOR TAB
+-- GENERATOR TAB (DENGAN TELEPORT GENERATOR - FIXED)
 --==================================================
 local GenSection = GeneratorTab:AddSection({
     Name = "⚡ GENERATOR FEATURES",
@@ -1481,6 +1471,7 @@ local TeleportGenSection = GeneratorTab:AddSection({
 local SelectedGenerator = ""
 local GeneratorDropdown = nil
 
+-- Dropdown untuk generator list
 GeneratorDropdown = TeleportGenSection:AddDropdown({
     Name = "PILIH GENERATOR",
     Default = "🔍 Scanning generators...",
@@ -1497,6 +1488,7 @@ GeneratorDropdown = TeleportGenSection:AddDropdown({
     end
 })
 
+-- Tombol Teleport ke Generator
 TeleportGenSection:AddButton({
     Name = "🚀 TELEPORT KE GENERATOR TERPILIH",
     Icon = "map-pin",
@@ -1510,6 +1502,7 @@ TeleportGenSection:AddButton({
     end
 })
 
+-- Tombol Teleport ke Generator Terdekat (ALTERNATIF)
 TeleportGenSection:AddButton({
     Name = "🎯 TELEPORT KE GENERATOR TERDEKAT", 
     Icon = "target",
@@ -1519,6 +1512,7 @@ TeleportGenSection:AddButton({
     end
 })
 
+-- Tombol Refresh Generator List
 TeleportGenSection:AddButton({
     Name = "🔄 REFRESH DAFTAR GENERATOR",
     Icon = "refresh-cw",
@@ -1537,14 +1531,14 @@ TeleportGenSection:AddButton({
 })
 
 TeleportGenSection:AddParagraph({
-    Title = "WAJIB NYALAKAN NOCLIP SEBELUM TP",
-    Desc = "Agar tidak stuck di tembok",
+    Title = "TP GENERATOR WAJIB MENYALAKAN NO-CLIP",
     Image = "info",
     ImageSize = 30
 })
 
+-- Auto-refresh pertama kali
 task.spawn(function()
-    task.wait(2)
+    task.wait(2) -- Tunggu 2 detik agar UI siap
     local options = getGeneratorNames()
     if GeneratorDropdown then
         GeneratorDropdown:Refresh(options, true)
@@ -1847,6 +1841,7 @@ local TeleportMainSection = TeleportTab:AddSection({
 
 local SelectedPlayer = ""
 
+-- Dropdown untuk player list
 TeleportMainSection:AddDropdown({
     Name = "SELECT PLAYER",
     Default = "Select a player",
@@ -1954,10 +1949,12 @@ Player.CharacterAdded:Connect(function(char)
     Player.Character = char
     task.wait(1)
     
+    -- Re-apply noclip if enabled
     if Config.Movement.Noclip then
         enableNoclip()
     end
     
+    -- Reset speed/jump if enabled
     if Config.Movement.SpeedEnabled then
         local hum = char:FindFirstChildOfClass("Humanoid")
         if hum then hum.WalkSpeed = Config.Movement.SpeedValue end
@@ -1975,14 +1972,3 @@ end)
 OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
-print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - PREMIUM CATRAZ v1.5 🔥")
-print("═══════════════════════════════════════════════════════")
-print("✅ FIXED: ESP ULTRA PRESISI PADA TUBUH PLAYER!")
-print("✅ Box mengikuti part terendah (kaki) hingga kepala")
-print("✅ Nama di atas kepala dengan font besar (size 22)")
-print("✅ Health bar di samping kiri box")
-print("✅ Jarak ditampilkan di bawah kaki")
-print("✅ Tracer dari bawah layar ke player")
-print("✅ Teleport Generator - Tanpa jarak di dropdown")
-print("═══════════════════════════════════════════════════════")
