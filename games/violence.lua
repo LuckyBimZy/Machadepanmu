@@ -1533,6 +1533,13 @@ TeleportGenSection:AddButton({
     end
 })
 
+TeleportGenSection:AddParagraph({
+    Title = "GENERATOR TELEPORT",
+    Desc = "! MENGGUNAKAN TELEPORT GENERATOR WAJIB MENGHIDUPKAN NO-CLIP AGAR TIDAK NYANGKUT ",
+    Image = "info",
+    ImageSize = 25
+})
+
 -- Auto-refresh pertama kali
 task.spawn(function()
     task.wait(2) -- Tunggu 2 detik agar UI siap
