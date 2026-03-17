@@ -1,6 +1,6 @@
--- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION v4.0 ====================
+-- ==================== VIOLENCE DISTRICT - ULTIMATE EDITION v5.0 ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 4.0 COMPLETE
+-- Version: 5.0 COMPLETE + Generator ESP + Anti-Fail
 
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -129,8 +129,8 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
-    Subtext = "ULTIMATE Edition v4.0",
-    Version = "v4.0",
+    Subtext = "ULTIMATE Edition v5.0",
+    Version = "v5.0",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -481,6 +481,225 @@ Players.PlayerAdded:Connect(setupPlayerESP)
 Players.PlayerRemoving:Connect(removePlayerESP)
 
 --==================================================
+-- GENERATOR ESP (DARI RANZX999)
+--==================================================
+local GeneratorESP = {}
+
+local function createGeneratorESP(gen)
+    if not gen:IsA("Model") or gen:FindFirstChild("GenESP") then return end
+    
+    local folder = Instance.new("Folder", gen)
+    folder.Name = "GenESP"
+    
+    local highlight = Instance.new("Highlight", folder)
+    highlight.Adornee = gen
+    highlight.FillColor = Color3.new(0, 1, 1)
+    highlight.DepthMode = "AlwaysOnTop"
+    
+    local billboard = Instance.new("BillboardGui", folder)
+    billboard.Size = UDim2.new(0, 80, 0, 40)
+    billboard.AlwaysOnTop = true
+    billboard.Adornee = gen:FindFirstChild("HitBox") or gen.PrimaryPart
+    billboard.ExtentsOffset = Vector3.new(0, 3, 0)
+    
+    local textLabel = Instance.new("TextLabel", billboard)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 14
+    
+    task.spawn(function()
+        while gen.Parent and folder.Parent do
+            local progress = gen:GetAttribute("RepairProgress") or 0
+            textLabel.Text = math.floor(progress) .. "%"
+            highlight.Enabled = Config.Generator.ESPEnabled
+            textLabel.Visible = Config.Generator.ESPEnabled
+            
+            if progress >= 100 then
+                highlight.FillColor = Color3.new(0, 1, 0)
+            else
+                highlight.FillColor = Color3.new(0, 1, 1)
+            end
+            
+            task.wait(1)
+        end
+    end)
+    
+    GeneratorESP[gen] = folder
+end
+
+-- Generator scanner thread
+task.spawn(function()
+    while true do
+        if Config.Generator.ESPEnabled then
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if obj.Name == "Generator" and obj:IsA("Model") then
+                    createGeneratorESP(obj)
+                end
+            end
+        end
+        task.wait(3)
+    end
+end)
+
+--==================================================
+-- ANTI-FAIL SYSTEM (UNIFIED - DARI RANZX999)
+--==================================================
+local AntiFailHooked = false
+
+local function setupUnifiedAntiFail()
+    if AntiFailHooked then return end
+    
+    task.spawn(function()
+        local success = pcall(function()
+            -- Wait for remotes
+            local Remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
+            if not Remotes then 
+                warn("⚠️ Remotes not found")
+                return 
+            end
+            
+            -- Wait for Events folder
+            local EventsFolder = ReplicatedStorage:WaitForChild("Events", 10)
+            if not EventsFolder then
+                warn("⚠️ Events folder not found")
+            end
+            
+            -- Generator remotes
+            local GenRemotes = Remotes:WaitForChild("Generator", 5)
+            local GenResultEvent = GenRemotes and GenRemotes:WaitForChild("SkillCheckResultEvent", 5)
+            local GenFailEvent = GenRemotes and GenRemotes:FindFirstChild("SkillCheckFailEvent")
+            
+            -- Healing remotes (Events -> Healing)
+            local Healing = EventsFolder and EventsFolder:FindFirstChild("Healing")
+            local HealResultEvent = Healing and Healing:FindFirstChild("SkillCheckResultEvent")
+            local HealFailEvent = Healing and Healing:FindFirstChild("SkillCheckFailEvent")
+            
+            -- Hook metamethod
+            local oldNamecall
+            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                -- GENERATOR ANTI-FAIL
+                if GenResultEvent and Config.Generator.AntiFailEnabled then
+                    -- Block fail event
+                    if GenFailEvent and self == GenFailEvent and method == "FireServer" then
+                        return nil
+                    end
+                    
+                    -- Force success on generator
+                    if self == GenResultEvent and method == "FireServer" then
+                        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                            args[1] = true
+                            return oldNamecall(self, unpack(args))
+                        else
+                            return nil
+                        end
+                    end
+                end
+                
+                -- HEALING ANTI-FAIL
+                if HealResultEvent and Config.Healing.AntiFailEnabled then
+                    -- Block fail event
+                    if HealFailEvent and self == HealFailEvent and method == "FireServer" then
+                        return nil
+                    end
+                    
+                    -- Force success on healing
+                    if self == HealResultEvent and method == "FireServer" then
+                        args[1] = true
+                        return oldNamecall(self, unpack(args))
+                    end
+                end
+                
+                return oldNamecall(self, ...)
+            end)
+            
+            AntiFailHooked = true
+            print("✅ Unified Anti-Fail System hooked successfully!")
+            if GenResultEvent then print("  ✅ Generator Anti-Fail ready") end
+            if HealResultEvent then print("  ✅ Healing Anti-Fail ready") end
+        end)
+        
+        if not success then
+            warn("⚠️ Anti-Fail System hook failed")
+        end
+    end)
+end
+
+-- Initialize anti-fail system
+setupUnifiedAntiFail()
+
+--==================================================
+-- HIGHLIGHT SYSTEM
+--==================================================
+local Highlights = {}
+
+local function createHighlight(player)
+    if player == Player then return end
+    if not player.Character then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Parent = player.Character
+    highlight.Adornee = player.Character
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    
+    if Config.Highlight.TeamCheck then
+        if isTeammate(player) then
+            highlight.FillColor = TeamColor
+            highlight.OutlineColor = TeamColor
+        else
+            highlight.FillColor = EnemyColor
+            highlight.OutlineColor = EnemyColor
+        end
+    else
+        highlight.FillColor = Color3.fromRGB(255, 255, 255)
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    end
+    
+    Highlights[player] = highlight
+end
+
+local function removeHighlight(player)
+    if Highlights[player] then
+        Highlights[player]:Destroy()
+        Highlights[player] = nil
+    end
+end
+
+local function updateHighlights()
+    for player, highlight in pairs(Highlights) do
+        if not player or not player.Parent or not player.Character then
+            removeHighlight(player)
+            continue
+        end
+        
+        if Config.Highlight.TeamCheck and isTeammate(player) and not Config.Highlight.ShowTeam then
+            highlight.Enabled = false
+            continue
+        else
+            highlight.Enabled = true
+        end
+        
+        if Config.Highlight.TeamCheck then
+            if isTeammate(player) then
+                highlight.FillColor = TeamColor
+                highlight.OutlineColor = TeamColor
+            else
+                highlight.FillColor = EnemyColor
+                highlight.OutlineColor = EnemyColor
+            end
+        else
+            highlight.FillColor = Color3.fromRGB(255, 255, 255)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        end
+    end
+end
+
+--==================================================
 -- WALLHACK FUNCTION
 --==================================================
 local WallhackConnection = nil
@@ -718,6 +937,26 @@ local function teleportToPlayer(playerName)
 end
 
 --==================================================
+-- HIDE SKILL CHECK UI
+--==================================================
+RunService.RenderStepped:Connect(function()
+    if Config.UI.HideSkillCheck then
+        local PlayerGui = Player:WaitForChild("PlayerGui")
+        
+        local targetUI = PlayerGui:FindFirstChild("SkillCheckPromptGui")
+        local targetUICon = PlayerGui:FindFirstChild("SkillCheckPromptGui-con")
+        
+        if targetUI and targetUI.Enabled then
+            targetUI.Enabled = false
+        end
+        
+        if targetUICon and targetUICon.Enabled then
+            targetUICon.Enabled = false
+        end
+    end
+end)
+
+--==================================================
 -- UPDATE LOOP
 --==================================================
 RunService.Heartbeat:Connect(function()
@@ -729,6 +968,9 @@ RunService.Heartbeat:Connect(function()
     updateWallhack()
     updateGraphicsQuality()
     updatePerformanceMode()
+    if Config.Highlight.Enabled then
+        updateHighlights()
+    end
 end)
 
 --==================================================
@@ -954,7 +1196,293 @@ ESPSection:AddParagraph({
 })
 
 --==================================================
--- MOVEMENT TAB - LENGKAP
+-- HIGHLIGHT TAB
+--==================================================
+local HighlightSection = HighlightTab:AddSection({
+    Name = "✨ CHARACTER HIGHLIGHT",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+HighlightSection:AddToggle({
+    Name = "ENABLE HIGHLIGHT",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HighlightEnable",
+    Save = true,
+    Callback = function(Value)
+        Config.Highlight.Enabled = Value
+        
+        if Value then
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= Player then
+                    createHighlight(player)
+                end
+            end
+            
+            Players.PlayerAdded:Connect(function(player)
+                if Config.Highlight.Enabled then
+                    repeat task.wait() until player.Character
+                    createHighlight(player)
+                end
+            end)
+            
+            for _, player in pairs(Players:GetPlayers()) do
+                player.CharacterAdded:Connect(function()
+                    if Config.Highlight.Enabled then
+                        task.wait(0.5)
+                        createHighlight(player)
+                    end
+                end)
+            end
+            
+            Notify("Highlight Enabled")
+        else
+            for player, _ in pairs(Highlights) do
+                removeHighlight(player)
+            end
+        end
+    end
+})
+
+HighlightSection:AddToggle({
+    Name = "AUTO TEAM COLORS",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HighlightTeam",
+    Save = true,
+    Callback = function(Value) Config.Highlight.TeamCheck = Value end
+})
+
+HighlightSection:AddToggle({
+    Name = "SHOW TEAM HIGHLIGHT",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HighlightShowTeam",
+    Save = true,
+    Callback = function(Value) Config.Highlight.ShowTeam = Value end
+})
+
+HighlightSection:AddParagraph({
+    Title = "COLOR GUIDE",
+    Desc = "🟢 GREEN = Teammate\n🔴 RED = Enemy",
+    Image = "info",
+    ImageSize = 38
+})
+
+--==================================================
+-- GENERATOR TAB (DENGAN FITUR DARI RANZX999)
+--==================================================
+local GenSection = GeneratorTab:AddSection({
+    Name = "⚡ GENERATOR FEATURES",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+GenSection:AddToggle({
+    Name = "ENABLE GENERATOR ESP",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "GenESP",
+    Save = true,
+    Callback = function(Value)
+        Config.Generator.ESPEnabled = Value
+        if not Value then
+            for gen, folder in pairs(GeneratorESP) do
+                if folder then folder:Destroy() end
+            end
+            GeneratorESP = {}
+        end
+        Notify(Value and "Generator ESP Enabled" or "Generator ESP Disabled")
+    end
+})
+
+GenSection:AddToggle({
+    Name = "ENABLE ANTI-FAIL GENERATOR",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "GenAntiFail",
+    Save = true,
+    Callback = function(Value)
+        Config.Generator.AntiFailEnabled = Value
+        Notify(Value and "Anti-Fail Generator Enabled" or "Anti-Fail Generator Disabled")
+    end
+})
+
+GenSection:AddParagraph({
+    Title = "INFO",
+    Desc = "🔵 Cyan = In Progress\n🟢 Green = Complete (100%)\n✅ Auto-pass skill checks\n✅ Hold left click to repair",
+    Image = "info",
+    ImageSize = 38
+})
+
+--==================================================
+-- HEALING TAB (DENGAN FITUR DARI RANZX999)
+--==================================================
+local HealSection = HealingTab:AddSection({
+    Name = "❤️ HEALING FEATURES",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+HealSection:AddToggle({
+    Name = "ENABLE ANTI-FAIL HEALING",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HealAntiFail",
+    Save = true,
+    Callback = function(Value)
+        Config.Healing.AntiFailEnabled = Value
+        Notify(Value and "Anti-Fail Healing Enabled" or "Anti-Fail Healing Disabled")
+    end
+})
+
+HealSection:AddParagraph({
+    Title = "INFO",
+    Desc = "✅ Auto-pass healing skill checks\n✅ Never fail healing",
+    Image = "info",
+    ImageSize = 38
+})
+
+--==================================================
+-- VISUAL TAB
+--==================================================
+local VisualMainSection = VisualTab:AddSection({
+    Name = "☀️ VISUAL ENHANCEMENTS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+VisualMainSection:AddToggle({
+    Name = "WALLHACK (SEE THROUGH WALLS)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Wallhack",
+    Save = true,
+    Callback = function(Value)
+        Config.Visual.WallhackEnabled = Value
+        updateWallhack()
+        Notify(Value and "Wallhack Enabled" or "Wallhack Disabled")
+    end
+})
+
+VisualMainSection:AddToggle({
+    Name = "FULLBRIGHT (BRIGHT MAP)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Fullbright",
+    Save = true,
+    Callback = function(Value)
+        Config.Visual.FullbrightEnabled = Value
+        updateFullbright()
+        Notify(Value and "Fullbright Enabled" or "Fullbright Disabled")
+    end
+})
+
+VisualMainSection:AddToggle({
+    Name = "NO FOG (CLEAR VIEW)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "NoFog",
+    Save = true,
+    Callback = function(Value)
+        Config.Visual.NoFogEnabled = Value
+        updateNoFog()
+        Notify(Value and "No Fog Enabled" or "No Fog Disabled")
+    end
+})
+
+VisualMainSection:AddToggle({
+    Name = "SUPER ZOOM OUT",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SuperZoom",
+    Save = true,
+    Callback = function(Value)
+        Config.Visual.SuperZoomEnabled = Value
+        updateSuperZoom()
+        Notify(Value and "Super Zoom Enabled" or "Super Zoom Disabled")
+    end
+})
+
+VisualMainSection:AddToggle({
+    Name = "ANTI-ALIASING (HIGH QUALITY)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AntiAlias",
+    Save = true,
+    Callback = function(Value)
+        Config.Visual.AntiAliasingEnabled = Value
+        updateGraphicsQuality()
+        Notify(Value and "Anti-Aliasing Enabled" or "Anti-Aliasing Disabled")
+    end
+})
+
+VisualMainSection:AddToggle({
+    Name = "PERFORMANCE MODE (LOW QUALITY)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Performance",
+    Save = true,
+    Callback = function(Value)
+        Config.Visual.PerformanceMode = Value
+        updatePerformanceMode()
+        Notify(Value and "Performance Mode Enabled" or "Performance Mode Disabled")
+    end
+})
+
+VisualMainSection:AddButton({
+    Name = "🔄 RESET ALL VISUAL SETTINGS",
+    Icon = "refresh-cw",
+    Outline = true,
+    Callback = resetVisualSettings
+})
+
+VisualMainSection:AddParagraph({
+    Title = "VISUAL FEATURES",
+    Desc = "👁️ Wallhack: See through walls\n☀️ Fullbright: Remove shadows\n🌫️ No Fog: Clear view\n🔍 Super Zoom: Max FOV\n🎨 Anti-Aliasing: Smooth edges\n⚡ Performance: Boost FPS",
+    Image = "sun",
+    ImageSize = 38
+})
+
+VisualTab:AddSection({
+    Name = "🎮 UI SETTINGS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+VisualTab:AddToggle({
+    Name = "HIDE SKILL CHECK UI",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HideSkillCheck",
+    Save = true,
+    Callback = function(Value)
+        Config.UI.HideSkillCheck = Value
+        Notify(Value and "Skill Check UI Hidden" or "Skill Check UI Visible")
+    end
+})
+
+--==================================================
+-- MOVEMENT TAB
 --==================================================
 local SpeedSection = MovementTab:AddSection({
     Name = "⚡ SPEED HACK",
@@ -1089,115 +1617,7 @@ ExtraSection:AddToggle({
 })
 
 --==================================================
--- VISUAL TAB - LENGKAP DENGAN SEMUA FITUR
---==================================================
-local VisualMainSection = VisualTab:AddSection({
-    Name = "☀️ VISUAL ENHANCEMENTS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-VisualMainSection:AddToggle({
-    Name = "WALLHACK (SEE THROUGH WALLS)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Wallhack",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.WallhackEnabled = Value
-        updateWallhack()
-        Notify(Value and "Wallhack Enabled" or "Wallhack Disabled")
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "FULLBRIGHT (BRIGHT MAP)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Fullbright",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.FullbrightEnabled = Value
-        updateFullbright()
-        Notify(Value and "Fullbright Enabled" or "Fullbright Disabled")
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "NO FOG (CLEAR VIEW)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "NoFog",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.NoFogEnabled = Value
-        updateNoFog()
-        Notify(Value and "No Fog Enabled" or "No Fog Disabled")
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "SUPER ZOOM OUT",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "SuperZoom",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.SuperZoomEnabled = Value
-        updateSuperZoom()
-        Notify(Value and "Super Zoom Enabled" or "Super Zoom Disabled")
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "ANTI-ALIASING (HIGH QUALITY)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "AntiAlias",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.AntiAliasingEnabled = Value
-        updateGraphicsQuality()
-        Notify(Value and "Anti-Aliasing Enabled" or "Anti-Aliasing Disabled")
-    end
-})
-
-VisualMainSection:AddToggle({
-    Name = "PERFORMANCE MODE (LOW QUALITY)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Performance",
-    Save = true,
-    Callback = function(Value)
-        Config.Visual.PerformanceMode = Value
-        updatePerformanceMode()
-        Notify(Value and "Performance Mode Enabled" or "Performance Mode Disabled")
-    end
-})
-
-VisualMainSection:AddButton({
-    Name = "🔄 RESET ALL VISUAL SETTINGS",
-    Icon = "refresh-cw",
-    Outline = true,
-    Callback = resetVisualSettings
-})
-
-VisualMainSection:AddParagraph({
-    Title = "VISUAL FEATURES",
-    Desc = "👁️ Wallhack: See through walls\n☀️ Fullbright: Remove shadows\n🌫️ No Fog: Clear view\n🔍 Super Zoom: Max FOV\n🎨 Anti-Aliasing: Smooth edges\n⚡ Performance: Boost FPS",
-    Image = "sun",
-    ImageSize = 38
-})
-
---==================================================
--- TELEPORT TAB - LENGKAP
+-- TELEPORT TAB
 --==================================================
 local TeleportMainSection = TeleportTab:AddSection({
     Name = "📍 TELEPORT TO PLAYER",
@@ -1240,7 +1660,6 @@ TeleportMainSection:AddButton({
     Icon = "refresh-cw",
     Outline = true,
     Callback = function()
-        -- Refresh dropdown options - in Catraz Hub you'd need to properly refresh
         Notify("Player list refreshed")
     end
 })
@@ -1279,7 +1698,7 @@ WaypointSection:AddButton({
 })
 
 --==================================================
--- MISC TAB - DENGAN ANTI AFK
+-- MISC TAB
 --==================================================
 local MiscMainSection = MiscTab:AddSection({
     Name = "⚙️ UTILITY FEATURES",
@@ -1302,19 +1721,6 @@ MiscMainSection:AddToggle({
     end
 })
 
-MiscMainSection:AddToggle({
-    Name = "HIDE SKILL CHECK UI",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HideSkillCheck",
-    Save = true,
-    Callback = function(Value)
-        Config.UI.HideSkillCheck = Value
-        Notify(Value and "Skill Check UI Hidden" or "Skill Check UI Visible")
-    end
-})
-
 MiscMainSection:AddParagraph({
     Title = "ACTIVE FEATURES MONITOR",
     Desc = "Check Main Tab for live active features list",
@@ -1323,321 +1729,12 @@ MiscMainSection:AddParagraph({
 })
 
 --==================================================
--- HIDE SKILL CHECK UI
+-- ADD CONFIG TAB
 --==================================================
-RunService.RenderStepped:Connect(function()
-    if Config.UI.HideSkillCheck then
-        local PlayerGui = Player:WaitForChild("PlayerGui")
-        
-        local targetUI = PlayerGui:FindFirstChild("SkillCheckPromptGui")
-        local targetUICon = PlayerGui:FindFirstChild("SkillCheckPromptGui-con")
-        
-        if targetUI and targetUI.Enabled then
-            targetUI.Enabled = false
-        end
-        
-        if targetUICon and targetUICon.Enabled then
-            targetUICon.Enabled = false
-        end
-    end
-end)
-
---==================================================
--- HIGHLIGHT SYSTEM
---==================================================
-local Highlights = {}
-
-local function createHighlight(player)
-    if player == Player then return end
-    if not player.Character then return end
-    
-    local highlight = Instance.new("Highlight")
-    highlight.Parent = player.Character
-    highlight.Adornee = player.Character
-    highlight.FillTransparency = 0.5
-    highlight.OutlineTransparency = 0
-    
-    if Config.Highlight.TeamCheck then
-        if isTeammate(player) then
-            highlight.FillColor = TeamColor
-            highlight.OutlineColor = TeamColor
-        else
-            highlight.FillColor = EnemyColor
-            highlight.OutlineColor = EnemyColor
-        end
-    else
-        highlight.FillColor = Color3.fromRGB(255, 255, 255)
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    end
-    
-    Highlights[player] = highlight
-end
-
-local function removeHighlight(player)
-    if Highlights[player] then
-        Highlights[player]:Destroy()
-        Highlights[player] = nil
-    end
-end
-
-local function updateHighlights()
-    for player, highlight in pairs(Highlights) do
-        if not player or not player.Parent or not player.Character then
-            removeHighlight(player)
-            continue
-        end
-        
-        if Config.Highlight.TeamCheck and isTeammate(player) and not Config.Highlight.ShowTeam then
-            highlight.Enabled = false
-            continue
-        else
-            highlight.Enabled = true
-        end
-        
-        if Config.Highlight.TeamCheck then
-            if isTeammate(player) then
-                highlight.FillColor = TeamColor
-                highlight.OutlineColor = TeamColor
-            else
-                highlight.FillColor = EnemyColor
-                highlight.OutlineColor = EnemyColor
-            end
-        else
-            highlight.FillColor = Color3.fromRGB(255, 255, 255)
-            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-        end
-    end
-end
-
--- Highlight Tab
-local HighlightSection = HighlightTab:AddSection({
-    Name = "✨ CHARACTER HIGHLIGHT",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+Window:AddConfigTab({
+    Name = "Settings",
+    Icon = "settings"
 })
-
-HighlightSection:AddToggle({
-    Name = "ENABLE HIGHLIGHT",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HighlightEnable",
-    Save = true,
-    Callback = function(Value)
-        Config.Highlight.Enabled = Value
-        
-        if Value then
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= Player then
-                    createHighlight(player)
-                end
-            end
-            Notify("Highlight Enabled")
-        else
-            for player, _ in pairs(Highlights) do
-                removeHighlight(player)
-            end
-        end
-    end
-})
-
-HighlightSection:AddToggle({
-    Name = "AUTO TEAM COLORS",
-    Default = true,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HighlightTeam",
-    Save = true,
-    Callback = function(Value) Config.Highlight.TeamCheck = Value end
-})
-
-HighlightSection:AddToggle({
-    Name = "SHOW TEAM HIGHLIGHT",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HighlightShowTeam",
-    Save = true,
-    Callback = function(Value) Config.Highlight.ShowTeam = Value end
-})
-
--- Update highlights
-RunService.Heartbeat:Connect(function()
-    if Config.Highlight.Enabled then
-        updateHighlights()
-    end
-end)
-
---==================================================
--- GENERATOR ESP
---==================================================
-local GeneratorESP = {}
-
-local function createGeneratorESP(gen)
-    if not gen:IsA("Model") or gen:FindFirstChild("GenESP") then return end
-    
-    local folder = Instance.new("Folder", gen)
-    folder.Name = "GenESP"
-    
-    local highlight = Instance.new("Highlight", folder)
-    highlight.Adornee = gen
-    highlight.FillColor = Color3.new(0, 1, 1)
-    highlight.DepthMode = "AlwaysOnTop"
-    
-    local billboard = Instance.new("BillboardGui", folder)
-    billboard.Size = UDim2.new(0, 80, 0, 40)
-    billboard.AlwaysOnTop = true
-    billboard.Adornee = gen:FindFirstChild("HitBox") or gen.PrimaryPart
-    billboard.ExtentsOffset = Vector3.new(0, 3, 0)
-    
-    local textLabel = Instance.new("TextLabel", billboard)
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = Color3.new(1, 1, 1)
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 14
-    
-    task.spawn(function()
-        while gen.Parent and folder.Parent do
-            local progress = gen:GetAttribute("RepairProgress") or 0
-            textLabel.Text = math.floor(progress) .. "%"
-            highlight.Enabled = Config.Generator.ESPEnabled
-            textLabel.Visible = Config.Generator.ESPEnabled
-            
-            if progress >= 100 then
-                highlight.FillColor = Color3.new(0, 1, 0)
-            else
-                highlight.FillColor = Color3.new(0, 1, 1)
-            end
-            
-            task.wait(1)
-        end
-    end)
-    
-    GeneratorESP[gen] = folder
-end
-
--- Generator Tab
-local GenSection = GeneratorTab:AddSection({
-    Name = "⚡ GENERATOR FEATURES",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-GenSection:AddToggle({
-    Name = "ENABLE GENERATOR ESP",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "GenESP",
-    Save = true,
-    Callback = function(Value)
-        Config.Generator.ESPEnabled = Value
-    end
-})
-
-GenSection:AddToggle({
-    Name = "ENABLE ANTI-FAIL GENERATOR",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "GenAntiFail",
-    Save = true,
-    Callback = function(Value)
-        Config.Generator.AntiFailEnabled = Value
-    end
-})
-
---==================================================
--- HEALING TAB
---==================================================
-local HealSection = HealingTab:AddSection({
-    Name = "❤️ HEALING FEATURES",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-HealSection:AddToggle({
-    Name = "ENABLE ANTI-FAIL HEALING",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HealAntiFail",
-    Save = true,
-    Callback = function(Value)
-        Config.Healing.AntiFailEnabled = Value
-    end
-})
-
---==================================================
--- ANTI-FAIL SYSTEM
---==================================================
-local AntiFailHooked = false
-
-local function setupAntiFail()
-    if AntiFailHooked then return end
-    
-    task.spawn(function()
-        local success = pcall(function()
-            local oldNamecall
-            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-                local method = getnamecallmethod()
-                local args = {...}
-                
-                -- GENERATOR ANTI-FAIL
-                if Config.Generator.AntiFailEnabled then
-                    if tostring(self):find("SkillCheckFailEvent") and method == "FireServer" then
-                        return nil
-                    end
-                    
-                    if tostring(self):find("SkillCheckResultEvent") and method == "FireServer" then
-                        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-                            args[1] = true
-                            return oldNamecall(self, unpack(args))
-                        else
-                            return nil
-                        end
-                    end
-                end
-                
-                -- HEALING ANTI-FAIL
-                if Config.Healing.AntiFailEnabled then
-                    if tostring(self):find("Heal") and tostring(self):find("Fail") and method == "FireServer" then
-                        return nil
-                    end
-                    
-                    if tostring(self):find("Heal") and tostring(self):find("Result") and method == "FireServer" then
-                        args[1] = true
-                        return oldNamecall(self, unpack(args))
-                    end
-                end
-                
-                return oldNamecall(self, ...)
-            end)
-            
-            AntiFailHooked = true
-        end)
-    end)
-end
-
-setupAntiFail()
-
--- Generator ESP scanner
-task.spawn(function()
-    while true do
-        if Config.Generator.ESPEnabled then
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                if obj.Name == "Generator" and obj:IsA("Model") then
-                    createGeneratorESP(obj)
-                end
-            end
-        end
-        task.wait(3)
-    end
-end)
 
 --==================================================
 -- CHARACTER UPDATES
@@ -1664,28 +1761,22 @@ Player.CharacterAdded:Connect(function(char)
 end)
 
 --==================================================
--- ADD CONFIG TAB
---==================================================
-Window:AddConfigTab({
-    Name = "Settings",
-    Icon = "settings"
-})
-
---==================================================
 -- INITIALIZE
 --==================================================
 OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v4.0 🔥")
+print("🔥 VIOLENCE DISTRICT - ULTIMATE Edition v5.0 🔥")
 print("═══════════════════════════════════════════════════════")
 print("✅ Main Tab - Player Info + Server Info + Active Features")
 print("✅ Player ESP - Nama SIZE 22 BOLD PUTIH")
-print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
+print("✅ Highlight System - Team colors (Green/Red)")
+print("✅ Generator ESP - Auto-scan dengan progress %")
+print("✅ Anti-Fail System - Generator + Healing (dari RanZx999)")
 print("✅ Visual - Wallhack, Fullbright, No Fog, Super Zoom")
 print("✅ Visual - Anti-Aliasing, Performance Mode, Reset Button")
+print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
 print("✅ Teleport - Player TP, Waypoints, Refresh List")
 print("✅ Misc - Anti AFK, Hide Skill Check UI")
-print("✅ Highlight System + Generator ESP + Anti-Fail")
 print("═══════════════════════════════════════════════════════")
