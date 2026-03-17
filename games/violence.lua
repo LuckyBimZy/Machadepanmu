@@ -1,4 +1,4 @@
--- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.2 ====================
+-- ==================== VIOLENCE DISTRICT - PREMIUM CATRAZ v1.1 ====================
 if _G.VD_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Violence District",
@@ -157,8 +157,8 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Violence District",
-    Subtext = "PREMIUM Edition v1.2",
-    Version = "v1.2",
+    Subtext = "PREMIUM Edition v1.1",
+    Version = "v1.1",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -508,65 +508,9 @@ Players.PlayerAdded:Connect(setupPlayerESP)
 Players.PlayerRemoving:Connect(removePlayerESP)
 
 --==================================================
--- GENERATOR ESP & FUNCTIONS
+-- GENERATOR ESP
 --==================================================
 local GeneratorESP = {}
-
--- Function to get all generators
-local function getAllGenerators()
-    local generators = {}
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj.Name == "Generator" and obj:IsA("Model") then
-            table.insert(generators, obj)
-        end
-    end
-    return generators
-end
-
--- Function to get generator names for dropdown
-local function getGeneratorList()
-    local list = {}
-    local generators = getAllGenerators()
-    for i, gen in ipairs(generators) do
-        -- Get position for identification
-        local pos = gen.PrimaryPart and gen.PrimaryPart.Position or Vector3.new(0,0,0)
-        local progress = gen:GetAttribute("RepairProgress") or 0
-        table.insert(list, string.format("Generator #%d [%d%%] (%.0f,%.0f)", i, progress, pos.X, pos.Z))
-    end
-    if #list == 0 then
-        table.insert(list, "No generators found")
-    end
-    return list
-end
-
--- Function to teleport to selected generator
-local function teleportToGenerator(genName)
-    if not genName or genName == "No generators found" or genName == "Select a generator" then
-        Notify("Please select a valid generator!")
-        return false
-    end
-    
-    -- Extract generator index from name
-    local genIndex = tonumber(genName:match("Generator #(%d+)"))
-    if not genIndex then
-        Notify("Invalid generator selection!")
-        return false
-    end
-    
-    local generators = getAllGenerators()
-    local targetGen = generators[genIndex]
-    
-    if targetGen then
-        local teleportPart = targetGen:FindFirstChild("HitBox") or targetGen.PrimaryPart or targetGen:FindFirstChildWhichIsA("BasePart")
-        if teleportPart then
-            Player.Character.HumanoidRootPart.CFrame = teleportPart.CFrame * CFrame.new(0, 3, 0)
-            Notify("Teleported to " .. genName)
-            return true
-        end
-    end
-    Notify("Generator not found!")
-    return false
-end
 
 local function createGeneratorESP(gen)
     if not gen:IsA("Model") or gen:FindFirstChild("GenESP") then return end
@@ -986,7 +930,7 @@ local function setupAntiAFK()
 end
 
 --==================================================
--- TELEPORT FUNCTIONS (PLAYER)
+-- TELEPORT FUNCTIONS
 --==================================================
 local function getPlayerList()
     local list = {}
@@ -1342,7 +1286,7 @@ HighlightSection:AddToggle({
 })
 
 --==================================================
--- GENERATOR TAB (DENGAN TELEPORT)
+-- GENERATOR TAB
 --==================================================
 local GenSection = GeneratorTab:AddSection({
     Name = "⚡ GENERATOR FEATURES",
@@ -1380,51 +1324,6 @@ GenSection:AddToggle({
     Callback = function(Value)
         Config.Generator.AntiFailEnabled = Value
         Notify(Value and "Anti-Fail Generator Enabled" or "Anti-Fail Generator Disabled")
-    end
-})
-
---==================================================
--- TELEPORT GENERATOR SECTION (BARU!)
---==================================================
-local TeleportGenSection = GeneratorTab:AddSection({
-    Name = "📍 TELEPORT TO GENERATOR",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-local SelectedGenerator = ""
-
--- Dropdown untuk generator list
-TeleportGenSection:AddDropdown({
-    Name = "SELECT GENERATOR",
-    Default = "Select a generator",
-    Options = getGeneratorList(),
-    Multi = false,
-    Search = true,
-    AllowNone = true,
-    Outline = true,
-    Callback = function(Value)
-        SelectedGenerator = Value
-    end
-})
-
-TeleportGenSection:AddButton({
-    Name = "🚀 TELEPORT TO SELECTED GENERATOR",
-    Icon = "map-pin",
-    Outline = true,
-    Callback = function()
-        teleportToGenerator(SelectedGenerator)
-    end
-})
-
-TeleportGenSection:AddButton({
-    Name = "🔄 REFRESH GENERATOR LIST",
-    Icon = "refresh-cw",
-    Outline = true,
-    Callback = function()
-        -- Refresh dropdown options (note: Catraz Hub doesn't support dynamic refresh well)
-        Notify("Generator list refreshed")
     end
 })
 
@@ -1708,7 +1607,7 @@ ExtraSection:AddToggle({
 })
 
 --==================================================
--- TELEPORT TAB (PLAYER)
+-- TELEPORT TAB
 --==================================================
 local TeleportMainSection = TeleportTab:AddSection({
     Name = "📍 TELEPORT TO PLAYER",
@@ -1850,17 +1749,3 @@ end)
 OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
-print("═══════════════════════════════════════════════════════")
-print("🔥 VIOLENCE DISTRICT - PREMIUM CATRAZ v1.2 🔥")
-print("═══════════════════════════════════════════════════════")
-print("✅ Graphics are NORMAL at startup - No automatic changes")
-print("✅ Player ESP - Nama SIZE 22 BOLD PUTIH")
-print("✅ Highlight System - Team colors (Green/Red)")
-print("✅ Generator ESP - Auto-scan dengan progress %")
-print("✅ TELEPORT TO GENERATOR - Dropdown + Refresh (BARU!)")
-print("✅ Anti-Fail System - Generator + Healing")
-print("✅ Visual - Wallhack, Fullbright, No Fog, Super Zoom")
-print("✅ Movement - Speed, Jump, Infinite Jump, Noclip")
-print("✅ Teleport - Player TP, Generator TP, Waypoints")
-print("✅ Misc - Anti AFK, Hide Skill Check UI")
-print("═══════════════════════════════════════════════════════")
