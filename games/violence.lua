@@ -104,7 +104,7 @@ local Config = {
     },
     Highlight = {
         Enabled = false,
-        TeamCheck = false,
+        TeamCheck = true,
         ShowTeam = false
     },
     Generator = {
@@ -390,6 +390,7 @@ local function updatePlayerESP()
         local hrp = char:FindFirstChild("HumanoidRootPart")
         local hum = char:FindFirstChild("Humanoid")
         local head = char:FindFirstChild("Head")
+        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
         
         if not hrp or not hum or not head then
             for _, obj in pairs(esp) do obj.Visible = false end
@@ -403,52 +404,78 @@ local function updatePlayerESP()
             continue
         end
         
-        local headPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-        local rootPos = Camera:WorldToViewportPoint(hrp.Position)
+        -- Dapatkan posisi di layar
+        local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
+        local rootPos, rootOnScreen = Camera:WorldToViewportPoint(hrp.Position)
+        local torsoPos, torsoOnScreen = Vector2.new(0,0), false
         
-        if not onScreen then
+        if torso then
+            torsoPos, torsoOnScreen = Camera:WorldToViewportPoint(torso.Position)
+        end
+        
+        if not headOnScreen or not rootOnScreen then
             for _, obj in pairs(esp) do obj.Visible = false end
             continue
         end
         
-        local boxSize = Vector2.new(2000 / distance, 2500 / distance)
+        -- Hitung ukuran box berdasarkan tinggi karakter
+        local headY = headPos.Y
+        local rootY = rootPos.Y
+        local boxHeight = math.abs(headY - rootY) * 2.2 -- Lebih proporsional
+        local boxWidth = boxHeight * 0.6 -- Lebar box proporsional
+        
+        -- Posisi box (berpusat pada root)
+        local boxX = rootPos.X - boxWidth / 2
+        local boxY = rootPos.Y - boxHeight / 2
+        
+        -- Pastikan box tidak terlalu kecil
+        boxHeight = math.max(boxHeight, 40)
+        boxWidth = math.max(boxWidth, 25)
+        
         local playerColor = getPlayerColor(player)
         
+        -- BOX - Pas pada tubuh
         if Config.ESP.Boxes then
-            esp.Box.Size = boxSize
-            esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
+            esp.Box.Size = Vector2.new(boxWidth, boxHeight)
+            esp.Box.Position = Vector2.new(boxX, boxY)
             esp.Box.Color = playerColor
             esp.Box.Visible = true
         else
             esp.Box.Visible = false
         end
         
+        -- NAMA - Di atas kepala dengan offset yang tepat
         if Config.ESP.Names then
             esp.Name.Text = player.Name
-            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 55) 
+            -- Posisi di atas kepala (sedikit lebih tinggi untuk font besar)
+            esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 60) 
             esp.Name.Color = Color3.fromRGB(255, 255, 255)
             esp.Name.Visible = true
         else
             esp.Name.Visible = false
         end
         
+        -- JARAK - Di bawah box
         if Config.ESP.Distance then
             esp.Distance.Text = string.format("[%.0fm]", distance)
-            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxSize.Y / 2 + 30)
+            esp.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxHeight/2 + 20)
             esp.Distance.Visible = true
         else
             esp.Distance.Visible = false
         end
         
+        -- HEALTH BAR - Di samping box (kiri)
         if Config.ESP.Health and hum then
             local healthPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             local barWidth = 4
-            local barHeight = boxSize.Y
+            local barHeight = boxHeight
             
+            -- Background bar
             esp.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
-            esp.HealthBarBG.Position = Vector2.new(rootPos.X - boxSize.X / 2 - 7, rootPos.Y - boxSize.Y / 2)
+            esp.HealthBarBG.Position = Vector2.new(boxX - 7, boxY)
             esp.HealthBarBG.Visible = true
             
+            -- Health bar (warna berubah sesuai health)
             local healthColor = Color3.fromRGB(
                 math.floor(255 * (1 - healthPercent)),
                 math.floor(255 * healthPercent),
@@ -456,8 +483,8 @@ local function updatePlayerESP()
             )
             esp.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
             esp.HealthBar.Position = Vector2.new(
-                rootPos.X - boxSize.X / 2 - 7,
-                rootPos.Y - boxSize.Y / 2 + barHeight * (1 - healthPercent)
+                boxX - 7,
+                boxY + barHeight * (1 - healthPercent)
             )
             esp.HealthBar.Color = healthColor
             esp.HealthBar.Visible = true
@@ -466,6 +493,7 @@ local function updatePlayerESP()
             esp.HealthBar.Visible = false
         end
         
+        -- TRACER - Dari bawah layar ke player
         if Config.ESP.Tracers then
             local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
             esp.Tracer.From = screenCenter
