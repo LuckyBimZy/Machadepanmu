@@ -13,8 +13,21 @@ _G.VD_Loaded = true
 --==================================================
 -- LOAD CATRAZ HUB LIBRARY
 --==================================================
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
+local OrionLib
+local LoadSuccess, LoadError = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
+end)
 
+if LoadSuccess then
+    OrionLib = LoadError
+    print("✅ Catraz Hub loaded successfully!")
+else
+    print("❌ Catraz Hub failed to load:", LoadError)
+    print("⚠️ Falling back to standard Orion Library...")
+    
+    -- Fallback ke Orion Library standar
+    OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+end
 --==================================================
 -- VARIABLES
 --==================================================
