@@ -574,21 +574,18 @@ end
 local function setupPlayerESP(player)
     player.CharacterAdded:Connect(function(char)
         char:WaitForChild("HumanoidRootPart")
-        task.wait(0.5)
+        task.wait(1)
+        
+        cleanCharacter(char) -- 🔥 ini yang hapus tabung
+        
         if Config.ESP.Enabled then
             createPlayerESP(player)
         end
+        
+        if VDConfig.Highlight.Enabled then
+            createHighlight(player)
+        end
     end)
-    
-    if player.Character then
-        task.spawn(function()
-            player.Character:WaitForChild("HumanoidRootPart")
-            task.wait(0.5)
-            if Config.ESP.Enabled then
-                createPlayerESP(player)
-            end
-        end)
-    end
 end
 
 -- Initialize ESP for existing players
