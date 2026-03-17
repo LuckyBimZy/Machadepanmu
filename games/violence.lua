@@ -516,15 +516,6 @@ local function updatePlayerESP()
         
         local boxSize = Vector2.new(2000 / distance, 2500 / distance)
         
-        if Config.ESP.Boxes then
-            esp.Box.Size = boxSize
-            esp.Box.Position = Vector2.new(rootPos.X - boxSize.X / 2, rootPos.Y - boxSize.Y / 2)
-            esp.Box.Color = WHITE
-            esp.Box.Visible = true
-        else
-            esp.Box.Visible = false
-        end
-        
         if Config.ESP.Names then
             esp.Name.Text = player.Name
             esp.Name.Position = Vector2.new(headPos.X, headPos.Y - 45) -- Naikkan posisi untuk font lebih besar
