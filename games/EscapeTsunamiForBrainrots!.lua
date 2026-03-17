@@ -31,6 +31,8 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local LPlayer = Players.LocalPlayer
 local Player = LPlayer
+local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
 
 -- ========== INIT ==========
 M.ActiveBrainrots = workspace:FindFirstChild("ActiveBrainrots")
@@ -44,10 +46,238 @@ pcall(function()
     M.PlotAction = game:GetService("ReplicatedStorage"):WaitForChild("Packages", 10):WaitForChild("Net", 10):WaitForChild("RF/Plot.PlotAction", 10)
 end)
 
+-- ========== TSUNAMI DETECTION ==========
+M.Tsunami = {
+    Enabled = false,
+    Mode = "Bawah", -- "Bawah" atau "Atas"
+    Height = 50, -- Ketinggian aman di atas tsunami
+    DetectionPart = nil,
+    TsunamiPart = nil,
+    Connection = nil,
+    FlyConnection = nil,
+    BodyVelocity = nil,
+    IsFlying = false
+}
+
+-- Fungsi untuk mendeteksi tsunami
+function M.detectTsunami()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Part") or obj:IsA("MeshPart") then
+            local name = obj.Name:lower()
+            if name:find("tsunami") or name:find("wave") or name:find("banjir") or name:find("flood") or name:find("water") then
+                return obj
+            end
+        end
+    end
+    return nil
+end
+
+-- Fungsi untuk membuat part deteksi tsunami
+function M.createTsunamiDetector()
+    if M.Tsunami.DetectionPart then
+        pcall(function() M.Tsunami.DetectionPart:Destroy() end)
+    end
+    
+    local detector = Instance.new("Part")
+    detector.Name = "TsunamiDetector"
+    detector.Size = Vector3.new(1000, 1, 1000)
+    detector.Transparency = 1
+    detector.CanCollide = false
+    detector.Anchored = true
+    detector.Parent = Workspace
+    
+    -- Posisikan detector di ketinggian yang berbeda berdasarkan mode
+    if M.Tsunami.Mode == "Bawah" then
+        detector.Position = Vector3.new(0, -50, 0) -- Di bawah tanah
+    else
+        detector.Position = Vector3.new(0, M.Tsunami.Height, 0) -- Di atas
+    end
+    
+    M.Tsunami.DetectionPart = detector
+    return detector
+end
+
+-- Fungsi untuk mengecek apakah tsunami mendekat
+function M.isTsunamiNearby()
+    local tsunami = M.detectTsunami()
+    if not tsunami then return false end
+    
+    local char = Player.Character
+    if not char then return false end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    local distance = (hrp.Position - tsunami.Position).Magnitude
+    return distance < 50 -- Tsunami dalam radius 50 studs
+end
+
+-- Fungsi untuk mendapatkan ketinggian aman
+function M.getSafeHeight()
+    if M.Tsunami.Mode == "Bawah" then
+        return -50 -- Di bawah tanah
+    else
+        return M.Tsunami.Height -- Di atas
+    end
+end
+
+-- Fungsi untuk terbang menghindari tsunami
+function M.enableTsunamiFlight()
+    if M.Tsunami.FlyConnection then return end
+    
+    local char = Player.Character
+    if not char then return end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    -- Buat BodyVelocity untuk terbang
+    if M.Tsunami.BodyVelocity then
+        pcall(function() M.Tsunami.BodyVelocity:Destroy() end)
+    end
+    
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "TsunamiFlight"
+    bv.MaxForce = Vector3.new(4000, 4000, 4000)
+    bv.Velocity = Vector3.new(0, 0, 0)
+    bv.Parent = hrp
+    
+    M.Tsunami.BodyVelocity = bv
+    M.Tsunami.IsFlying = true
+    
+    -- Connection untuk menjaga ketinggian
+    M.Tsunami.FlyConnection = RunService.Heartbeat:Connect(function()
+        if not M.Tsunami.Enabled then
+            M.disableTsunamiFlight()
+            return
+        end
+        
+        local currentChar = Player.Character
+        if not currentChar then
+            M.disableTsunamiFlight()
+            return
+        end
+        
+        local currentHrp = currentChar:FindFirstChild("HumanoidRootPart")
+        if not currentHrp then return end
+        
+        local targetY = M.getSafeHeight()
+        local currentY = currentHrp.Position.Y
+        
+        -- Jika sudah di ketinggian aman, diam di tempat
+        if math.abs(currentY - targetY) < 5 then
+            if M.Tsunami.BodyVelocity then
+                M.Tsunami.BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            end
+        else
+            -- Terbang ke ketinggian aman
+            local direction = (targetY > currentY) and 1 or -1
+            if M.Tsunami.BodyVelocity then
+                M.Tsunami.BodyVelocity.Velocity = Vector3.new(0, direction * 100, 0)
+            end
+        end
+        
+        -- Noclip otomatis saat terbang
+        if currentChar then
+            for _, part in pairs(currentChar:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+    
+    -- Detector touch connection
+    if M.Tsunami.DetectionPart then
+        M.Tsunami.DetectionPart.Touched:Connect(function(hit)
+            if not M.Tsunami.Enabled then return end
+            if hit:IsDescendantOf(Player.Character) then
+                -- Karakter menyentuh detector, berarti tsunami sudah dekat
+                M.enableTsunamiFlight()
+            end
+        end)
+    end
+end
+
+function M.disableTsunamiFlight()
+    if M.Tsunami.FlyConnection then
+        M.Tsunami.FlyConnection:Disconnect()
+        M.Tsunami.FlyConnection = nil
+    end
+    
+    if M.Tsunami.BodyVelocity then
+        pcall(function() M.Tsunami.BodyVelocity:Destroy() end)
+        M.Tsunami.BodyVelocity = nil
+    end
+    
+    M.Tsunami.IsFlying = false
+    
+    -- Kembalikan collision
+    local char = Player.Character
+    if char and not M.S.NoclipEnabled then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and not M.isOwnWallPart(part) then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+-- Fungsi untuk mengaktifkan sistem tsunami
+function M.enableTsunamiProtection()
+    if M.Tsunami.Connection then return end
+    
+    M.Tsunami.Enabled = true
+    M.createTsunamiDetector()
+    
+    -- Monitor tsunami setiap detik
+    M.Tsunami.Connection = RunService.Heartbeat:Connect(function()
+        if not M.Tsunami.Enabled then return end
+        
+        local tsunami = M.detectTsunami()
+        if not tsunami then return end
+        
+        local char = Player.Character
+        if not char then return end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        local distance = (hrp.Position - tsunami.Position).Magnitude
+        
+        -- Jika tsunami sangat dekat (30 studs), aktifkan mode terbang
+        if distance < 30 and not M.Tsunami.IsFlying then
+            M.enableTsunamiFlight()
+        end
+        
+        -- Update posisi detector berdasarkan mode
+        if M.Tsunami.DetectionPart then
+            if M.Tsunami.Mode == "Bawah" then
+                M.Tsunami.DetectionPart.Position = Vector3.new(hrp.Position.X, -50, hrp.Position.Z)
+            else
+                M.Tsunami.DetectionPart.Position = Vector3.new(hrp.Position.X, M.Tsunami.Height, hrp.Position.Z)
+            end
+        end
+    end)
+end
+
+function M.disableTsunamiProtection()
+    M.Tsunami.Enabled = false
+    if M.Tsunami.Connection then
+        M.Tsunami.Connection:Disconnect()
+        M.Tsunami.Connection = nil
+    end
+    M.disableTsunamiFlight()
+    if M.Tsunami.DetectionPart then
+        pcall(function() M.Tsunami.DetectionPart:Destroy() end)
+        M.Tsunami.DetectionPart = nil
+    end
+end
+
 -- ========== SETTINGS ==========
 M.S = {
     Farming = false,
-    FarmTargets = {"Brainrots"}, -- NEW: Master Farm Target (Brainrots, Lucky Blocks)
+    FarmTargets = {"Brainrots"},
     SelectedBrainrots = {},
     TargetMutation = "None",
     TargetRarity = {"Common"},
@@ -71,7 +301,9 @@ M.S = {
     MapFixerEnabled = false,
     NoclipEnabled = false,
     GodEnabled = false,
-    FarmCapacity = 1
+    FarmCapacity = 1,
+    TsunamiProtection = false,
+    TsunamiMode = "Bawah" -- "Bawah" atau "Atas"
 }
 
 M.Status = {
@@ -84,6 +316,7 @@ M.Status = {
     valentine = "Idle", valentineCount = 0,
     arcade = "Idle", arcadeCount = 0,
     mapFixer = "Off",
+    tsunami = "Off"
 }
 
 -- ========== STATE ==========
@@ -161,7 +394,7 @@ function M.mapFindCurrentMap()
         if c:IsA("Model") and c.Name:find("Map") and not c.Name:find("SharedInstances") then
             if c:FindFirstChild("Spawners") or c:FindFirstChild("Gaps") or c:FindFirstChild("RightWalls") or c:FindFirstChild("FirstFloor") or c:FindFirstChild("Ground") then return c end
             local cnt = 0
-            for _, d in pairs(c:GetDescendants()) do if d:IsA("BasePart") then cnt += 1 end if cnt > 10 then return c end end
+            for _, d in pairs(c:GetDescendants()) do if d:IsA("BasePart") then cnt = cnt + 1 end if cnt > 10 then return c end end
             if cnt > bc then bc = cnt best = c end
         end
     end return best
@@ -225,9 +458,11 @@ Player.CharacterAdded:Connect(function()
         if M._noclipConn then pcall(function() M._noclipConn:Disconnect() end) M._noclipConn = nil end
         M.S.NoclipEnabled = false task.wait(0.3) M.enableNoclip()
     end
+    if M.S.TsunamiProtection then
+        M.enableTsunamiProtection()
+    end
 end)
 
--- FIXED: TweenTo function agar tidak error kalkulasinya
 function M.tweenTo(cf)
     local ch = Player.Character if not ch then return false end
     local hrp = ch:FindFirstChild("HumanoidRootPart") if not hrp then return false end
@@ -406,7 +641,7 @@ end
 function M.placeBrainrot(s)
     if not M.baseGUID or not M.PlotAction then return false end
     local ok = pcall(function() M.PlotAction:InvokeServer("Place Brainrot", M.baseGUID, tostring(s)) end)
-    if ok then M.Status.placeCount += 1 end return ok
+    if ok then M.Status.placeCount = M.Status.placeCount + 1 end return ok
 end
 
 function M.pickUpBrainrot(s)
@@ -500,7 +735,7 @@ function M.startFarming()
                                     if rootPart and rootPart.Parent then 
                                         M.forceGrabPrompt(block) task.wait(0.04) 
                                         M.forceGrabPrompt(rootPart) task.wait(0.04)
-                                        if not block.Parent or not rootPart.Parent then M.Status.luckyBlockCount += 1 end 
+                                        if not block.Parent or not rootPart.Parent then M.Status.luckyBlockCount = M.Status.luckyBlockCount + 1 end 
                                         break
                                     else break end
                                 end
@@ -545,7 +780,7 @@ function M.startFarming()
                                                 end
                                                 if root and root.Parent then M.Status.farm = "Grabbing " .. folder.Name .. "..."
                                                     M.forceGrabPrompt(root) M.forceGrabPrompt(b) task.wait(0.04) 
-                                                    M.Status.farmCount += 1 currentBackpackCount += 1 break
+                                                    M.Status.farmCount = M.Status.farmCount + 1 currentBackpackCount = currentBackpackCount + 1 break
                                                 else break end
                                             end
                                             pcall(function() hum:UnequipTools() end) task.wait(0.04)
@@ -575,7 +810,7 @@ function M.startFarming()
                     local tool = M.findTargetToolInBackpack()
                     if tool and M.isHighRarityTool(tool) then
                         M.Status.farm = "✓ " .. (tool:GetAttribute("Rarity") or "High") .. " in backpack"
-                        M.Status.farmCount += 1 task.wait(0.5) tool = nil
+                        M.Status.farmCount = M.Status.farmCount + 1 task.wait(0.5) tool = nil
                     end
 
                     if not tool then
@@ -599,7 +834,7 @@ function M.startFarming()
                                                     if root and root.Parent then M.undergroundPathTo(root.CFrame * CFrame.new(0, 3, 0)) else found = false break end
                                                 end
                                                 if root and root.Parent then M.forceGrabPrompt(root) M.forceGrabPrompt(b)
-                                                    task.wait(0.04) M.Status.farmCount += 1 break
+                                                    task.wait(0.04) M.Status.farmCount = M.Status.farmCount + 1 break
                                                 else found = false break end
                                             end
                                             pcall(function() hum:UnequipTools() end) task.wait(0.04)
@@ -619,7 +854,7 @@ function M.startFarming()
                         if not tool then return end
                     end
 
-                    if M.isHighRarityTool(tool) then M.Status.farmCount += 1 task.wait(0.5) return end
+                    if M.isHighRarityTool(tool) then M.Status.farmCount = M.Status.farmCount + 1 task.wait(0.5) return end
 
                     local bName = tool:GetAttribute("BrainrotName") or "Brainrot"
                     M.Status.farm = "Heading to slot " .. ws
@@ -638,8 +873,8 @@ function M.startFarming()
                         while cur < M.S.MaxLevel and M.S.Farming do
                             M.upgradeBrainrot(ws) task.wait(0.05)
                             local nw = tonumber(sm:GetAttribute("Level")) or cur
-                            if nw > cur then fails = 0 cur = nw M.Status.upgradeCount += 1 M.Status.farm = bName .. " Lv." .. cur .. "/" .. M.S.MaxLevel
-                            else fails += 1 if fails > 20 then task.wait(1) break end end
+                            if nw > cur then fails = 0 cur = nw M.Status.upgradeCount = M.Status.upgradeCount + 1 M.Status.farm = bName .. " Lv." .. cur .. "/" .. M.S.MaxLevel
+                            else fails = fails + 1 if fails > 20 then task.wait(1) break end end
                         end
                     end
                     M.Status.farm = bName .. " DONE!" task.wait(0.3)
@@ -669,7 +904,7 @@ function M.stopFarming()
     M.Status.farm = "Idle"
 end
 
--- EVENT FARMS, FACTORY, ETC. (Tetap sama)
+-- EVENT FARMS, FACTORY, ETC.
 function M.startFactoryLoop()
     if M.factoryThread then return end
     M.S.FactoryEnabled = true M.Status.factoryCount = 0
@@ -697,10 +932,10 @@ function M.startFactoryLoop()
                         M.upgradeBrainrot(ws) task.wait(0.05)
                         local nw = tonumber(sm:GetAttribute("Level")) or cur
                         if nw > cur then fails = 0 cur = nw M.Status.factory = bName .. " Lv." .. cur
-                        else fails += 1 if fails > 10 then stopR = "Out of money!" M.S.FactoryEnabled = false break end end
+                        else fails = fails + 1 if fails > 10 then stopR = "Out of money!" M.S.FactoryEnabled = false break end end
                     end
                 end
-                task.wait(0.5) M.pickUpBrainrot(ws) task.wait(0.8) M.Status.factoryCount += 1
+                task.wait(0.5) M.pickUpBrainrot(ws) task.wait(0.8) M.Status.factoryCount = M.Status.factoryCount + 1
                 pcall(function() Player.Character.Humanoid:UnequipTools() end) task.wait(0.3)
             end)
             if not ok then task.wait(1) end if M.S.FactoryEnabled then task.wait(0.5) end
@@ -756,6 +991,20 @@ function M.startAutoUpgrade()
             end) task.wait(3) end M.Status.upgrade = "Idle"
     end)
 end
+
+function M.upgradeSlotToMax(slot)
+    if not M.baseGUID or not M.PlotAction then return end
+    local mb = workspace:FindFirstChild("Bases") and workspace.Bases:FindFirstChild(M.baseGUID)
+    local sm = mb and mb:FindFirstChild("slot " .. slot .. " brainrot")
+    if not sm then return end
+    local cur = tonumber(sm:GetAttribute("Level")) or 0
+    while cur < M.S.MaxLevel and M.S.AutoUpgrade do
+        M.upgradeBrainrot(slot) task.wait(0.05)
+        local nw = tonumber(sm:GetAttribute("Level")) or cur
+        if nw > cur then cur = nw M.Status.upgradeCount = M.Status.upgradeCount + 1 end
+    end
+end
+
 function M.stopAutoUpgrade() M.S.AutoUpgrade = false if M.upgradeThread then pcall(task.cancel, M.upgradeThread) M.upgradeThread = nil end M.Status.upgrade = "Idle" end
 
 function M.setupInstant()
@@ -769,118 +1018,418 @@ M.setupInstant()
 -- =================================================================
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))() 
 local WindowConfig = {
-    Name = "Catraz Hub", Subtext = "Escape Tsunami For Brainrots", Version = "v1.1.0 - PRO",
-    VersionIcon = "crown", TagColor = Color3.fromRGB(200, 40, 40), ShowIcon = true,
-    Icon = "rbxassetid://105921924721005", ImageBackground = "rbxassetid://84894412677021",
-    ImageTransparency = 0.1, WindowTransparency = 0.1, SaveConfig = true,
-    ConfigFolder = "CatrazHub_Data", IntroEnabled = true, IntroText = "Welcome to Catraz Hub, " .. LPlayer.DisplayName,
-    IntroIcon = "rbxassetid://105921924721005", ToggleIcon = "rbxassetid://105921924721005", ToggleSize = 50
+    Name = "Catraz Hub", 
+    Subtext = "Escape Tsunami For Brainrots", 
+    Version = "v2.0 - TSUNAMI PROOF",
+    VersionIcon = "crown", 
+    TagColor = Color3.fromRGB(200, 40, 40), 
+    ShowIcon = true,
+    Icon = "rbxassetid://105921924721005", 
+    ImageBackground = "rbxassetid://84894412677021",
+    ImageTransparency = 0.1, 
+    WindowTransparency = 0.1, 
+    SaveConfig = true,
+    ConfigFolder = "CatrazHub_Data", 
+    IntroEnabled = true, 
+    IntroText = "Welcome to Catraz Hub, " .. LPlayer.DisplayName,
+    IntroIcon = "rbxassetid://105921924721005", 
+    ToggleIcon = "rbxassetid://105921924721005", 
+    ToggleSize = 50
 }
 
 local Window = OrionLib:MakeWindow(WindowConfig)
 
-local RAR={"Any","Common","Uncommon","Rare","Epic","Legendary","Mythical","Cosmic","Secret","Celestial","Divine","Infinity"}
-local MUT={"Any","None","Emerald","Gold","Blood","Diamond","Rainbow","Shadow","Crystal","Void"}
-local FM={"Collect","Collect, Place & Max"}
-local FR={"Common","Uncommon","Rare","Epic","Legendary","Mythical"}
-local LBR={"Any","Common","Uncommon","Rare","Epic","Legendary","Mythical","Cosmic","Secret","Celestial","Divine","Infinity","Admin","UFO","Candy","Money"}
-local SL={} for i=1,40 do table.insert(SL,tostring(i)) end
-local CSPD={"100","200","300","400","500","600","800","1000"}
+local RAR = {"Any","Common","Uncommon","Rare","Epic","Legendary","Mythical","Cosmic","Secret","Celestial","Divine","Infinity"}
+local MUT = {"Any","None","Emerald","Gold","Blood","Diamond","Rainbow","Shadow","Crystal","Void"}
+local FM = {"Collect","Collect, Place & Max"}
+local FR = {"Common","Uncommon","Rare","Epic","Legendary","Mythical"}
+local LBR = {"Any","Common","Uncommon","Rare","Epic","Legendary","Mythical","Cosmic","Secret","Celestial","Divine","Infinity","Admin","UFO","Candy","Money"}
+local SL = {} for i=1,40 do table.insert(SL,tostring(i)) end
+local CSPD = {"100","200","300","400","500","600","800","1000"}
+local TSUNAMI_MODES = {"Bawah (Gali Tanah)", "Atas (Terbang di Atas)"}
 
 local HomeTab = Window:MakeTab({ Name = "Home", Icon = "home", Glass = true, Outline = false })
 local DashSec = HomeTab:AddSection({ Name = "Dashboard" })
-DashSec:AddParagraph({ Title = "Welcome, " .. LPlayer.DisplayName, Desc = "Catraz Hub v1.1.0 - PRO | Escape Tsunami For Brainrots", Image = "rbxthumb://type=AvatarHeadShot&id=" .. LPlayer.UserId .. "&w=150&h=150", ImageSize = 45 })
+DashSec:AddParagraph({ Title = "Welcome, " .. LPlayer.DisplayName, Desc = "Catraz Hub v2.0 - TSUNAMI PROOF | Escape Tsunami For Brainrots", Image = "rbxthumb://type=AvatarHeadShot&id=" .. LPlayer.UserId .. "&w=150&h=150", ImageSize = 45 })
 
--- ================== TAB 2: UNIFIED FARM ==================
+-- ================== TAB TSUNAMI PROTECTION ==================
+local TsunamiTab = Window:MakeTab({ Name = "Tsunami", Icon = "waves", Glass = true, Outline = true })
+
+local TsunamiSet = TsunamiTab:AddSection({ Name = "🌊 TSUNAMI PROTECTION", Glass = true, Outline = true })
+
+-- Dropdown untuk memilih mode
+TsunamiSet:AddDropdown({
+    Name = "Mode Perlindungan",
+    Default = "Bawah (Gali Tanah)",
+    Options = TSUNAMI_MODES,
+    Multi = false,
+    Outline = true,
+    Flag = "TsunamiMode",
+    Callback = function(v)
+        if v == "Bawah (Gali Tanah)" then
+            M.S.TsunamiMode = "Bawah"
+            M.Tsunami.Mode = "Bawah"
+        else
+            M.S.TsunamiMode = "Atas"
+            M.Tsunami.Mode = "Atas"
+            M.Tsunami.Height = 150 -- Ketinggian aman di atas
+        end
+        if M.S.TsunamiProtection then
+            M.disableTsunamiProtection()
+            M.enableTsunamiProtection()
+        end
+    end
+})
+
+-- Slider untuk ketinggian mode Atas
+TsunamiSet:AddSlider({
+    Name = "Ketinggian Aman (Mode Atas)",
+    Min = 50,
+    Max = 500,
+    Default = 150,
+    Increment = 10,
+    ValueName = "Studs",
+    Outline = true,
+    Callback = function(v)
+        M.Tsunami.Height = v
+    end
+})
+
+-- Toggle utama tsunami protection
+local TsunamiStatus = TsunamiSet:AddParagraph({ Title = "Status Tsunami", Desc = "🚫 Nonaktif" })
+
+TsunamiSet:AddToggle({
+    Name = "🌊 Aktifkan Tsunami Protection",
+    Default = false,
+    Outline = true,
+    Flag = "TsunamiToggle",
+    Callback = function(v)
+        M.S.TsunamiProtection = v
+        if v then
+            M.enableTsunamiProtection()
+            TsunamiStatus:Set({ Title = "Status Tsunami", Desc = "✅ Aktif - Mode: " .. M.S.TsunamiMode })
+            OrionLib:MakeNotification({ Name = "Tsunami Protection", Content = "Aktif! Mode: " .. M.S.TsunamiMode, Time = 3 })
+        else
+            M.disableTsunamiProtection()
+            TsunamiStatus:Set({ Title = "Status Tsunami", Desc = "🚫 Nonaktif" })
+            OrionLib:MakeNotification({ Name = "Tsunami Protection", Content = "Nonaktif", Time = 2 })
+        end
+    end
+})
+
+-- Info panel
+TsunamiSet:AddParagraph({
+    Title = "Informasi",
+    Desc = "Mode Bawah: Menggali tanah (Y = -50)\nMode Atas: Terbang di atas tsunami (Y = 150+)\nNoclip otomatis saat terbang",
+    Image = "info",
+    ImageSize = 30
+})
+
+-- ================== TAB FARM ==================
 local FarmTab = Window:MakeTab({ Name = "Farm", Icon = "swords", Glass = false, Outline = true })
 
 local FarmFilterSec = FarmTab:AddSection({ Name = "🎯 Target Selection", Glass = false, Outline = true })
 
--- DROPDOWN TARGET MASTER
 FarmFilterSec:AddDropdown({
-    Name = "What to Farm?", Default = {"Brainrots"}, Options = {"Brainrots", "Lucky Blocks"},
-    Multi = true, Outline = true, Flag = "FarmTargets",
+    Name = "What to Farm?", 
+    Default = {"Brainrots"}, 
+    Options = {"Brainrots", "Lucky Blocks"},
+    Multi = true, 
+    Outline = true, 
+    Flag = "FarmTargets",
     Callback = function(v)
-        local s={} for _, on in pairs(v) do table.insert(s, on) end
-        if #s==0 then s={"Brainrots"} end
+        local s = {}
+        for _, on in pairs(v) do table.insert(s, on) end
+        if #s == 0 then s = {"Brainrots"} end
         M.S.FarmTargets = s 
     end
 })
 
 local BrainrotSet = FarmTab:AddSection({ Name = "🧟 Brainrot Settings", Glass = false, Outline = true })
-BrainrotSet:AddDropdown({ Name = "Target Rarity", Default = "Common", Options = RAR, Multi = true, Outline = true, Callback = function(v) local s={} for _, on in pairs(v) do table.insert(s, on) end M.S.TargetRarity = #s>0 and s or {"Common"} end })
-BrainrotSet:AddDropdown({ Name = "Target Mutation", Default = "None", Options = MUT, Multi = false, Outline = true, Callback = function(v) M.S.TargetMutation = v end })
-BrainrotSet:AddDropdown({ Name = "Farm Mode", Default = M.S.FarmMode, Options = FM, Multi = false, Outline = true, Callback = function(v) M.S.FarmMode = v end })
-BrainrotSet:AddDropdown({ Name = "Work Slot", Default = M.S.FarmSlot, Options = SL, Multi = false, Outline = true, Callback = function(v) M.S.FarmSlot = v end })
-BrainrotSet:AddSlider({ Name = "Max Level", Min = 1, Max = 500, Default = M.S.MaxLevel, Increment = 1, ValueName = "Lv", Outline = false, Callback = function(v) M.S.MaxLevel = math.floor(v) end })
+BrainrotSet:AddDropdown({ 
+    Name = "Target Rarity", 
+    Default = "Common", 
+    Options = RAR, 
+    Multi = true, 
+    Outline = true, 
+    Callback = function(v) 
+        local s = {} 
+        for _, on in pairs(v) do table.insert(s, on) end 
+        M.S.TargetRarity = #s>0 and s or {"Common"} 
+    end 
+})
+
+BrainrotSet:AddDropdown({ 
+    Name = "Target Mutation", 
+    Default = "None", 
+    Options = MUT, 
+    Multi = false, 
+    Outline = true, 
+    Callback = function(v) M.S.TargetMutation = v end 
+})
+
+BrainrotSet:AddDropdown({ 
+    Name = "Farm Mode", 
+    Default = M.S.FarmMode, 
+    Options = FM, 
+    Multi = false, 
+    Outline = true, 
+    Callback = function(v) M.S.FarmMode = v end 
+})
+
+BrainrotSet:AddDropdown({ 
+    Name = "Work Slot", 
+    Default = M.S.FarmSlot, 
+    Options = SL, 
+    Multi = false, 
+    Outline = true, 
+    Callback = function(v) M.S.FarmSlot = v end 
+})
+
+BrainrotSet:AddSlider({ 
+    Name = "Max Level", 
+    Min = 1, 
+    Max = 500, 
+    Default = M.S.MaxLevel, 
+    Increment = 1, 
+    ValueName = "Lv", 
+    Outline = false, 
+    Callback = function(v) M.S.MaxLevel = math.floor(v) end 
+})
 
 local LBSet = FarmTab:AddSection({ Name = "🎲 Lucky Block Settings", Glass = false, Outline = true })
-LBSet:AddDropdown({ Name = "LB Rarity", Default = "Common", Options = LBR, Multi = true, Outline = true, Callback = function(v) local s={} for _, on in pairs(v) do table.insert(s, on) end M.S.LuckyBlockRarity = #s>0 and s or {"Common"} end })
-LBSet:AddDropdown({ Name = "LB Mutation", Default = "Any", Options = MUT, Multi = false, Outline = true, Callback = function(v) M.S.LuckyBlockMutation = v end })
+LBSet:AddDropdown({ 
+    Name = "LB Rarity", 
+    Default = "Common", 
+    Options = LBR, 
+    Multi = true, 
+    Outline = true, 
+    Callback = function(v) 
+        local s = {} 
+        for _, on in pairs(v) do table.insert(s, on) end 
+        M.S.LuckyBlockRarity = #s>0 and s or {"Common"} 
+    end 
+})
+
+LBSet:AddDropdown({ 
+    Name = "LB Mutation", 
+    Default = "Any", 
+    Options = MUT, 
+    Multi = false, 
+    Outline = true, 
+    Callback = function(v) M.S.LuckyBlockMutation = v end 
+})
 
 local FarmControlSec = FarmTab:AddSection({ Name = "🚀 Auto Farm Master", Glass = false, Outline = true })
 local FSP = FarmControlSec:AddParagraph({Title = "Master Farm Status", Desc = "Idle"})
 local FPP = FarmControlSec:AddParagraph({Title = "Statistics", Desc = "Placed: 0 | Upgraded: 0"})
 
 FarmControlSec:AddToggle({
-    Name = "🚀 Master Auto Farm", Default = false, Outline = false, Flag = "FarmToggle",
+    Name = "🚀 Master Auto Farm", 
+    Default = false, 
+    Outline = false, 
+    Flag = "FarmToggle",
     Callback = function(v)
-        if v then M.findBase() M.startFarming() OrionLib:MakeNotification({Name="Master Farm", Content="Started! Prioritizing targets...", Time=3})
-        else M.stopFarming() OrionLib:MakeNotification({Name="Master Farm", Content="Stopped.", Time=3}) end
+        if v then 
+            M.findBase() 
+            M.startFarming() 
+            OrionLib:MakeNotification({Name="Master Farm", Content="Started! Prioritizing targets...", Time=3})
+        else 
+            M.stopFarming() 
+            OrionLib:MakeNotification({Name="Master Farm", Content="Stopped.", Time=3}) 
+        end
     end
 })
 
--- ================== SISANYA (FACTORY, AUTO, CONFIGS) ==================
+-- ================== FACTORY TAB ==================
 local FacTab = Window:MakeTab({ Name = "Factory & Events", Icon = "hammer", Glass = true, Outline = true })
 local FCTSec = FacTab:AddSection({ Name = "🏭 Factory Loop", Glass = true, Outline = true })
-FCTSec:AddDropdown({ Name = "Rarity", Default = M.S.FactoryRarity, Options = FR, Multi = false, Outline = true, Callback = function(v) M.S.FactoryRarity=v end })
-FCTSec:AddDropdown({ Name = "Work Slot", Default = M.S.FactorySlot, Options = SL, Multi = false, Outline = true, Callback = function(v) M.S.FactorySlot=v end })
-FCTSec:AddSlider({ Name = "Max Level", Min = 1, Max = 500, Default = M.S.FactoryMaxLevel, Increment = 1, ValueName = "Lv", Outline = false, Callback = function(v) M.S.FactoryMaxLevel=math.floor(v) end })
-local FCSP = FCTSec:AddParagraph({Title = "Factory Status", Desc = "Idle"})
-FCTSec:AddToggle({ Name = "🔁 Factory Loop Toggle", Default = false, Outline = false, Callback = function(v) if v then M.findBase() M.startFactoryLoop() else M.stopFactoryLoop() end end })
+FCTSec:AddDropdown({ 
+    Name = "Rarity", 
+    Default = M.S.FactoryRarity, 
+    Options = FR, 
+    Multi = false, 
+    Outline = true, 
+    Callback = function(v) M.S.FactoryRarity = v end 
+})
 
+FCTSec:AddDropdown({ 
+    Name = "Work Slot", 
+    Default = M.S.FactorySlot, 
+    Options = SL, 
+    Multi = false, 
+    Outline = true, 
+    Callback = function(v) M.S.FactorySlot = v end 
+})
+
+FCTSec:AddSlider({ 
+    Name = "Max Level", 
+    Min = 1, 
+    Max = 500, 
+    Default = M.S.FactoryMaxLevel, 
+    Increment = 1, 
+    ValueName = "Lv", 
+    Outline = false, 
+    Callback = function(v) M.S.FactoryMaxLevel = math.floor(v) end 
+})
+
+local FCSP = FCTSec:AddParagraph({Title = "Factory Status", Desc = "Idle"})
+
+FCTSec:AddToggle({ 
+    Name = "🔁 Factory Loop Toggle", 
+    Default = false, 
+    Outline = false, 
+    Callback = function(v) 
+        if v then 
+            M.findBase() 
+            M.startFactoryLoop() 
+        else 
+            M.stopFactoryLoop() 
+        end 
+    end 
+})
+
+-- ================== AUTOMATION TAB ==================
 local AutoTab = Window:MakeTab({ Name = "Automation", Icon = "rocket", Glass = false, Outline = true })
 local UtilSec = AutoTab:AddSection({ Name = "💰 Base Utility", Glass = false, Outline = true })
 local MSP = UtilSec:AddParagraph({Title = "Money Status", Desc = "Idle"})
-UtilSec:AddToggle({ Name = "💰 Auto Collect Money", Default = false, Outline = false, Callback = function(v) if v then M.findBase() M.startMoney() else M.stopMoney() end end })
-local USP = UtilSec:AddParagraph({Title = "Upgrade Status", Desc = "Idle"})
-UtilSec:AddToggle({ Name = "⬆️ Upgrade All Base Slots", Default = false, Outline = false, Callback = function(v) if v then M.findBase() M.startAutoUpgrade() else M.stopAutoUpgrade() end end })
 
+UtilSec:AddToggle({ 
+    Name = "💰 Auto Collect Money", 
+    Default = false, 
+    Outline = false, 
+    Callback = function(v) 
+        if v then 
+            M.findBase() 
+            M.startMoney() 
+        else 
+            M.stopMoney() 
+        end 
+    end 
+})
+
+local USP = UtilSec:AddParagraph({Title = "Upgrade Status", Desc = "Idle"})
+
+UtilSec:AddToggle({ 
+    Name = "⬆️ Upgrade All Base Slots", 
+    Default = false, 
+    Outline = false, 
+    Callback = function(v) 
+        if v then 
+            M.findBase() 
+            M.startAutoUpgrade() 
+        else 
+            M.stopAutoUpgrade() 
+        end 
+    end 
+})
+
+-- ================== CONFIG TAB ==================
 local ConfTab = Window:MakeTab({ Name = "Config", Icon = "settings", Glass = false, Outline = true })
 local TweakSec = ConfTab:AddSection({ Name = "Tweaks (Fixed)", Glass = false, Outline = true })
 
--- FIXED: Pake slider biar math / kalkulasinya 100% aman (Gak bakal kena error string / blank)
 TweakSec:AddSlider({
     Name = "Farm Tween Speed",
-    Min = 1, Max = 100, Default = 60, Increment = 5,
-    ValueName = "Speed", Outline = false, Flag = "TweenSpeed",
-    Callback = function(v) M.S.TweenSpeed = math.floor(v) end
+    Min = 1, 
+    Max = 100, 
+    Default = 60, 
+    Increment = 5,
+    ValueName = "Speed", 
+    Outline = false, 
+    Flag = "TweenSpeed",
+    Callback = function(v) M.S.TweenSpeed = math.floor(v) * 16.67 end
 })
 
-TweakSec:AddDropdown({ Name = "Corridor Speed", Default = "400", Options = CSPD, Multi = false, Outline = true, Callback = function(v) M.S.CorridorSpeed=tonumber(v) or 400 end })
-TweakSec:AddButton({ Name = "🏠 Find My Base", Outline = true, Callback = function() M.findBase() end })
-TweakSec:AddButton({ Name = "📍 Set Home Position", Outline = true, Callback = function() M.setHomePosition() end })
+TweakSec:AddDropdown({ 
+    Name = "Corridor Speed", 
+    Default = "400", 
+    Options = CSPD, 
+    Multi = false, 
+    Outline = true, 
+    Callback = function(v) M.S.CorridorSpeed = tonumber(v) or 400 end 
+})
+
+TweakSec:AddButton({ 
+    Name = "🏠 Find My Base", 
+    Outline = true, 
+    Callback = function() M.findBase() end 
+})
+
+TweakSec:AddButton({ 
+    Name = "📍 Set Home Position", 
+    Outline = true, 
+    Callback = function() M.setHomePosition() end 
+})
+
+TweakSec:AddToggle({
+    Name = "👻 Noclip",
+    Default = false,
+    Outline = false,
+    Flag = "NoclipToggle",
+    Callback = function(v)
+        if v then
+            M.enableNoclip()
+            OrionLib:MakeNotification({Name="Noclip", Content="Enabled - Walk through walls", Time=2})
+        else
+            M.disableNoclip()
+            OrionLib:MakeNotification({Name="Noclip", Content="Disabled", Time=2})
+        end
+    end
+})
+
 local IP = ConfTab:AddParagraph({Title = "Player Info", Desc = "Loading..."})
 
+-- ================== UPDATE LOOP ==================
 task.spawn(function()
     while task.wait(0.5) do
         pcall(function()
-            local statusColor = M.S.Farming and "'#42f563'" or "'#ff4444'"
+            local statusColor = M.S.Farming and "#42f563" or "#ff4444"
             local currentStatus = M.S.Farming and M.Status.farm or "Idle"
             FSP:Set({
                 Title = "🚀 Master Farm Status", 
-                Desc = "Status: <font color="..statusColor..">" .. currentStatus .. "</font>\nBrainrots Collected: #" .. M.Status.farmCount .. "\nLBs Opened: #" .. M.Status.luckyBlockCount
+                Desc = "Status: <font color='" .. statusColor .. "'>" .. currentStatus .. "</font>\nBrainrots Collected: #" .. M.Status.farmCount .. "\nLBs Opened: #" .. M.Status.luckyBlockCount
             })
         end)
         
-        pcall(function() FPP:Set({ Title = "📊 Statistics", Desc = "Placed: " .. M.Status.placeCount .. "\nUpgraded: " .. M.Status.upgradeCount }) end)
-        pcall(function() FCSP:Set({ Title = "🏭 Factory Status", Desc = "Status: " .. (M.Status.factory or "Idle") .. "\nMaxed: #" .. M.Status.factoryCount }) end)
+        pcall(function() 
+            FPP:Set({ 
+                Title = "📊 Statistics", 
+                Desc = "Placed: " .. M.Status.placeCount .. "\nUpgraded: " .. M.Status.upgradeCount 
+            }) 
+        end)
+        
+        pcall(function() 
+            FCSP:Set({ 
+                Title = "🏭 Factory Status", 
+                Desc = "Status: " .. (M.Status.factory or "Idle") .. "\nMaxed: #" .. M.Status.factoryCount 
+            }) 
+        end)
         
         pcall(function()
-            IP:Set({ Title = "👤 Player Info", Desc = string.format("Player: %s\nBase: %s\nGod Mode: %s\nNoclip: %s", LPlayer.Name, (M.baseGUID or "Not Found"), tostring(M._isGod), tostring(M.S.NoclipEnabled)) })
+            IP:Set({ 
+                Title = "👤 Player Info", 
+                Desc = string.format("Player: %s\nBase: %s\nNoclip: %s\nTsunami: %s", 
+                    LPlayer.Name, 
+                    (M.baseGUID or "Not Found"), 
+                    (M.S.NoclipEnabled and "✅" or "❌"),
+                    (M.S.TsunamiProtection and "✅ " .. M.S.TsunamiMode or "❌")
+                )
+            })
         end)
-        pcall(function() MSP:Set({Title = "💰 Money Status", Desc = "Status: " .. (M.S.AutoCollectMoney and "Active" or "Idle")}) end)
-        pcall(function() USP:Set({Title = "⬆️ Upgrade Status", Desc = "Status: " .. (M.S.AutoUpgrade and M.Status.upgrade or "Idle") .. "\nUpgraded: #" .. M.Status.upgradeCount}) end)
+        
+        pcall(function() 
+            MSP:Set({
+                Title = "💰 Money Status", 
+                Desc = "Status: " .. (M.S.AutoCollectMoney and "Active" or "Idle")
+            })
+        end)
+        
+        pcall(function() 
+            USP:Set({
+                Title = "⬆️ Upgrade Status", 
+                Desc = "Status: " .. (M.S.AutoUpgrade and M.Status.upgrade or "Idle") .. "\nUpgraded: #" .. M.Status.upgradeCount
+            })
+        end)
     end
 end)
 
