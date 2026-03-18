@@ -1,6 +1,6 @@
--- ==================== CATRAZ HUB - ESCAPE TSUNAMI FOR BRAINROTS v3.0 ====================
+-- ==================== CATRAZ HUB - ESCAPE TSUNAMI FOR BRAINROTS v3.1 ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 3.0 ULTIMATE - ALL FEATURES FIXED
+-- Version: 3.1 ULTIMATE - TSUNAMI PROOF FARM
 
 -- [[ 📡 CATRAZ ANALYTICS SYSTEM (LIVE SERVER) ]] --
 task.spawn(function()
@@ -152,6 +152,7 @@ local Config = {
     FarmSlot = "5",
     NoclipEnabled = false,
     FarmCapacity = 1,
+    FarmHeight = -25, -- Ketinggian farm (default bawah tanah)
     
     -- Tsunami Settings
     TsunamiProtection = false,
@@ -206,7 +207,8 @@ local Tsunami = {
     BodyVelocity = nil,
     BodyGyro = nil,
     IsFlying = false,
-    LastTsunamiPos = nil
+    LastTsunamiPos = nil,
+    SafeY = -50 -- Ketinggian aman default (bawah tanah)
 }
 
 local HIGH_RARITIES = {["Celestial"] = true, ["Divine"] = true, ["Infinity"] = true}
@@ -229,7 +231,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Catraz Hub",
     Subtext = "Escape Tsunami For Brainrots",
-    Version = "v3.0 ULTIMATE",
+    Version = "v3.1 ULTIMATE",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -311,6 +313,7 @@ local LBR = {"Any","Common","Uncommon","Rare","Epic","Legendary","Mythical","Cos
 local SL = {} for i=1,40 do table.insert(SL,tostring(i)) end
 local CSPD = {"100","200","300","400","500","600","800","1000","1200","1500","2000","2500","3000"}
 local TSUNAMI_MODES = {"Bawah (Gali Tanah)", "Atas (Terbang di Atas)"}
+local FARM_HEIGHTS = {"Bawah Tanah (-25)", "Permukaan (0)", "Ketinggian 50", "Ketinggian 100", "Ketinggian 150", "Ketinggian 200"}
 
 --==================================================
 -- ACTIVE FEATURES COUNTER
@@ -329,7 +332,7 @@ local function GetActiveFeatures()
 end
 
 --==================================================
--- TSUNAMI FUNCTIONS
+-- TSUNAMI FUNCTIONS - FIXED
 --==================================================
 
 -- Fungsi untuk mendeteksi tsunami
@@ -371,12 +374,23 @@ local function createTsunamiDetector()
     return detector
 end
 
--- Fungsi untuk mendapatkan ketinggian aman
-local function getSafeHeight()
+-- Fungsi untuk mendapatkan ketinggian aman dari tsunami
+local function getTsunamiSafeHeight()
     if Tsunami.Mode == "Bawah" then
-        return -50
+        return -50 -- Di bawah tanah
     else
-        return Tsunami.Height
+        return Tsunami.Height -- Di atas
+    end
+end
+
+-- Fungsi untuk mendapatkan ketinggian farm berdasarkan mode
+local function getFarmHeight()
+    if Config.TsunamiProtection and Tsunami.Enabled then
+        -- Jika tsunami aktif, gunakan ketinggian aman tsunami
+        return getTsunamiSafeHeight()
+    else
+        -- Jika tsunami tidak aktif, gunakan ketinggian farm yang dipilih
+        return Config.FarmHeight
     end
 end
 
@@ -395,6 +409,7 @@ local function enableTsunamiFlight()
         hum.PlatformStand = true
     end
     
+    -- Hancurkan BodyVelocity lama jika ada
     if Tsunami.BodyVelocity then
         pcall(function() Tsunami.BodyVelocity:Destroy() end)
     end
@@ -402,6 +417,7 @@ local function enableTsunamiFlight()
         pcall(function() Tsunami.BodyGyro:Destroy() end)
     end
     
+    -- Buat BodyVelocity baru
     local bv = Instance.new("BodyVelocity")
     bv.Name = "TsunamiFlight"
     bv.MaxForce = Vector3.new(10000, 10000, 10000)
@@ -409,6 +425,7 @@ local function enableTsunamiFlight()
     bv.P = 1250
     bv.Parent = hrp
     
+    -- Buat BodyGyro untuk stabilisasi
     local bg = Instance.new("BodyGyro")
     bg.Name = "TsunamiGyro"
     bg.MaxTorque = Vector3.new(10000, 10000, 10000)
@@ -421,16 +438,19 @@ local function enableTsunamiFlight()
     Tsunami.BodyGyro = bg
     Tsunami.IsFlying = true
     
+    -- Aktifkan noclip
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = false
         end
     end
     
+    -- Hapus koneksi lama jika ada
     if Tsunami.FlyConnection then
         Tsunami.FlyConnection:Disconnect()
     end
     
+    -- Koneksi untuk menjaga ketinggian
     Tsunami.FlyConnection = RunService.Heartbeat:Connect(function()
         if not Tsunami.Enabled then
             disableTsunamiFlight()
@@ -446,24 +466,28 @@ local function enableTsunamiFlight()
         local currentHrp = currentChar:FindFirstChild("HumanoidRootPart")
         if not currentHrp then return end
         
-        local targetY = getSafeHeight()
+        local targetY = getTsunamiSafeHeight()
         local currentY = currentHrp.Position.Y
         
+        -- Jika sudah di ketinggian aman, diam di tempat
         if math.abs(currentY - targetY) < 2 then
             if Tsunami.BodyVelocity then
                 Tsunami.BodyVelocity.Velocity = Vector3.new(0, 0, 0)
             end
         else
+            -- Terbang ke ketinggian aman
             local direction = (targetY > currentY) and 1 or -1
             if Tsunami.BodyVelocity then
                 Tsunami.BodyVelocity.Velocity = Vector3.new(0, direction * 50, 0)
             end
         end
         
+        -- Stabilisasi rotasi
         if Tsunami.BodyGyro then
             Tsunami.BodyGyro.CFrame = CFrame.new(currentHrp.Position, currentHrp.Position + Vector3.new(0, 0, -1))
         end
         
+        -- Jaga noclip
         for _, part in pairs(currentChar:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = false
@@ -497,6 +521,7 @@ local function disableTsunamiFlight()
             hum.PlatformStand = false
         end
         
+        -- Kembalikan collision hanya jika noclip tidak aktif
         if not Config.NoclipEnabled then
             for _, part in pairs(char:GetDescendants()) do
                 if part:IsA("BasePart") then
@@ -531,23 +556,31 @@ local function enableTsunamiProtection()
         local tsunamiPos = tsunami.Position
         local playerPos = hrp.Position
         local distance = (playerPos - tsunamiPos).Magnitude
+        local heightDiff = math.abs(playerPos.Y - tsunamiPos.Y)
         
+        -- Deteksi tsunami berdasarkan mode
         if Tsunami.Mode == "Bawah" then
-            if playerPos.Y > -40 and distance < 100 then
+            -- Mode bawah tanah: tsunami di atas, kita di bawah
+            if playerPos.Y > -45 and distance < 100 and heightDiff < 50 then
                 enableTsunamiFlight()
             end
         else
+            -- Mode atas: tsunami di bawah, kita di atas
             if playerPos.Y < Tsunami.Height - 10 and distance < 100 then
                 enableTsunamiFlight()
             end
         end
         
+        -- Update detector
         if Tsunami.DetectionPart then
-            Tsunami.DetectionPart.Position = Vector3.new(playerPos.X, getSafeHeight(), playerPos.Z)
+            Tsunami.DetectionPart.Position = Vector3.new(playerPos.X, getTsunamiSafeHeight(), playerPos.Z)
         end
         
         Tsunami.LastTsunamiPos = tsunamiPos
     end)
+    
+    -- Update safe Y untuk farm
+    Tsunami.SafeY = getTsunamiSafeHeight()
 end
 
 local function disableTsunamiProtection()
@@ -685,7 +718,7 @@ Player.CharacterAdded:Connect(function()
 end)
 
 --==================================================
--- TWEEN FUNCTIONS
+-- TWEEN FUNCTIONS - ADAPTED FOR TSUNAMI MODE
 --==================================================
 function M.tweenTo(cf)
     local ch = Player.Character if not ch then return false end
@@ -724,11 +757,19 @@ function M.corridorTween(cf)
     return true
 end
 
-function M.returnToBase() M.tweenTo(M.getHomePosition()) task.wait(0.1) end
+function M.returnToBase() 
+    M.tweenTo(M.getHomePosition()) 
+    task.wait(0.1) 
+end
 
+-- MODIFIED: undergroundPathTo sekarang menggunakan ketinggian yang sesuai mode
 function M.undergroundPathTo(targetCFrame)
     local ch = Player.Character if not ch then return false end
     local hrp = ch:FindFirstChild("HumanoidRootPart") if not hrp then return false end
+    
+    -- Dapatkan ketinggian yang sesuai
+    local travelY = getFarmHeight()
+    
     local bv = hrp:FindFirstChild("AntiFallMzD")
     if not bv then
         bv = Instance.new("BodyVelocity") 
@@ -737,24 +778,35 @@ function M.undergroundPathTo(targetCFrame)
         bv.Velocity = Vector3.new(0, 0, 0) 
         bv.Parent = hrp
     end
+    
     local startPos = hrp.Position 
     local endPos = targetCFrame.Position 
-    local DEEP_Y = -25
-    M.fastTween(CFrame.new(startPos.X, DEEP_Y, startPos.Z)) 
+    
+    -- Turun/naik ke ketinggian travel
+    M.fastTween(CFrame.new(startPos.X, travelY, startPos.Z)) 
     task.wait(0.05)
-    M.tweenTo(CFrame.new(endPos.X, DEEP_Y, endPos.Z)) 
+    
+    -- Bergerak horizontal
+    M.tweenTo(CFrame.new(endPos.X, travelY, endPos.Z)) 
     task.wait(0.05)
+    
+    -- Naik/turun ke target
     M.tweenTo(targetCFrame) 
     task.wait(0.05) 
+    
     return true
 end
 
+-- MODIFIED: undergroundReturnToBase menggunakan ketinggian yang sesuai mode
 function M.undergroundReturnToBase()
     local ch = Player.Character if not ch then return false end
     local hrp = ch:FindFirstChild("HumanoidRootPart") if not hrp then return false end
+    
+    -- Dapatkan ketinggian yang sesuai
+    local travelY = getFarmHeight()
     local curPos = hrp.Position 
     local homePos = M.getHomePosition().Position 
-    local DEEP_Y = -25
+    
     local bv = hrp:FindFirstChild("AntiFallMzD")
     if not bv then 
         bv = Instance.new("BodyVelocity") 
@@ -763,12 +815,19 @@ function M.undergroundReturnToBase()
         bv.Velocity = Vector3.new(0, 0, 0) 
         bv.Parent = hrp 
     end
-    M.fastTween(CFrame.new(curPos.X, DEEP_Y, curPos.Z)) 
+    
+    -- Turun/naik ke ketinggian travel
+    M.fastTween(CFrame.new(curPos.X, travelY, curPos.Z)) 
     task.wait(0.05)
-    M.tweenTo(CFrame.new(homePos.X, DEEP_Y, homePos.Z)) 
+    
+    -- Bergerak horizontal ke home
+    M.tweenTo(CFrame.new(homePos.X, travelY, homePos.Z)) 
     task.wait(0.05)
+    
+    -- Naik ke home
     M.tweenTo(M.getHomePosition()) 
     task.wait(0.05)
+    
     if bv then bv:Destroy() end 
     return true
 end
@@ -1115,7 +1174,7 @@ function M.hasFarmTarget(targetName)
 end
 
 --==================================================
--- FARM SYSTEM - FIXED
+-- FARM SYSTEM - FIXED WITH TSUNAMI MODE
 --==================================================
 function M.startFarming()
     if M.farmThread then return end
@@ -1133,6 +1192,9 @@ function M.startFarming()
 
         while Config.Farming do
             local ok, err = pcall(function()
+                -- Cek apakah tsunami aktif dan perlu mengubah ketinggian
+                local currentFarmHeight = getFarmHeight()
+                
                 if M.isDead() then
                     Status.farm = "Dead! Waiting..."
                     M.waitForRespawn() 
@@ -1142,6 +1204,7 @@ function M.startFarming()
                     currentBackpackCount = 0 
                     return
                 end
+                
                 local ch = Player.Character 
                 local hum = ch and ch:FindFirstChild("Humanoid")
                 if not ch or not hum then 
@@ -1197,7 +1260,7 @@ function M.startFarming()
                                 
                                 local hrp = ch:FindFirstChild("HumanoidRootPart")
                                 if hrp then 
-                                    M.fastTween(CFrame.new(hrp.Position.X, -25, hrp.Position.Z)) 
+                                    M.fastTween(CFrame.new(hrp.Position.X, currentFarmHeight, hrp.Position.Z)) 
                                 end
                                 
                                 Status.farm = "LB Secured. Returning underground..." 
@@ -1264,7 +1327,7 @@ function M.startFarming()
                                             task.wait(0.04)
                                             local hrp = ch:FindFirstChild("HumanoidRootPart")
                                             if hrp then 
-                                                M.fastTween(CFrame.new(hrp.Position.X, -25, hrp.Position.Z)) 
+                                                M.fastTween(CFrame.new(hrp.Position.X, currentFarmHeight, hrp.Position.Z)) 
                                             end
 
                                             if currentBackpackCount >= maxBackpackCount then
@@ -1346,7 +1409,7 @@ function M.startFarming()
                                             task.wait(0.04)
                                             local hrp = ch:FindFirstChild("HumanoidRootPart")
                                             if hrp then 
-                                                M.fastTween(CFrame.new(hrp.Position.X, -25, hrp.Position.Z)) 
+                                                M.fastTween(CFrame.new(hrp.Position.X, currentFarmHeight, hrp.Position.Z)) 
                                             end
                                             
                                             Status.farm = "Returning underground..." 
@@ -1815,7 +1878,7 @@ local InfoSection = HomeTab:AddSection({
 
 InfoSection:AddParagraph({
     Title = "Information",
-    Desc = "Creator: Catraz Team\nVersion: 3.0 ULTIMATE\nFeatures: Farm, Tsunami Protect, Factory, Auto Collect",
+    Desc = "Creator: Catraz Team\nVersion: 3.1 ULTIMATE\nFeatures: Farm, Tsunami Protect, Factory, Auto Collect",
     Image = "info",
     ImageSize = 38
 })
@@ -1895,7 +1958,7 @@ TsunamiMainSection:AddToggle({
 
 TsunamiMainSection:AddParagraph({
     Title = "📋 INFORMASI",
-    Desc = "• Mode Bawah: Menggali tanah (Y = -50)\n• Mode Atas: Terbang di atas (Y = " .. Config.TsunamiHeight .. "+)\n• Noclip otomatis saat terbang\n• Deteksi tsunami radius 100 studs",
+    Desc = "• Mode Bawah: Menggali tanah (Y = -50)\n• Mode Atas: Terbang di atas (Y = " .. Config.TsunamiHeight .. "+)\n• Noclip otomatis saat terbang\n• Deteksi tsunami radius 100 studs\n• Farm otomatis mengikuti mode tsunami",
     Image = "info",
     ImageSize = 38
 })
@@ -1923,6 +1986,39 @@ TargetSection:AddDropdown({
         if #s == 0 then s = {"Brainrots"} end
         Config.FarmTargets = s 
     end
+})
+
+local FarmHeightSection = FarmTab:AddSection({
+    Name = "📏 KETINGGIAN FARM",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+FarmHeightSection:AddDropdown({
+    Name = "Pilih Ketinggian Farm",
+    Default = "Bawah Tanah (-25)",
+    Options = FARM_HEIGHTS,
+    Multi = false,
+    Outline = true,
+    Flag = "FarmHeight",
+    Callback = function(v)
+        if v == "Bawah Tanah (-25)" then Config.FarmHeight = -25
+        elseif v == "Permukaan (0)" then Config.FarmHeight = 0
+        elseif v == "Ketinggian 50" then Config.FarmHeight = 50
+        elseif v == "Ketinggian 100" then Config.FarmHeight = 100
+        elseif v == "Ketinggian 150" then Config.FarmHeight = 150
+        elseif v == "Ketinggian 200" then Config.FarmHeight = 200
+        end
+        Notify("Ketinggian farm diubah ke: " .. v)
+    end
+})
+
+FarmHeightSection:AddParagraph({
+    Title = "ℹ️ INFO KETINGGIAN",
+    Desc = "• Ketinggian farm akan otomatis mengikuti mode tsunami jika tsunami aktif\n• Mode Bawah: Y = -50\n• Mode Atas: Y = " .. Config.TsunamiHeight .. "\n• Farm tetap aman dari tsunami",
+    Image = "info",
+    ImageSize = 30
 })
 
 local BrainrotSection = FarmTab:AddSection({
@@ -2315,7 +2411,8 @@ task.spawn(function()
             "Player: " .. Player.Name .. "\n" ..
             "Base: " .. (M.baseGUID or "Not Found") .. "\n" ..
             "Noclip: " .. (Config.NoclipEnabled and "✅" or "❌") .. "\n" ..
-            "Tsunami: " .. (Config.TsunamiProtection and "✅ " .. Config.TsunamiMode or "❌")
+            "Tsunami: " .. (Config.TsunamiProtection and "✅ " .. Config.TsunamiMode or "❌") .. "\n" ..
+            "Farm Height: " .. (Config.TsunamiProtection and getFarmHeight() .. " (Tsunami Mode)" or Config.FarmHeight)
         )
     end
 end)
@@ -2392,14 +2489,13 @@ OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 CATRAZ HUB - ESCAPE TSUNAMI FOR BRAINROTS v3.0 🔥")
+print("🔥 CATRAZ HUB - ESCAPE TSUNAMI FOR BRAINROTS v3.1 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ Home Tab - Player Info, Server Info, Active Features")
-print("✅ Tsunami Tab - 2 Modes with Auto Flight Protection")
-print("✅ Farm Tab - Brainrot & Lucky Block Auto Farm")
-print("✅ Factory Tab - Factory Loop Auto Maxing")
-print("✅ Automation Tab - Money, Upgrade, Instant Pickup")
-print("✅ Config Tab - Tweaks, Actions, Noclip, Player Info")
+print("✅ TSUNAMI PROOF FARM - Farm aman dari tsunami!")
+print("✅ Farm otomatis mengikuti mode tsunami (Bawah/Atas)")
+print("✅ Bisa pilih ketinggian farm manual (Bawah tanah - Atas)")
+print("✅ Semua fitur dari kode awal sudah terintegrasi")
+print("✅ Tween Speed bisa diatur sampai 3000")
 print("═══════════════════════════════════════════════════════")
-print("🚀 All features FIXED and READY to use!")
+print("🚀 Karakter AMAN dari damage tsunami!")
 print("═══════════════════════════════════════════════════════")
