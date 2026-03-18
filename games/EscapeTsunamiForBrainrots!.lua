@@ -322,6 +322,8 @@ local FARM_HEIGHTS = {
     "Bawah Tanah (-0.3)", 
     "Bawah Tanah (-0.5)", 
     "Bawah Tanah (-0.7)",
+    "Bawah Tanah (-0.8)",
+    "Bawah Tanah (-0.9)",
     "Bawah Tanah (-1)", 
     "Bawah Tanah (-2)", 
     "Bawah Tanah (-3)", 
@@ -2198,6 +2200,8 @@ FarmHeightSection:AddDropdown({
         if v == "Bawah Tanah (-0.3)" then Config.FarmHeight = -0.3
         elseif v == "Bawah Tanah (-0.5)" then Config.FarmHeight = -0.5
         elseif v == "Bawah Tanah (-0.7)" then Config.FarmHeight = -0.7
+        elseif v == "Bawah Tanah (-0.8)" then Config.FarmHeight = -0.8
+        elseif v == "Bawah Tanah (-0.9)" then Config.FarmHeight = -0.9
         elseif v == "Bawah Tanah (-1)" then Config.FarmHeight = -1
         elseif v == "Bawah Tanah (-2)" then Config.FarmHeight = -2
         elseif v == "Bawah Tanah (-3)" then Config.FarmHeight = -3
