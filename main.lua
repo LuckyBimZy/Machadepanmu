@@ -15,6 +15,10 @@ local supportedGames = {
         name = "Escape Tsunami For Brainrots",
         file = "Escape.lua"
     },
+    [77747658251236] = { -- Ganti dengan ID sailor piece
+        name = "Sailor Piece",
+        file = "sailor.lua"
+    },
     [75992362647444] = { -- Ganti dengan ID game tapsimu
         name = "Tap simulator",
         file = "tapsim.lua"
