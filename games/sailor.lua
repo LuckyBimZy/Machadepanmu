@@ -17,1239 +17,1046 @@ until LocalPlayer
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
 
 -- ==========================================
--- || CONFIGURATION (Linked to _G)
+-- || CONFIGURATION
 -- ==========================================
 local Config = {
-	LoopFarm              = false,
-	AutoRejoin            = false,
-	TimedRejoin           = false,
-	RejoinDelay           = 10,
-	FriendOnly            = false,
-	WhiteScreen           = false,
-	TpTime                = 0.1,
-	NPCAttackThreshold    = 5,
-	AutoEquip             = false,
-	SelectedWeapon_NPC    = "None",
-	SelectedWeapon_Boss   = "None",
-	AutoHaki              = false,
-	AutoObservationHaki   = false,
-	FlyHeight = {
-		Enabled = true,
-		Offset = 5,
-		UseForNPCs = true,
-		UseForBosses = true,
-	},
-	IgnoredEntities = {
-		Hollow             = true,
-		Quincy             = true,
-		Swordsman          = true,
-		AcademyTeacher     = true,
-		Slime              = true,
-		StrongSorcerer     = true,
-		Curse              = true,
-		Gojo               = true,
-		Yuji               = true,
-		Sukuna             = true,
-		Jinwoo             = true,
-		Alucard            = true,
-		Aizen              = true,
-		Yamato             = true,
-		Saber              = true,
-		Ichigo             = true,
-		QinShi             = true,
-		Gilgamesh          = true,
-		BlessedMaiden      = true,
-		SaberAlter         = true,
-		StrongestinHistory = true,
-		StrongestofToday   = true,
-		Rimuru             = true,
-		Anos               = true,
-		TrueAizen          = true,
-	},
-	Boss = {
-		AutoSpawn  = false,
-		Selected   = {},
-		Difficulty = "Normal",
-	},
-	Specials = {
-		TrueAizen = { Auto = false, Diff = "Normal" },
-		Sukuna    = { Auto = false, Diff = "Normal" },
-		Gojo      = { Auto = false, Diff = "Normal" },
-		Rimuru    = { Auto = false, Diff = "Normal" },
-		Anos      = { Auto = false, Diff = "Normal" },
-	},
-	AutoSkill = {
-		Bosses     = false,
-		NPCs       = false,
-		BossSkills = {},
-		NPCSkills  = {},
-		SkillIds   = { Z = 1, X = 2, C = 3, V = 4, F = 5 },
-	},
-	AutoQuest = {
-		SelectedNPC = "None",
-	},
-	AutoCraft = {
-		SlimeKey = false,
-		DivineGrail = false,
-	},
-	DungeonFarm = {
-		Enabled      = false,
-		TweenSpeed   = 0.1,
-		FarmPosition = "Top",
-		Distance     = 5,
-		AutoReplay   = false,
-		AutoVote     = false,
-		VoteDiff     = "Easy",
-	},
+    -- Auto Farm Settings
+    AutoFarm = {
+        Enabled = false,
+        SelectedTarget = "None",
+        TargetType = "None", -- "NPC" or "Boss"
+    },
+    
+    -- Farm Settings
+    FarmSettings = {
+        TpTime = 0.1,
+        NPCAttackThreshold = 5,
+        AutoEquip = false,
+        SelectedWeapon_NPC = "None",
+        SelectedWeapon_Boss = "None",
+        AutoHaki = false,
+        AutoObservationHaki = false,
+    },
+    
+    -- Fly Mode
+    FlyHeight = {
+        Enabled = true,
+        Offset = 5,
+    },
+    
+    -- Auto Skills
+    AutoSkill = {
+        Bosses = false,
+        NPCs = false,
+        BossSkills = {},
+        NPCSkills = {},
+        SkillIds = { Z = 1, X = 2, C = 3, V = 4, F = 5 },
+    },
+    
+    -- Boss Spawner
+    Boss = {
+        AutoSpawn = false,
+        Selected = {},
+        Difficulty = "Normal",
+    },
+    
+    -- Special Bosses
+    Specials = {
+        TrueAizen = { Auto = false, Diff = "Normal" },
+        Sukuna    = { Auto = false, Diff = "Normal" },
+        Gojo      = { Auto = false, Diff = "Normal" },
+        Rimuru    = { Auto = false, Diff = "Normal" },
+        Anos      = { Auto = false, Diff = "Normal" },
+    },
+    
+    -- Dungeon Farm
+    DungeonFarm = {
+        Enabled = false,
+        TweenSpeed = 0.1,
+        FarmPosition = "Top",
+        Distance = 5,
+        AutoReplay = false,
+        AutoVote = false,
+        VoteDiff = "Easy",
+    },
+    
+    -- Auto Quest
+    AutoQuest = {
+        SelectedNPC = "None",
+    },
+    
+    -- Auto Craft
+    AutoCraft = {
+        SlimeKey = false,
+        DivineGrail = false,
+    },
+    
+    -- Utility
+    Utility = {
+        AutoRejoin = false,
+        TimedRejoin = false,
+        RejoinDelay = 10,
+        FriendOnly = false,
+        WhiteScreen = false,
+    },
 }
 
-_G.FarmConfig = Config
+_G.CatrazConfig = Config
+
+-- ==========================================
+-- || TARGET LISTS
+-- ==========================================
+local TargetLists = {
+    NPCs = {
+        "Hollow",
+        "Quincy", 
+        "Swordsman",
+        "AcademyTeacher",
+        "Slime",
+        "StrongSorcerer",
+        "Curse",
+    },
+    Bosses = {
+        "Gojo",
+        "Yuji",
+        "Sukuna",
+        "Jinwoo",
+        "Alucard",
+        "Aizen",
+        "Yamato",
+        "Saber",
+        "Ichigo",
+        "QinShi",
+        "Gilgamesh",
+        "BlessedMaiden",
+        "SaberAlter",
+        "StrongestinHistory",
+        "StrongestofToday",
+        "Rimuru",
+        "Anos",
+        "TrueAizen",
+    },
+    AllTargets = {} -- Akan diisi otomatis
+}
+
+-- Gabungkan semua target
+for _, v in ipairs(TargetLists.NPCs) do table.insert(TargetLists.AllTargets, v) end
+for _, v in ipairs(TargetLists.Bosses) do table.insert(TargetLists.AllTargets, v) end
+table.sort(TargetLists.AllTargets)
 
 -- ==========================================
 -- || CONSTANTS
 -- ==========================================
 local CONSTANTS = {
-	HakiBlack = BrickColor.new("Really black"),
+    HakiBlack = BrickColor.new("Really black"),
 
-	Locations = {
-		Hollow             = CFrame.new(-365,    0,    1094),
-		Quincy             = CFrame.new(-1350, 1604,   1595),
-		Swordsman          = CFrame.new(-1271,   1,   -1193),
-		AcademyTeacher     = CFrame.new( 1081,   2,    1279),
-		Slime              = CFrame.new(-1123,  14,     366),
-		StrongSorcerer     = CFrame.new(  664,   2,   -1697),
-		Curse              = CFrame.new(  -16,   2,   -1845),
-		Gojo               = CFrame.new( 1858.32, 12.98,  338.14),
-		Yuji               = CFrame.new( 1537.92,  9.98,  226.10),
-		Sukuna             = CFrame.new( 1571.26, 77.22,  -34.11),
-		Jinwoo             = CFrame.new(  248.74, 12.09,  927.54),
-		Alucard            = CFrame.new(  248.74, 12.09,  927.54),
-		Aizen              = CFrame.new( -567.22, -0.42, 1228.49),
-		Yamato             = CFrame.new(-1422.68, 24.42,-1383.46),
-		Saber              = CFrame.new(  770,   -1,   -1086),
-		Ichigo             = CFrame.new(  770,   -1,   -1086),
-		QinShi             = CFrame.new(  770,   -1,   -1086),
-		Gilgamesh          = CFrame.new(  770,   -1,   -1086),
-		BlessedMaiden      = CFrame.new(  770,   -1,   -1086),
-		SaberAlter         = CFrame.new(  770,   -1,   -1086),
-		StrongestinHistory = CFrame.new(  604,    3,   -2314),
-		StrongestofToday   = CFrame.new(  139,    3,   -2432),
-		Rimuru             = CFrame.new(-1358,   19,     219),
-		Anos               = CFrame.new(  949,    1,    1370),
-		TrueAizen          = CFrame.new(-1205, 1604,    1774),
-	},
+    Locations = {
+        Hollow             = CFrame.new(-365,    0,    1094),
+        Quincy             = CFrame.new(-1350, 1604,   1595),
+        Swordsman          = CFrame.new(-1271,   1,   -1193),
+        AcademyTeacher     = CFrame.new( 1081,   2,    1279),
+        Slime              = CFrame.new(-1123,  14,     366),
+        StrongSorcerer     = CFrame.new(  664,   2,   -1697),
+        Curse              = CFrame.new(  -16,   2,   -1845),
+        Gojo               = CFrame.new( 1858.32, 12.98,  338.14),
+        Yuji               = CFrame.new( 1537.92,  9.98,  226.10),
+        Sukuna             = CFrame.new( 1571.26, 77.22,  -34.11),
+        Jinwoo             = CFrame.new(  248.74, 12.09,  927.54),
+        Alucard            = CFrame.new(  248.74, 12.09,  927.54),
+        Aizen              = CFrame.new( -567.22, -0.42, 1228.49),
+        Yamato             = CFrame.new(-1422.68, 24.42,-1383.46),
+        Saber              = CFrame.new(  770,   -1,   -1086),
+        Ichigo             = CFrame.new(  770,   -1,   -1086),
+        QinShi             = CFrame.new(  770,   -1,   -1086),
+        Gilgamesh          = CFrame.new(  770,   -1,   -1086),
+        BlessedMaiden      = CFrame.new(  770,   -1,   -1086),
+        SaberAlter         = CFrame.new(  770,   -1,   -1086),
+        StrongestinHistory = CFrame.new(  604,    3,   -2314),
+        StrongestofToday   = CFrame.new(  139,    3,   -2432),
+        Rimuru             = CFrame.new(-1358,   19,     219),
+        Anos               = CFrame.new(  949,    1,    1370),
+        TrueAizen          = CFrame.new(-1205, 1604,    1774),
+    },
 
-	FarmOrder = {
-		{ Name = "Swordsman",          Remote = "Judgement",   IsBossType = false },
-		{ Name = "Quincy",             Remote = "SoulSociety", IsBossType = false },
-		{ Name = "AcademyTeacher",     Remote = "Academy",     IsBossType = false },
-		{ Name = "Slime",              Remote = "Slime",       IsBossType = false },
-		{ Name = "StrongSorcerer",     Remote = "Shinjuku",    IsBossType = false },
-		{ Name = "Hollow",             Remote = "HuecoMundo",  IsBossType = false },
-		{ Name = "Curse",              Remote = "Shinjuku",    IsBossType = false },
-		{ Name = "Gojo",               Remote = "Shibuya",     IsBossType = true  },
-		{ Name = "Yuji",               Remote = "Shibuya",     IsBossType = true  },
-		{ Name = "Sukuna",             Remote = "Shibuya",     IsBossType = true  },
-		{ Name = "Jinwoo",             Remote = "Sailor",      IsBossType = true  },
-		{ Name = "Alucard",            Remote = "Sailor",      IsBossType = true  },
-		{ Name = "Aizen",              Remote = "HuecoMundo",  IsBossType = true  },
-		{ Name = "Yamato",             Remote = "Judgement",   IsBossType = true  },
-		{ Name = "Saber",              Remote = "Boss",        IsBossType = true  },
-		{ Name = "Ichigo",             Remote = "Boss",        IsBossType = true  },
-		{ Name = "QinShi",             Remote = "Boss",        IsBossType = true  },
-		{ Name = "Gilgamesh",          Remote = "Boss",        IsBossType = true  },
-		{ Name = "BlessedMaiden",      Remote = "Boss",        IsBossType = true  },
-		{ Name = "SaberAlter",         Remote = "Boss",        IsBossType = true  },
-		{ Name = "StrongestinHistory", Remote = "Shinjuku",    IsBossType = true  },
-		{ Name = "StrongestofToday",   Remote = "Shinjuku",    IsBossType = true  },
-		{ Name = "Rimuru",             Remote = "Slime",       IsBossType = true  },
-		{ Name = "Anos",               Remote = "Academy",     IsBossType = true  },
-		{ Name = "TrueAizen",          Remote = "SoulSociety", IsBossType = true  },
-	},
+    FarmOrder = {
+        { Name = "Hollow",             Remote = "HuecoMundo",  IsBossType = false },
+        { Name = "Quincy",             Remote = "SoulSociety", IsBossType = false },
+        { Name = "Swordsman",          Remote = "Judgement",   IsBossType = false },
+        { Name = "AcademyTeacher",     Remote = "Academy",     IsBossType = false },
+        { Name = "Slime",              Remote = "Slime",       IsBossType = false },
+        { Name = "StrongSorcerer",     Remote = "Shinjuku",    IsBossType = false },
+        { Name = "Curse",              Remote = "Shinjuku",    IsBossType = false },
+        { Name = "Gojo",               Remote = "Shibuya",     IsBossType = true  },
+        { Name = "Yuji",               Remote = "Shibuya",     IsBossType = true  },
+        { Name = "Sukuna",             Remote = "Shibuya",     IsBossType = true  },
+        { Name = "Jinwoo",             Remote = "Sailor",      IsBossType = true  },
+        { Name = "Alucard",            Remote = "Sailor",      IsBossType = true  },
+        { Name = "Aizen",              Remote = "HuecoMundo",  IsBossType = true  },
+        { Name = "Yamato",             Remote = "Judgement",   IsBossType = true  },
+        { Name = "Saber",              Remote = "Boss",        IsBossType = true  },
+        { Name = "Ichigo",             Remote = "Boss",        IsBossType = true  },
+        { Name = "QinShi",             Remote = "Boss",        IsBossType = true  },
+        { Name = "Gilgamesh",          Remote = "Boss",        IsBossType = true  },
+        { Name = "BlessedMaiden",      Remote = "Boss",        IsBossType = true  },
+        { Name = "SaberAlter",         Remote = "Boss",        IsBossType = true  },
+        { Name = "StrongestinHistory", Remote = "Shinjuku",    IsBossType = true  },
+        { Name = "StrongestofToday",   Remote = "Shinjuku",    IsBossType = true  },
+        { Name = "Rimuru",             Remote = "Slime",       IsBossType = true  },
+        { Name = "Anos",               Remote = "Academy",     IsBossType = true  },
+        { Name = "TrueAizen",          Remote = "SoulSociety", IsBossType = true  },
+    },
 
-	CraftingSets = {
-		StrongestinHistory = {
-			Items = {
-				{"Malevolent Soul", 3},
-				{"Awakened Cursed Finger", 20},
-				{"Cursed Flesh", 1},
-				{"Vessel Ring", 7}
-			},
-			SkillUnlock = {
-				{"Shrine Domain Shard", 1},
-				{"Malevolent Soul", 3}
-			}
-		},
-
-		TrueAizen = {
-			Items = {
-				{"Evolution Fragment", 1},
-				{"Transcendent Core", 3},
-				{"Divinity Essence", 8},
-				{"Fusion Ring", 15},
-				{"Chrysalis Sigil", 75}
-			},
-			SkillUnlock = {
-				{"Transmutation Shard", 5}
-			}
-		},
-
-		StrongestofToday = {
-			Items = {
-				{"Reversal Pulse", 9},
-				{"Blue Singularity", 3},
-				{"Infinity Essence", 1},
-				{"Six Eye", 6}
-			},
-			SkillUnlock = {
-				{"Blue Singularity", 3},
-				{"Infinity Domain Shard", 1}
-			}
-		},
-
-		BlessedMaiden = {
-			Items = {
-				{"Celestial Mark", 1},
-				{"Aero Core", 3},
-				{"Gale Essence", 8},
-				{"Tide Remnant", 14},
-				{"Tempest Relic", 25}
-			},
-			SkillUnlock = {
-				{"Celestial Mark", 2},
-				{"Aero Core", 8},
-				{"Tempest Relic", 75}
-			}
-		},
-
-		Aizen = {
-			Items = {
-				{"Hōgyoku Fragment", 1},
-				{"Reiatsu Core", 3},
-				{"Illusion Prism", 6},
-				{"Mirage Pendant", 10}
-			}
-		},
-
-		SaberAlter = {
-			Items = {
-				{"Corrupt Crown", 1},
-				{"Corruption Core", 3},
-				{"Alter Essence", 8},
-				{"Morgan Remnant", 15},
-				{"Dark Grail", 25}
-			},
-			SkillUnlock = {
-				{"Corrupt Crown", 2},
-				{"Corruption Core", 9},
-				{"Dark Grail", 85}
-			}
-		},
-
-		Anos = {
-			Items = {
-				{"Calamity Seal", 65},
-				{"Demonic Fragment", 12},
-				{"Demonic Shard", 6},
-				{"Destruction Eye", 2},
-				{"Imperial Mark", 1}
-			}
-		},
-
-		Yamato = {
-			Items = {
-				{"Azure Heart", 1},
-				{"Silent Storm", 3},
-				{"Yamato Essence", 7},
-				{"Frozen Will", 14}
-			}
-		},
-
-		Gilgamesh = {
-			Items = {
-				{"Throne Remnant", 12},
-				{"Ancient Shard", 6},
-				{"Golden Essence", 3},
-				{"Phantasm Core", 1}
-			}
-		},
-
-		ShadowMonarch = {
-			Items = {
-				{"Monarch Core", 10},
-				{"Monarch Essence", 5},
-				{"Kamish Dagger", 2},
-				{"Shadow Crystal", 1}
-			}
-		},
-
-		Gryphon = {
-			Items = {}
-		}
-	}
+    -- Buat mapping cepat untuk lookup
+    TargetInfo = {},
 }
 
--- ==========================================
--- || FLY HEIGHT HELPER FUNCTION
--- ==========================================
-local function GetFlyPosition(targetCF, targetPos)
-	local cfg = _G.FarmConfig
-	if not cfg.FlyHeight.Enabled then
-		return targetCF
-	end
-	
-	local offset = cfg.FlyHeight.Offset or 5
-	local pos = targetPos or (targetCF and targetCF.Position)
-	
-	if not pos then
-		return targetCF
-	end
-	
-	local flyPos = Vector3.new(pos.X, pos.Y + offset, pos.Z)
-	return CFrame.new(flyPos, pos)
+-- Inisialisasi TargetInfo untuk lookup cepat
+for _, target in ipairs(CONSTANTS.FarmOrder) do
+    CONSTANTS.TargetInfo[target.Name] = {
+        Remote = target.Remote,
+        IsBossType = target.IsBossType
+    }
 end
 
 -- ==========================================
--- || CLASS: Entity Tracker
+-- || FLY HEIGHT HELPER
+-- ==========================================
+local function GetFlyPosition(targetCF, targetPos)
+    local cfg = _G.CatrazConfig
+    if not cfg.FlyHeight.Enabled then
+        return targetCF
+    end
+    
+    local offset = cfg.FlyHeight.Offset or 5
+    local pos = targetPos or (targetCF and targetCF.Position)
+    
+    if not pos then
+        return targetCF
+    end
+    
+    local flyPos = Vector3.new(pos.X, pos.Y + offset, pos.Z)
+    return CFrame.new(flyPos, pos)
+end
+
+-- ==========================================
+-- || ENTITY TRACKER
 -- ==========================================
 local EntityTracker = {}
 EntityTracker.__index = EntityTracker
 
 function EntityTracker.new(npcsFolder)
-	local self = setmetatable({
-		Folder      = npcsFolder,
-		Active      = {},
-		Connections = {},
-		NPCConns    = {},
-	}, EntityTracker)
-	self:Init()
-	return self
+    local self = setmetatable({
+        Folder      = npcsFolder,
+        Active      = {},
+        Connections = {},
+        NPCConns    = {},
+    }, EntityTracker)
+    self:Init()
+    return self
 end
 
 function EntityTracker:Register(npc)
-	task.spawn(function()
-		local humanoid = npc:WaitForChild("Humanoid", 3)
-		if not humanoid or humanoid.Health <= 0 then return end
+    task.spawn(function()
+        local humanoid = npc:WaitForChild("Humanoid", 3)
+        if not humanoid or humanoid.Health <= 0 then return end
 
-		self.Active[npc] = true
+        self.Active[npc] = true
 
-		local deathConn, removeConn
+        local deathConn, removeConn
 
-		deathConn = humanoid.Died:Connect(function()
-			self.Active[npc]   = nil
-			self.NPCConns[npc] = nil
-			deathConn:Disconnect()
-			removeConn:Disconnect()
-		end)
+        deathConn = humanoid.Died:Connect(function()
+            self.Active[npc]   = nil
+            self.NPCConns[npc] = nil
+            deathConn:Disconnect()
+            removeConn:Disconnect()
+        end)
 
-		removeConn = npc.AncestryChanged:Connect(function(_, parent)
-			if not parent then
-				self.Active[npc]   = nil
-				self.NPCConns[npc] = nil
-				removeConn:Disconnect()
-				deathConn:Disconnect()
-			end
-		end)
+        removeConn = npc.AncestryChanged:Connect(function(_, parent)
+            if not parent then
+                self.Active[npc]   = nil
+                self.NPCConns[npc] = nil
+                removeConn:Disconnect()
+                deathConn:Disconnect()
+            end
+        end)
 
-		self.NPCConns[npc] = { deathConn, removeConn }
-	end)
+        self.NPCConns[npc] = { deathConn, removeConn }
+    end)
 end
 
 function EntityTracker:Init()
-	for _, child in ipairs(self.Folder:GetChildren()) do
-		self:Register(child)
-	end
-	local conn = self.Folder.ChildAdded:Connect(function(child)
-		self:Register(child)
-	end)
-	table.insert(self.Connections, conn)
+    for _, child in ipairs(self.Folder:GetChildren()) do
+        self:Register(child)
+    end
+    local conn = self.Folder.ChildAdded:Connect(function(child)
+        self:Register(child)
+    end)
+    table.insert(self.Connections, conn)
 end
 
 function EntityTracker:Destroy()
-	for _, conn in ipairs(self.Connections) do
-		conn:Disconnect()
-	end
-	self.Connections = {}
+    for _, conn in ipairs(self.Connections) do
+        conn:Disconnect()
+    end
+    self.Connections = {}
 
-	for _, conns in pairs(self.NPCConns) do
-		for _, c in ipairs(conns) do
-			c:Disconnect()
-		end
-	end
-	self.NPCConns = {}
-	self.Active   = {}
+    for _, conns in pairs(self.NPCConns) do
+        for _, c in ipairs(conns) do
+            c:Disconnect()
+        end
+    end
+    self.NPCConns = {}
+    self.Active   = {}
 end
 
-function EntityTracker:IsAlive(queryName, isBossType, requiredCount)
-	requiredCount = requiredCount or 5
-	local currentCount = 0
+function EntityTracker:IsAlive(targetName, isBossType)
+    for npc in next, self.Active do
+        if not (npc and npc.Parent) then
+            self.Active[npc]   = nil
+            self.NPCConns[npc] = nil
+        end
+    end
 
-	for npc in next, self.Active do
-		if not (npc and npc.Parent) then
-			self.Active[npc]   = nil
-			self.NPCConns[npc] = nil
-		end
-	end
+    for npc in next, self.Active do
+        if npc.Name:find(targetName) then
+            return true
+        end
+    end
 
-	for npc in next, self.Active do
-		if isBossType then
-			if npc.Name:find("^" .. queryName) then
-				return true
-			end
-		else
-			if npc.Name:find(queryName) then
-				currentCount += 1
-				if currentCount >= requiredCount then
-					return true
-				end
-			end
-		end
-	end
-
-	return false
+    return false
 end
 
--- ==========================================
--- || CLASS: Boss Spawner
--- ==========================================
-local BossSpawner = {}
-BossSpawner.__index = BossSpawner
+function EntityTracker:GetFirstAlive(targetName)
+    for npc in next, self.Active do
+        if not (npc and npc.Parent) then
+            self.Active[npc]   = nil
+            self.NPCConns[npc] = nil
+        end
+    end
 
-function BossSpawner.new(tracker, remotes)
-	return setmetatable({
-		Tracker  = tracker,
-		Remotes  = remotes,
-		_running = false,
-	}, BossSpawner)
-end
+    for npc in next, self.Active do
+        if npc.Name:find(targetName) and npc:FindFirstChild("HumanoidRootPart") then
+            return npc
+        end
+    end
 
-function BossSpawner:Stop()
-	self._running = false
-end
-
-function BossSpawner:Start()
-	if self._running then return end
-	self._running = true
-
-	task.spawn(function()
-		while self._running and task.wait(0.5) do
-			local cfg = _G.FarmConfig
-
-			if cfg.Boss.AutoSpawn then
-				local selected = cfg.Boss.Selected
-				if type(selected) == "table" then
-					for bName, enabled in pairs(selected) do
-						if enabled == true and not self.Tracker:IsAlive(bName, true) then
-							self.Remotes.SummonBoss:FireServer(bName .. "Boss", cfg.Boss.Difficulty)
-							task.wait(0.3)
-						end
-					end
-				end
-			end
-
-			local specs = cfg.Specials
-			if specs.TrueAizen.Auto and not self.Tracker:IsAlive("TrueAizen", true) then
-				self.Remotes.TrueAizen:FireServer(specs.TrueAizen.Diff)
-			end
-			if specs.Sukuna.Auto and not self.Tracker:IsAlive("StrongestinHistory", true) then
-				self.Remotes.SpawnStrongest:FireServer("StrongestHistory", specs.Sukuna.Diff)
-			end
-			if specs.Gojo.Auto and not self.Tracker:IsAlive("StrongestofToday", true) then
-				self.Remotes.SpawnStrongest:FireServer("StrongestToday", specs.Gojo.Diff)
-			end
-			if specs.Rimuru.Auto and not self.Tracker:IsAlive("Rimuru", true) then
-				self.Remotes.Rimuru:FireServer(specs.Rimuru.Diff)
-			end
-			if specs.Anos.Auto and not self.Tracker:IsAlive("Anos", true) then
-				self.Remotes.Anos:FireServer("Anos", specs.Anos.Diff)
-			end
-		end
-	end)
+    return nil
 end
 
 -- ==========================================
--- || CLASS: Farmer
+-- || FARMER CLASS
 -- ==========================================
 local Farmer = {}
 Farmer.__index = Farmer
 
 function Farmer.new(tracker, tpRemote, abilityRemote, obsHakiRemote, hakiRemote)
-	return setmetatable({
-		Tracker            = tracker,
-		TpRemote           = tpRemote,
-		AbilityRemote      = abilityRemote,
-		ObsHakiRemote      = obsHakiRemote,
-		HakiRemote         = hakiRemote,
-		LastSkillTime      = 0,
-		LastEquipTime_NPC  = 0,
-		LastEquipTime_Boss = 0,
-		LastArmamentToggle = 0,
-		LastObsToggle      = 0,
-		_running           = false,
-	}, Farmer)
+    return setmetatable({
+        Tracker            = tracker,
+        TpRemote           = tpRemote,
+        AbilityRemote      = abilityRemote,
+        ObsHakiRemote      = obsHakiRemote,
+        HakiRemote         = hakiRemote,
+        LastSkillTime      = 0,
+        LastEquipTime_NPC  = 0,
+        LastEquipTime_Boss = 0,
+        LastArmamentToggle = 0,
+        LastObsToggle      = 0,
+        CurrentTarget      = nil,
+        _running           = false,
+    }, Farmer)
 end
 
 function Farmer:Stop()
-	self._running = false
+    self._running = false
+    self.CurrentTarget = nil
 end
 
 function Farmer:EquipWeapon(isBoss)
-	local cfg = _G.FarmConfig
-	if not cfg.AutoEquip then return end
+    local cfg = _G.CatrazConfig.FarmSettings
+    if not cfg.AutoEquip then return end
 
-	local now = tick()
-	if isBoss then
-		if now - self.LastEquipTime_Boss < 1 then return end
-		self.LastEquipTime_Boss = now
-	else
-		if now - self.LastEquipTime_NPC < 1 then return end
-		self.LastEquipTime_NPC = now
-	end
+    local now = tick()
+    if isBoss then
+        if now - self.LastEquipTime_Boss < 1 then return end
+        self.LastEquipTime_Boss = now
+    else
+        if now - self.LastEquipTime_NPC < 1 then return end
+        self.LastEquipTime_NPC = now
+    end
 
-	local weaponName = isBoss and cfg.SelectedWeapon_Boss or cfg.SelectedWeapon_NPC
+    local weaponName = isBoss and cfg.SelectedWeapon_Boss or cfg.SelectedWeapon_NPC
 
-	local char = LocalPlayer.Character
-	if not char then return end
+    local char = LocalPlayer.Character
+    if not char then return end
 
-	local hum     = char:FindFirstChild("Humanoid")
-	local backpack = LocalPlayer:FindFirstChild("Backpack")
-	if not hum or hum.Health <= 0 or not backpack then return end
+    local hum = char:FindFirstChild("Humanoid")
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not hum or hum.Health <= 0 or not backpack then return end
 
-	if weaponName == "None" or weaponName == "" then
-		local equippedTool = char:FindFirstChildOfClass("Tool")
-		if equippedTool then
-			if isBoss then cfg.SelectedWeapon_Boss = equippedTool.Name
-			else            cfg.SelectedWeapon_NPC  = equippedTool.Name end
-			return
-		end
+    if weaponName == "None" or weaponName == "" then
+        local equippedTool = char:FindFirstChildOfClass("Tool")
+        if equippedTool then
+            if isBoss then cfg.SelectedWeapon_Boss = equippedTool.Name
+            else cfg.SelectedWeapon_NPC = equippedTool.Name end
+            return
+        end
 
-		local firstTool = backpack:FindFirstChildOfClass("Tool")
-		if not firstTool then return end
-		hum:EquipTool(firstTool)
+        local firstTool = backpack:FindFirstChildOfClass("Tool")
+        if not firstTool then return end
+        hum:EquipTool(firstTool)
 
-		if isBoss then cfg.SelectedWeapon_Boss = firstTool.Name
-		else            cfg.SelectedWeapon_NPC  = firstTool.Name end
-		return
-	end
+        if isBoss then cfg.SelectedWeapon_Boss = firstTool.Name
+        else cfg.SelectedWeapon_NPC = firstTool.Name end
+        return
+    end
 
-	if char:FindFirstChild(weaponName) then return end
-	local tool = backpack:FindFirstChild(weaponName)
-	if tool then hum:EquipTool(tool) end
+    if char:FindFirstChild(weaponName) then return end
+    local tool = backpack:FindFirstChild(weaponName)
+    if tool then hum:EquipTool(tool) end
 end
 
 function Farmer:CheckArmamentHaki()
-	local cfg = _G.FarmConfig
-	if not cfg.AutoHaki then return end
+    local cfg = _G.CatrazConfig.FarmSettings
+    if not cfg.AutoHaki then return end
 
-	local now = tick()
-	if now - self.LastArmamentToggle < 3 then return end
+    local now = tick()
+    if now - self.LastArmamentToggle < 3 then return end
 
-	local char = LocalPlayer.Character
-	if not char then return end
+    local char = LocalPlayer.Character
+    if not char then return end
 
-	local rightArm     = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
-	local isHakiActive = rightArm and rightArm.BrickColor == CONSTANTS.HakiBlack
+    local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
+    local isHakiActive = rightArm and rightArm.BrickColor == CONSTANTS.HakiBlack
 
-	if not isHakiActive then
-		self.LastArmamentToggle = now
-		pcall(function() self.HakiRemote:FireServer("Toggle") end)
-	end
+    if not isHakiActive then
+        self.LastArmamentToggle = now
+        pcall(function() self.HakiRemote:FireServer("Toggle") end)
+    end
 end
 
 function Farmer:CheckObservationHaki()
-	local cfg = _G.FarmConfig
-	if not cfg.AutoObservationHaki then return end
-	if tick() - self.LastObsToggle < 3 then return end
+    local cfg = _G.CatrazConfig.FarmSettings
+    if not cfg.AutoObservationHaki then return end
+    if tick() - self.LastObsToggle < 3 then return end
 
-	local playerGui  = LocalPlayer:FindFirstChild("PlayerGui")
-	local dodgeUI    = playerGui and playerGui:FindFirstChild("DodgeCounterUI")
-	local isVisible  = dodgeUI
-		and dodgeUI:FindFirstChild("MainFrame")
-		and dodgeUI.MainFrame.Visible
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    local dodgeUI = playerGui and playerGui:FindFirstChild("DodgeCounterUI")
+    local isVisible = dodgeUI
+        and dodgeUI:FindFirstChild("MainFrame")
+        and dodgeUI.MainFrame.Visible
 
-	local cdUI       = playerGui and playerGui:FindFirstChild("CooldownUI")
-	local onCooldown = cdUI
-		and cdUI:FindFirstChild("MainFrame")
-		and cdUI.MainFrame:FindFirstChild("Cooldown_ObsHaki_Observation") ~= nil
+    local cdUI = playerGui and playerGui:FindFirstChild("CooldownUI")
+    local onCooldown = cdUI
+        and cdUI:FindFirstChild("MainFrame")
+        and cdUI.MainFrame:FindFirstChild("Cooldown_ObsHaki_Observation") ~= nil
 
-	if not isVisible and not onCooldown then
-		self.LastObsToggle = tick()
-		pcall(function() self.ObsHakiRemote:FireServer("Toggle") end)
-	end
+    if not isVisible and not onCooldown then
+        self.LastObsToggle = tick()
+        pcall(function() self.ObsHakiRemote:FireServer("Toggle") end)
+    end
 end
 
 function Farmer:CastSkills(isBoss)
-	local cfg = _G.FarmConfig
-	local shouldCast = isBoss and cfg.AutoSkill.Bosses or (not isBoss and cfg.AutoSkill.NPCs)
-	if not shouldCast then return end
+    local cfg = _G.CatrazConfig.AutoSkill
+    local shouldCast = isBoss and cfg.Bosses or (not isBoss and cfg.NPCs)
+    if not shouldCast then return end
 
-	if tick() - self.LastSkillTime <= 0.1 then return end
-	self.LastSkillTime = tick()
+    if tick() - self.LastSkillTime <= 0.1 then return end
+    self.LastSkillTime = tick()
 
-	local activeSkills = isBoss and cfg.AutoSkill.BossSkills or cfg.AutoSkill.NPCSkills
-	for skillName, isEnabled in pairs(activeSkills) do
-		if isEnabled then
-			local skillId = cfg.AutoSkill.SkillIds[skillName]
-			if skillId then
-				pcall(function() self.AbilityRemote:FireServer(skillId) end)
-				task.wait(0.05)
-			end
-		end
-	end
+    local activeSkills = isBoss and cfg.BossSkills or cfg.NPCSkills
+    for skillName, isEnabled in pairs(activeSkills) do
+        if isEnabled then
+            local skillId = cfg.SkillIds[skillName]
+            if skillId then
+                pcall(function() self.AbilityRemote:FireServer(skillId) end)
+                task.wait(0.05)
+            end
+        end
+    end
+end
+
+function Farmer:FarmTarget(targetName)
+    local cfg = _G.CatrazConfig
+    local farmCfg = cfg.FarmSettings
+    local targetInfo = CONSTANTS.TargetInfo[targetName]
+    
+    if not targetInfo then
+        warn("[CatrazHub] Target not found:", targetName)
+        return false
+    end
+    
+    local spawnCF = CONSTANTS.Locations[targetName]
+    if not spawnCF then
+        warn("[CatrazHub] Location not found for:", targetName)
+        return false
+    end
+    
+    local isBoss = targetInfo.IsBossType
+    
+    -- Teleport ke area target
+    if targetInfo.Remote then
+        self.TpRemote:FireServer(targetInfo.Remote)
+        task.wait(0.2)
+    end
+    
+    -- Loop farming target ini
+    local farmStartTime = tick()
+    while self._running and cfg.AutoFarm.Enabled and cfg.AutoFarm.SelectedTarget == targetName do
+        cfg = _G.CatrazConfig
+        farmCfg = cfg.FarmSettings
+        
+        self:CheckObservationHaki()
+        self:CheckArmamentHaki()
+        self:EquipWeapon(isBoss)
+        self:CastSkills(isBoss)
+        
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then task.wait(1) break end
+        
+        -- Cari target hidup
+        local liveTarget = self.Tracker:GetFirstAlive(targetName)
+        local targetPos = liveTarget and liveTarget.HumanoidRootPart.Position or spawnCF.Position
+        local targetCF = liveTarget and liveTarget.HumanoidRootPart.CFrame or spawnCF
+        
+        -- Hitung jarak
+        local distance = (hrp.Position - targetPos).Magnitude
+        
+        -- Terbang mode
+        if distance > 20 then
+            if distance > 150 and targetInfo.Remote then
+                self.TpRemote:FireServer(targetInfo.Remote)
+                task.wait(0.5)
+            end
+            local flyPos = GetFlyPosition(targetCF, targetPos)
+            hrp.CFrame = flyPos
+        else
+            local flyPos = GetFlyPosition(targetCF, targetPos)
+            hrp.CFrame = CFrame.lookAt(flyPos.Position, targetPos)
+        end
+        
+        task.wait(farmCfg.TpTime)
+        
+        -- Cek timeout (5 menit) untuk mencegah loop tak terbatas
+        if tick() - farmStartTime > 300 then
+            warn("[CatrazHub] Farming timeout for:", targetName)
+            break
+        end
+    end
+    
+    return true
 end
 
 function Farmer:Start()
-	if self._running then return end
-	self._running = true
-
-	task.spawn(function()
-		while self._running and task.wait(0.1) do
-			local cfg = _G.FarmConfig
-			if not cfg.LoopFarm then continue end
-			if game.PlaceId ~= 77747658251236 then continue end
-
-			self:CheckObservationHaki()
-			self:CheckArmamentHaki()
-			self:EquipWeapon(false)
-
-			local char = LocalPlayer.Character
-			local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-			if not hrp then continue end
-
-			for _, target in ipairs(CONSTANTS.FarmOrder) do
-				if not self._running or not cfg.LoopFarm then break end
-				if cfg.IgnoredEntities[target.Name] then continue end
-
-				local requiredToStart = target.IsBossType and 1 or cfg.NPCAttackThreshold
-				if not self.Tracker:IsAlive(target.Name, target.IsBossType, requiredToStart) then
-					continue
-				end
-
-				local spawnCF = CONSTANTS.Locations[target.Name]
-				if not spawnCF then continue end
-
-				if target.IsBossType then
-					if target.Remote then
-						self.TpRemote:FireServer(target.Remote)
-						task.wait(0.2)
-					end
-
-					while
-						self._running
-						and cfg.LoopFarm
-						and not cfg.IgnoredEntities[target.Name]
-						and self.Tracker:IsAlive(target.Name, true)
-					do
-						cfg = _G.FarmConfig
-
-						self:CheckObservationHaki()
-						self:CheckArmamentHaki()
-						self:EquipWeapon(true)
-						self:CastSkills(true)
-
-						local curChar = LocalPlayer.Character
-						local curHrp  = curChar and curChar:FindFirstChild("HumanoidRootPart")
-						if not curHrp then task.wait(1) continue end
-
-						local liveBoss = nil
-						for npc in next, self.Tracker.Active do
-							if npc.Name:find("^" .. target.Name) and npc:FindFirstChild("HumanoidRootPart") then
-								liveBoss = npc.HumanoidRootPart
-								break
-							end
-						end
-
-						local targetGoal = liveBoss and liveBoss.CFrame or spawnCF
-						local lookAtPos  = targetGoal.Position
-						local distance   = (curHrp.Position - lookAtPos).Magnitude
-
-						if distance > 20 then
-							if distance > 150 and target.Remote then
-								self.TpRemote:FireServer(target.Remote)
-								task.wait(0.5)
-							end
-							-- FLY MODE UNTUK BOSS
-							if cfg.FlyHeight.UseForBosses then
-								local flyPos = GetFlyPosition(targetGoal, lookAtPos)
-								curHrp.CFrame = flyPos
-							else
-								curHrp.CFrame = CFrame.lookAt(
-									targetGoal.Position + Vector3.new(0, 0, 3),
-									lookAtPos
-								)
-							end
-						else
-							-- FLY MODE UNTUK BOSS (jarak dekat)
-							if cfg.FlyHeight.UseForBosses then
-								local flyPos = GetFlyPosition(targetGoal, lookAtPos)
-								curHrp.CFrame = CFrame.lookAt(flyPos.Position, lookAtPos)
-							else
-								curHrp.CFrame = CFrame.lookAt(curHrp.Position, lookAtPos)
-							end
-						end
-
-						task.wait(cfg.TpTime)
-					end
-
-				else
-					if target.Remote then
-						self.TpRemote:FireServer(target.Remote)
-						task.wait(0.2)
-					end
-
-					while
-						self._running
-						and cfg.LoopFarm
-						and not cfg.IgnoredEntities[target.Name]
-						and self.Tracker:IsAlive(target.Name, false, 1)
-					do
-						cfg = _G.FarmConfig
-
-						local curChar = LocalPlayer.Character
-						local curHrp  = curChar and curChar:FindFirstChild("HumanoidRootPart")
-						if not curHrp then task.wait(1) continue end
-
-						self:CheckObservationHaki()
-						self:CheckArmamentHaki()
-						self:EquipWeapon(false)
-						self:CastSkills(false)
-
-						local distance = (curHrp.Position - spawnCF.Position).Magnitude
-						if distance > 10 then
-							-- FLY MODE UNTUK NPC
-							if cfg.FlyHeight.UseForNPCs then
-								curHrp.CFrame = GetFlyPosition(spawnCF, spawnCF.Position)
-							else
-								curHrp.CFrame = spawnCF
-							end
-						end
-
-						task.wait(cfg.TpTime)
-					end
-				end
-			end
-		end
-	end)
+    if self._running then return end
+    self._running = true
+    
+    task.spawn(function()
+        while self._running and task.wait(0.1) do
+            local cfg = _G.CatrazConfig
+            
+            if not cfg.AutoFarm.Enabled then
+                task.wait(1)
+                continue
+            end
+            
+            if game.PlaceId ~= 77747658251236 then
+                task.wait(5)
+                continue
+            end
+            
+            local targetName = cfg.AutoFarm.SelectedTarget
+            if targetName == "None" or targetName == "" then
+                task.wait(1)
+                continue
+            end
+            
+            -- Farm target yang dipilih
+            self:FarmTarget(targetName)
+            
+            -- Jeda sebelum mulai lagi
+            task.wait(1)
+        end
+    end)
 end
 
 -- ==========================================
--- || CLASS: Dungeon Farmer
+-- || BOSS SPAWNER
+-- ==========================================
+local BossSpawner = {}
+BossSpawner.__index = BossSpawner
+
+function BossSpawner.new(tracker, remotes)
+    return setmetatable({
+        Tracker  = tracker,
+        Remotes  = remotes,
+        _running = false,
+    }, BossSpawner)
+end
+
+function BossSpawner:Stop()
+    self._running = false
+end
+
+function BossSpawner:Start()
+    if self._running then return end
+    self._running = true
+
+    task.spawn(function()
+        while self._running and task.wait(0.5) do
+            local cfg = _G.CatrazConfig
+
+            if cfg.Boss.AutoSpawn then
+                local selected = cfg.Boss.Selected
+                if type(selected) == "table" then
+                    for bName, enabled in pairs(selected) do
+                        if enabled == true and not self.Tracker:IsAlive(bName, true) then
+                            self.Remotes.SummonBoss:FireServer(bName .. "Boss", cfg.Boss.Difficulty)
+                            task.wait(0.3)
+                        end
+                    end
+                end
+            end
+
+            local specs = cfg.Specials
+            if specs.TrueAizen.Auto and not self.Tracker:IsAlive("TrueAizen", true) then
+                self.Remotes.TrueAizen:FireServer(specs.TrueAizen.Diff)
+            end
+            if specs.Sukuna.Auto and not self.Tracker:IsAlive("StrongestinHistory", true) then
+                self.Remotes.SpawnStrongest:FireServer("StrongestHistory", specs.Sukuna.Diff)
+            end
+            if specs.Gojo.Auto and not self.Tracker:IsAlive("StrongestofToday", true) then
+                self.Remotes.SpawnStrongest:FireServer("StrongestToday", specs.Gojo.Diff)
+            end
+            if specs.Rimuru.Auto and not self.Tracker:IsAlive("Rimuru", true) then
+                self.Remotes.Rimuru:FireServer(specs.Rimuru.Diff)
+            end
+            if specs.Anos.Auto and not self.Tracker:IsAlive("Anos", true) then
+                self.Remotes.Anos:FireServer("Anos", specs.Anos.Diff)
+            end
+        end
+    end)
+end
+
+-- ==========================================
+-- || DUNGEON FARMER
 -- ==========================================
 local DungeonFarmer = {}
 DungeonFarmer.__index = DungeonFarmer
 
 function DungeonFarmer.new()
-	return setmetatable({ _running = false }, DungeonFarmer)
+    return setmetatable({ _running = false }, DungeonFarmer)
 end
 
 function DungeonFarmer:Stop()
-	self._running = false
+    self._running = false
 end
 
 function DungeonFarmer:_stabilize(hrp, goalCF)
-	local bv = hrp:FindFirstChild("DungeonStabilizer_BV")
-	if not bv then
-		bv = Instance.new("BodyVelocity")
-		bv.Name = "DungeonStabilizer_BV"
-		bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-		bv.Parent = hrp
-	end
-	bv.Velocity = Vector3.new(0, 0, 0)
-	
-	local bg = hrp:FindFirstChild("DungeonStabilizer_BG")
-	if not bg then
-		bg = Instance.new("BodyGyro")
-		bg.Name = "DungeonStabilizer_BG"
-		bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-		bg.P = 3000
-		bg.D = 500
-		bg.Parent = hrp
-	end
-	bg.CFrame = goalCF
+    local bv = hrp:FindFirstChild("DungeonStabilizer_BV")
+    if not bv then
+        bv = Instance.new("BodyVelocity")
+        bv.Name = "DungeonStabilizer_BV"
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Parent = hrp
+    end
+    bv.Velocity = Vector3.new(0, 0, 0)
+    
+    local bg = hrp:FindFirstChild("DungeonStabilizer_BG")
+    if not bg then
+        bg = Instance.new("BodyGyro")
+        bg.Name = "DungeonStabilizer_BG"
+        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        bg.P = 3000
+        bg.D = 500
+        bg.Parent = hrp
+    end
+    bg.CFrame = goalCF
 end
 
 function DungeonFarmer:_destabilize(hrp)
-	local bv = hrp:FindFirstChild("DungeonStabilizer_BV")
-	if bv then bv:Destroy() end
-	local bg = hrp:FindFirstChild("DungeonStabilizer_BG")
-	if bg then bg:Destroy() end
+    local bv = hrp:FindFirstChild("DungeonStabilizer_BV")
+    if bv then bv:Destroy() end
+    local bg = hrp:FindFirstChild("DungeonStabilizer_BG")
+    if bg then bg:Destroy() end
 end
 
-function DungeonFarmer:_getGoal(npcHRP, position)
-	local cfg = _G.FarmConfig
-	local pos = npcHRP.Position
-	local cf = npcHRP.CFrame
-	
-	if cfg.FlyHeight.Enabled then
-		local offset = cfg.FlyHeight.Offset or 5
-		return CFrame.new(pos + Vector3.new(0, offset, 0), pos)
-	else
-		local dist = cfg.DungeonFarm.Distance or 5
-		if position == "Top" then
-			return CFrame.new(pos + Vector3.new(0, dist, 0), pos)
-		else
-			return cf * CFrame.new(0, 2, dist)
-		end
-	end
+function DungeonFarmer:_getGoal(npcHRP)
+    local cfg = _G.CatrazConfig
+    local pos = npcHRP.Position
+    
+    if cfg.FlyHeight.Enabled then
+        local offset = cfg.FlyHeight.Offset or 5
+        return CFrame.new(pos + Vector3.new(0, offset, 0), pos)
+    else
+        local dist = cfg.DungeonFarm.Distance or 5
+        if cfg.DungeonFarm.FarmPosition == "Top" then
+            return CFrame.new(pos + Vector3.new(0, dist, 0), pos)
+        else
+            return npcHRP.CFrame * CFrame.new(0, 2, dist)
+        end
+    end
 end
 
 function DungeonFarmer:Start()
-	if self._running then return end
-	self._running = true
+    if self._running then return end
+    self._running = true
 
-	task.spawn(function()
-		while self._running do
-			task.wait(0.05)
-			local cfg = _G.FarmConfig
-			if not cfg.DungeonFarm.Enabled then task.wait(0.5) continue end
+    task.spawn(function()
+        while self._running do
+            task.wait(0.05)
+            local cfg = _G.CatrazConfig
+            if not cfg.DungeonFarm.Enabled then task.wait(0.5) continue end
 
-			local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-			if playerGui and playerGui:FindFirstChild("DungeonUI") then
-				local dungeonUI = playerGui.DungeonUI
-				
-				if cfg.DungeonFarm.AutoReplay then
-					local replayFrame = dungeonUI:FindFirstChild("ReplayDungeonFrameVisibleOnlyWhenClearingDungeon")
-					if replayFrame and replayFrame.Visible then
-						pcall(function()
-							game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("DungeonWaveReplayVote"):FireServer("sponsor")
-						end)
-						task.wait(1)
-					end
-				end
-				
-				if cfg.DungeonFarm.AutoVote then
-					local contentFrame = dungeonUI:FindFirstChild("ContentFrame")
-					if contentFrame then
-						local actions = contentFrame:FindFirstChild("Actions")
-						if actions then
-							local diffFrame = actions:FindFirstChild(cfg.DungeonFarm.VoteDiff .. "DifficultyFrame")
-							if diffFrame and diffFrame.Visible then
-								pcall(function()
-									game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("DungeonWaveVote"):FireServer(cfg.DungeonFarm.VoteDiff)
-								end)
-								task.wait(1)
-							end
-						end
-					end
-				end
-			end
+            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if playerGui and playerGui:FindFirstChild("DungeonUI") then
+                local dungeonUI = playerGui.DungeonUI
+                
+                if cfg.DungeonFarm.AutoReplay then
+                    local replayFrame = dungeonUI:FindFirstChild("ReplayDungeonFrameVisibleOnlyWhenClearingDungeon")
+                    if replayFrame and replayFrame.Visible then
+                        pcall(function()
+                            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("DungeonWaveReplayVote"):FireServer("sponsor")
+                        end)
+                        task.wait(1)
+                    end
+                end
+                
+                if cfg.DungeonFarm.AutoVote then
+                    local contentFrame = dungeonUI:FindFirstChild("ContentFrame")
+                    if contentFrame then
+                        local actions = contentFrame:FindFirstChild("Actions")
+                        if actions then
+                            local diffFrame = actions:FindFirstChild(cfg.DungeonFarm.VoteDiff .. "DifficultyFrame")
+                            if diffFrame and diffFrame.Visible then
+                                pcall(function()
+                                    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("DungeonWaveVote"):FireServer(cfg.DungeonFarm.VoteDiff)
+                                end)
+                                task.wait(1)
+                            end
+                        end
+                    end
+                end
+            end
 
-			local char = LocalPlayer.Character
-			local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-			if not hrp then task.wait(1) continue end
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if not hrp then task.wait(1) continue end
 
-			local npcsFolder = workspace:FindFirstChild("NPCs")
-			if not npcsFolder then task.wait(1) continue end
+            local npcsFolder = workspace:FindFirstChild("NPCs")
+            if not npcsFolder then task.wait(1) continue end
 
-			local targets = npcsFolder:GetChildren()
-			if #targets == 0 then task.wait(0.5) continue end
+            local targets = npcsFolder:GetChildren()
+            if #targets == 0 then task.wait(0.5) continue end
 
-			for _, model in ipairs(targets) do
-				if not self._running or not cfg.DungeonFarm.Enabled then break end
+            for _, model in ipairs(targets) do
+                if not self._running or not cfg.DungeonFarm.Enabled then break end
 
-				local hum    = model:FindFirstChildOfClass("Humanoid")
-				local npcHRP = model:FindFirstChild("HumanoidRootPart")
-				if not hum or not npcHRP then continue end
-				if hum.Health <= 0 then continue end
+                local hum = model:FindFirstChildOfClass("Humanoid")
+                local npcHRP = model:FindFirstChild("HumanoidRootPart")
+                if not hum or not npcHRP then continue end
+                if hum.Health <= 0 then continue end
 
-				local isBoss = model.Name:find("Boss") ~= nil
-				local speed  = cfg.DungeonFarm.TweenSpeed
-				local pos    = cfg.DungeonFarm.FarmPosition
+                local isBoss = model.Name:find("Boss") ~= nil
+                local speed = cfg.DungeonFarm.TweenSpeed
 
-				if isBoss then
-					while self._running and cfg.DungeonFarm.Enabled do
-						cfg = _G.FarmConfig
-						speed = cfg.DungeonFarm.TweenSpeed
+                if isBoss then
+                    while self._running and cfg.DungeonFarm.Enabled do
+                        cfg = _G.CatrazConfig
+                        speed = cfg.DungeonFarm.TweenSpeed
 
-						if _G.ArcX_Farmer then
-							_G.ArcX_Farmer:CheckObservationHaki()
-							_G.ArcX_Farmer:CheckArmamentHaki()
-							_G.ArcX_Farmer:EquipWeapon(true)
-							_G.ArcX_Farmer:CastSkills(true)
-						end
+                        if _G.CatrazHub_Farmer then
+                            _G.CatrazHub_Farmer:CheckObservationHaki()
+                            _G.CatrazHub_Farmer:CheckArmamentHaki()
+                            _G.CatrazHub_Farmer:EquipWeapon(true)
+                            _G.CatrazHub_Farmer:CastSkills(true)
+                        end
 
-						local curChar = LocalPlayer.Character
-						local curHrp  = curChar and curChar:FindFirstChild("HumanoidRootPart")
-						if not curHrp then task.wait(1) break end
+                        local curChar = LocalPlayer.Character
+                        local curHrp = curChar and curChar:FindFirstChild("HumanoidRootPart")
+                        if not curHrp then task.wait(1) break end
 
-						local liveHum = model:FindFirstChildOfClass("Humanoid")
-						if not model.Parent or not liveHum or liveHum.Health <= 0 then break end
+                        local liveHum = model:FindFirstChildOfClass("Humanoid")
+                        if not model.Parent or not liveHum or liveHum.Health <= 0 then break end
 
-						local liveHRP = model:FindFirstChild("HumanoidRootPart")
-						if not liveHRP then break end
+                        local liveHRP = model:FindFirstChild("HumanoidRootPart")
+                        if not liveHRP then break end
 
-						local goal = self:_getGoal(liveHRP, pos)
-						self:_stabilize(curHrp, goal)
-						curHrp.CFrame = goal
-						task.wait(speed)
-					end
-				else
-					local curChar = LocalPlayer.Character
-					local curHrp  = curChar and curChar:FindFirstChild("HumanoidRootPart")
-					if not curHrp then continue end
-					
-					if _G.ArcX_Farmer then
-						_G.ArcX_Farmer:CheckObservationHaki()
-						_G.ArcX_Farmer:CheckArmamentHaki()
-						_G.ArcX_Farmer:EquipWeapon(false)
-						_G.ArcX_Farmer:CastSkills(false)
-					end
-					
-					local goal = self:_getGoal(npcHRP, pos)
-					
-					self:_stabilize(curHrp, goal)
-					curHrp.CFrame = goal
-					task.wait(speed)
-				end
-				
-				local curChar = LocalPlayer.Character
-				local curHrp  = curChar and curChar:FindFirstChild("HumanoidRootPart")
-				if curHrp then self:_destabilize(curHrp) end
-			end
-		end
-	end)
+                        local goal = self:_getGoal(liveHRP)
+                        self:_stabilize(curHrp, goal)
+                        curHrp.CFrame = goal
+                        task.wait(speed)
+                    end
+                else
+                    local curChar = LocalPlayer.Character
+                    local curHrp = curChar and curChar:FindFirstChild("HumanoidRootPart")
+                    if not curHrp then continue end
+                    
+                    if _G.CatrazHub_Farmer then
+                        _G.CatrazHub_Farmer:CheckObservationHaki()
+                        _G.CatrazHub_Farmer:CheckArmamentHaki()
+                        _G.CatrazHub_Farmer:EquipWeapon(false)
+                        _G.CatrazHub_Farmer:CastSkills(false)
+                    end
+                    
+                    local goal = self:_getGoal(npcHRP)
+                    self:_stabilize(curHrp, goal)
+                    curHrp.CFrame = goal
+                    task.wait(speed)
+                end
+                
+                local curChar = LocalPlayer.Character
+                local curHrp = curChar and curChar:FindFirstChild("HumanoidRootPart")
+                if curHrp then self:_destabilize(curHrp) end
+            end
+        end
+    end)
 end
 
 -- ==========================================
--- || CLASS: Utility / Character Manager
+-- || UTILITY FUNCTIONS
 -- ==========================================
 local Utility = {}
-
 local _utilityConnections = {}
 
 function Utility.EnableAntiAFK()
-	local VirtualUser = game:GetService("VirtualUser")
-	local conn = LocalPlayer.Idled:Connect(function()
-		VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-		task.wait(1)
-		VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-	end)
-	table.insert(_utilityConnections, conn)
+    local VirtualUser = game:GetService("VirtualUser")
+    local conn = LocalPlayer.Idled:Connect(function()
+        VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    end)
+    table.insert(_utilityConnections, conn)
 end
 
 function Utility.EnableAutoRejoin()
-	local TeleportService = game:GetService("TeleportService")
-	local GuiService      = game:GetService("GuiService")
+    local TeleportService = game:GetService("TeleportService")
+    local GuiService = game:GetService("GuiService")
 
-	local conn = GuiService.ErrorMessageChanged:Connect(function()
-		local cfg = _G.FarmConfig
-		if not cfg.AutoRejoin then return end
+    local conn = GuiService.ErrorMessageChanged:Connect(function()
+        local cfg = _G.CatrazConfig.Utility
+        if not cfg.AutoRejoin then return end
 
-		local lastError = GuiService:GetErrorMessage()
-		if lastError:find("CatrazHub Security") then
-			warn("Auto-Rejoin blocked: Security Kick.")
-			return
-		end
+        local lastError = GuiService:GetErrorMessage()
+        if lastError:find("CatrazHub Security") then
+            warn("Auto-Rejoin blocked: Security Kick.")
+            return
+        end
 
-		task.spawn(function()
-			while task.wait(5) do
-				if pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end) then
-					break
-				end
-				task.wait(10)
-			end
-		end)
-	end)
+        task.spawn(function()
+            while task.wait(5) do
+                if pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end) then
+                    break
+                end
+                task.wait(10)
+            end
+        end)
+    end)
 
-	table.insert(_utilityConnections, conn)
+    table.insert(_utilityConnections, conn)
 end
 
 local _timedRejoinRunning = false
 
 function Utility.EnableTimedRejoin()
-	_timedRejoinRunning = false
-	task.wait()
-	_timedRejoinRunning = true
+    _timedRejoinRunning = false
+    task.wait()
+    _timedRejoinRunning = true
 
-	local TeleportService = game:GetService("TeleportService")
+    local TeleportService = game:GetService("TeleportService")
 
-	task.spawn(function()
-		local elapsed = 0
-		while _timedRejoinRunning and task.wait(1) do
-			local cfg = _G.FarmConfig
+    task.spawn(function()
+        local elapsed = 0
+        while _timedRejoinRunning and task.wait(1) do
+            local cfg = _G.CatrazConfig.Utility
 
-			if not cfg.TimedRejoin then
-				elapsed = 0
-				continue
-			end
+            if not cfg.TimedRejoin then
+                elapsed = 0
+                continue
+            end
 
-			elapsed += 1
-			local target = (cfg.RejoinDelay or 10) * 60
-			if elapsed > target then elapsed = target end
+            elapsed += 1
+            local target = (cfg.RejoinDelay or 10) * 60
+            if elapsed > target then elapsed = target end
 
-			if elapsed >= target then
-				elapsed = 0
+            if elapsed >= target then
+                elapsed = 0
+                Notify("Rejoining now (" .. (cfg.RejoinDelay or 10) .. " min timer)...")
+                task.wait(5)
 
-				Notify("Rejoining now (" .. (cfg.RejoinDelay or 10) .. " min timer)...")
-				task.wait(5)
-
-				for _ = 1, 10 do
-					if pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end) then
-						break
-					end
-					task.wait(10)
-				end
-			end
-		end
-	end)
+                for _ = 1, 10 do
+                    if pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end) then
+                        break
+                    end
+                    task.wait(10)
+                end
+            end
+        end
+    end)
 end
 
 function Utility.EnableFriendCheck()
-	local function checkAndKick(player)
-		if not _G.FarmConfig.FriendOnly or player == LocalPlayer then return end
+    local function checkAndKick(player)
+        local cfg = _G.CatrazConfig.Utility
+        if not cfg.FriendOnly or player == LocalPlayer then return end
 
-		local isFriend = false
-		local ok, result = pcall(function() return LocalPlayer:IsFriendsWith(player.UserId) end)
-		if ok then isFriend = result end
+        local isFriend = false
+        local ok, result = pcall(function() return LocalPlayer:IsFriendsWith(player.UserId) end)
+        if ok then isFriend = result end
 
-		if not isFriend then
-			LocalPlayer:Kick(
-				"\n[CatrazHub Security]\nStranger Detected: " .. player.Name
-				.. "\nAuto-Rejoin disabled to prevent looping."
-			)
-		end
-	end
+        if not isFriend then
+            LocalPlayer:Kick(
+                "\n[CatrazHub Security]\nStranger Detected: " .. player.Name
+                .. "\nAuto-Rejoin disabled to prevent looping."
+            )
+        end
+    end
 
-	for _, player in ipairs(Players:GetPlayers()) do
-		checkAndKick(player)
-	end
+    for _, player in ipairs(Players:GetPlayers()) do
+        checkAndKick(player)
+    end
 
-	local conn = Players.PlayerAdded:Connect(checkAndKick)
-	table.insert(_utilityConnections, conn)
+    local conn = Players.PlayerAdded:Connect(checkAndKick)
+    table.insert(_utilityConnections, conn)
 end
 
 function Utility.SetupCharacterEvents(hakiRemote, obsHakiRemote)
-	local function onCharacterAdded(char)
-		char:WaitForChild("HumanoidRootPart", 5)
-		task.wait(1)
-		local cfg = _G.FarmConfig
+    local function onCharacterAdded(char)
+        char:WaitForChild("HumanoidRootPart", 5)
+        task.wait(1)
+        local cfg = _G.CatrazConfig.FarmSettings
 
-		if cfg.AutoHaki then
-			pcall(function() hakiRemote:FireServer("Toggle") end)
-		end
+        if cfg.AutoHaki then
+            pcall(function() hakiRemote:FireServer("Toggle") end)
+        end
 
-		if cfg.AutoObservationHaki then
-			local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-			if playerGui then
-				local cdUI    = playerGui:FindFirstChild("CooldownUI")
-				local hasCD   = cdUI
-					and cdUI:FindFirstChild("MainFrame")
-					and cdUI.MainFrame:FindFirstChild("Cooldown_ObsHaki_Observation") ~= nil
+        if cfg.AutoObservationHaki then
+            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if playerGui then
+                local cdUI = playerGui:FindFirstChild("CooldownUI")
+                local hasCD = cdUI
+                    and cdUI:FindFirstChild("MainFrame")
+                    and cdUI.MainFrame:FindFirstChild("Cooldown_ObsHaki_Observation") ~= nil
 
-				local dodgeUI   = playerGui:FindFirstChild("DodgeCounterUI")
-				local isVisible = dodgeUI
-					and dodgeUI:FindFirstChild("MainFrame")
-					and dodgeUI.MainFrame.Visible
+                local dodgeUI = playerGui:FindFirstChild("DodgeCounterUI")
+                local isVisible = dodgeUI
+                    and dodgeUI:FindFirstChild("MainFrame")
+                    and dodgeUI.MainFrame.Visible
 
-				if not hasCD and not isVisible then
-					pcall(function() obsHakiRemote:FireServer("Toggle") end)
-				end
-			end
-		end
-	end
+                if not hasCD and not isVisible then
+                    pcall(function() obsHakiRemote:FireServer("Toggle") end)
+                end
+            end
+        end
+    end
 
-	local conn = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-	table.insert(_utilityConnections, conn)
+    local conn = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+    table.insert(_utilityConnections, conn)
 
-	if LocalPlayer.Character then
-		task.spawn(onCharacterAdded, LocalPlayer.Character)
-	end
+    if LocalPlayer.Character then
+        task.spawn(onCharacterAdded, LocalPlayer.Character)
+    end
 end
 
 function Utility.Cleanup()
-	_timedRejoinRunning = false
+    _timedRejoinRunning = false
 
-	for _, conn in ipairs(_utilityConnections) do
-		conn:Disconnect()
-	end
-	_utilityConnections = {}
+    for _, conn in ipairs(_utilityConnections) do
+        conn:Disconnect()
+    end
+    _utilityConnections = {}
 end
 
 function Utility.GetWeapons()
-	local weapons = {}
-	local char = LocalPlayer.Character
-	if char then
-		for _, v in ipairs(char:GetChildren()) do
-			if v:IsA("Tool") then table.insert(weapons, v.Name) end
-		end
-	end
-	for _, v in ipairs(LocalPlayer.Backpack:GetChildren()) do
-		if v:IsA("Tool") then table.insert(weapons, v.Name) end
-	end
-	return #weapons > 0 and weapons or { "None" }
+    local weapons = { "None" }
+    local char = LocalPlayer.Character
+    if char then
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("Tool") then
+                table.insert(weapons, v.Name)
+            end
+        end
+    end
+    for _, v in ipairs(LocalPlayer.Backpack:GetChildren()) do
+        if v:IsA("Tool") then
+            table.insert(weapons, v.Name)
+        end
+    end
+    -- Hapus duplikat
+    local seen = {}
+    local unique = {}
+    for _, item in ipairs(weapons) do
+        if not seen[item] then
+            seen[item] = true
+            table.insert(unique, item)
+        end
+    end
+    return unique
 end
 
 -- ==========================================
--- || CODE REDEEMER
--- ==========================================
-local _codeRedeemDone = false
-
-local function RedeemCodes()
-	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-	local ok, CodesConfig = pcall(function()
-		return require(ReplicatedStorage:WaitForChild("CodesConfig", 5))
-	end)
-
-	if not ok or not CodesConfig then
-		warn("[CatrazHub] Code Redeemer: CodesConfig module not found.")
-		return
-	end
-
-	local CodeRedeem = ReplicatedStorage
-		:WaitForChild("RemoteEvents", 5)
-		:FindFirstChild("CodeRedeem")
-
-	if not CodeRedeem then
-		warn("[CatrazHub] Code Redeemer: CodeRedeem remote not found.")
-		return
-	end
-
-	print("[CatrazHub] Starting code auto-redeem...")
-
-	for codeName, _ in pairs(CodesConfig.Codes) do
-		if CodesConfig.IsValid(codeName) then
-			print("[CatrazHub] Redeeming: " .. codeName)
-
-			local success, serverResponse = pcall(function()
-				return CodeRedeem:InvokeServer(codeName)
-			end)
-
-			if success then
-				print("[CatrazHub] Response for " .. codeName .. ":", serverResponse)
-			else
-				warn("[CatrazHub] Error redeeming " .. codeName .. ":", serverResponse)
-			end
-
-			task.wait(0.5)
-		end
-	end
-
-	print("[CatrazHub] Code auto-redeem finished.")
-end
-
--- ==========================================
--- || QUEST MANAGER
--- ==========================================
-local QuestManager = {}
-QuestManager.__index = QuestManager
-
-function QuestManager.new()
-	return setmetatable({ _remote = nil }, QuestManager)
-end
-
-function QuestManager.GetQuestNPCs()
-	local found = {}
-	local serviceNPCs = workspace:FindFirstChild("ServiceNPCs")
-	if not serviceNPCs then return { "None" } end
-
-	for _, child in ipairs(serviceNPCs:GetChildren()) do
-		if child.Name:match("^QuestNPC") then
-			table.insert(found, child.Name)
-		end
-	end
-
-	table.sort(found, function(a, b)
-		local na = tonumber(a:match("%d+$")) or 0
-		local nb = tonumber(b:match("%d+$")) or 0
-		return na < nb
-	end)
-
-	return #found > 0 and found or { "None" }
-end
-
-function QuestManager:AcceptOnce(npcName)
-	if not npcName or npcName == "None" or npcName == "" then
-		warn("[CatrazHub] AcceptOnce: No Quest NPC selected.")
-		return false
-	end
-
-	if not self._remote then
-		local re = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents")
-		self._remote = re and re:FindFirstChild("QuestAccept")
-	end
-
-	if not self._remote then
-		warn("[CatrazHub] QuestAccept remote not found.")
-		return false
-	end
-
-	local ok, err = pcall(function()
-		self._remote:FireServer(npcName)
-	end)
-
-	if ok then
-		print("[CatrazHub] Quest accepted from " .. npcName)
-		return true
-	else
-		warn("[CatrazHub] Quest accept failed:", err)
-		return false
-	end
-end
-
--- ==========================================
--- || NOTIFICATION FUNCTION
+-- || NOTIFICATION
 -- ==========================================
 local function Notify(msg)
-	OrionLib:MakeNotification({
-		Name = "CatrazHub",
-		Content = msg,
-		Image = "info",
-		Time = 2.5
-	})
+    OrionLib:MakeNotification({
+        Name = "CatrazHub",
+        Content = msg,
+        Image = "info",
+        Time = 2.5
+    })
 end
 
 -- ==========================================
 -- || CLEANUP PREVIOUS INSTANCES
 -- ==========================================
-if _G.CatrazHub_Spawner       then _G.CatrazHub_Spawner:Stop()             end
-if _G.CatrazHub_Farmer        then _G.CatrazHub_Farmer:Stop()              end
-if _G.CatrazHub_DungeonFarmer then _G.CatrazHub_DungeonFarmer:Stop()       end
-if _G.CatrazHub_Tracker       then _G.CatrazHub_Tracker:Destroy()          end
+if _G.CatrazHub_Spawner then _G.CatrazHub_Spawner:Stop() end
+if _G.CatrazHub_Farmer then _G.CatrazHub_Farmer:Stop() end
+if _G.CatrazHub_DungeonFarmer then _G.CatrazHub_DungeonFarmer:Stop() end
+if _G.CatrazHub_Tracker then _G.CatrazHub_Tracker:Destroy() end
 Utility.Cleanup()
 
 if _G.CatrazHub_Window then
-	pcall(function() _G.CatrazHub_Window:Destroy() end)
-	_G.CatrazHub_Window = nil
+    pcall(function() _G.CatrazHub_Window:Destroy() end)
+    _G.CatrazHub_Window = nil
 end
 
 -- ==========================================
 -- || REMOTE SETUP
 -- ==========================================
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Remotes           = ReplicatedStorage:WaitForChild("Remotes")
-local RemoteEvents      = ReplicatedStorage:WaitForChild("RemoteEvents")
-local AbilityRemote     = ReplicatedStorage
-	:WaitForChild("AbilitySystem")
-	:WaitForChild("Remotes")
-	:WaitForChild("RequestAbility")
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local RemoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
+local AbilityRemote = ReplicatedStorage
+    :WaitForChild("AbilitySystem")
+    :WaitForChild("Remotes")
+    :WaitForChild("RequestAbility")
 
 local GameRemotes = {
-	Teleport        = Remotes:WaitForChild("TeleportToPortal"),
-	SummonBoss      = Remotes:WaitForChild("RequestSummonBoss"),
-	SpawnStrongest  = Remotes:WaitForChild("RequestSpawnStrongestBoss"),
-	Anos            = Remotes:WaitForChild("RequestSpawnAnosBoss"),
-	TrueAizen       = RemoteEvents:WaitForChild("RequestSpawnTrueAizen"),
-	Rimuru          = RemoteEvents:WaitForChild("RequestSpawnRimuru"),
-	Haki            = RemoteEvents:WaitForChild("HakiRemote"),
-	ObservationHaki = RemoteEvents:WaitForChild("ObservationHakiRemote"),
+    Teleport = Remotes:WaitForChild("TeleportToPortal"),
+    SummonBoss = Remotes:WaitForChild("RequestSummonBoss"),
+    SpawnStrongest = Remotes:WaitForChild("RequestSpawnStrongestBoss"),
+    Anos = Remotes:WaitForChild("RequestSpawnAnosBoss"),
+    TrueAizen = RemoteEvents:WaitForChild("RequestSpawnTrueAizen"),
+    Rimuru = RemoteEvents:WaitForChild("RequestSpawnRimuru"),
+    Haki = RemoteEvents:WaitForChild("HakiRemote"),
+    ObservationHaki = RemoteEvents:WaitForChild("ObservationHakiRemote"),
 }
 
-local Tracker   = EntityTracker.new(workspace:WaitForChild("NPCs"))
-local Spawner   = BossSpawner.new(Tracker, GameRemotes)
-local AutoFarm  = Farmer.new(
-	Tracker,
-	GameRemotes.Teleport,
-	AbilityRemote,
-	GameRemotes.ObservationHaki,
-	GameRemotes.Haki
+local Tracker = EntityTracker.new(workspace:WaitForChild("NPCs"))
+local Spawner = BossSpawner.new(Tracker, GameRemotes)
+local AutoFarm = Farmer.new(
+    Tracker,
+    GameRemotes.Teleport,
+    AbilityRemote,
+    GameRemotes.ObservationHaki,
+    GameRemotes.Haki
 )
-local AutoQuest     = QuestManager.new()
-local DungeonFarm   = DungeonFarmer.new()
+local DungeonFarm = DungeonFarmer.new()
 
-_G.CatrazHub_Tracker       = Tracker
-_G.CatrazHub_Spawner       = Spawner
-_G.CatrazHub_Farmer        = AutoFarm
+_G.CatrazHub_Tracker = Tracker
+_G.CatrazHub_Spawner = Spawner
+_G.CatrazHub_Farmer = AutoFarm
 _G.CatrazHub_DungeonFarmer = DungeonFarm
 
 Utility.EnableAntiAFK()
@@ -1261,12 +1068,12 @@ Utility.SetupCharacterEvents(GameRemotes.Haki, GameRemotes.ObservationHaki)
 print("CatrazHub AutoFarm Initialized Successfully.")
 
 -- ==========================================
--- || CREATE MAIN WINDOW (CATRAZ HUB)
+-- || CREATE MAIN WINDOW
 -- ==========================================
 local Window = OrionLib:MakeWindow({
     Name = "CatrazHub",
     Subtext = "| Sailor Piece",
-    Version = "v2.0",
+    Version = "v3.0",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -1286,9 +1093,7 @@ local Window = OrionLib:MakeWindow({
 })
 
 OrionLib.SelectedTheme = "Ocean"
-
 _G.CatrazHub_Window = Window
-
 Notify("CatrazHub AutoFarm Loaded Successfully!")
 
 -- ==========================================
@@ -1301,23 +1106,9 @@ local MainTab = Window:MakeTab({
     Outline = true
 })
 
-local MobsTab = Window:MakeTab({
-    Name = "Entities",
-    Icon = "ghost",
-    Glass = true,
-    Outline = true
-})
-
-local BossesTab = Window:MakeTab({
-    Name = "Standard Bosses",
+local BossTab = Window:MakeTab({
+    Name = "Boss Spawner",
     Icon = "skull",
-    Glass = true,
-    Outline = true
-})
-
-local SpecialsTab = Window:MakeTab({
-    Name = "Special Bosses",
-    Icon = "star",
     Glass = true,
     Outline = true
 })
@@ -1351,88 +1142,144 @@ local SettingsTab = Window:MakeTab({
 })
 
 -- ==========================================
--- || MAIN TAB
+-- || MAIN TAB - AUTO FARM DENGAN DROPDOWN
 -- ==========================================
-local MainSection1 = MainTab:AddSection({
-    Name = "Auto Farm Settings",
+local FarmSection = MainTab:AddSection({
+    Name = "🎯 AUTO FARM TARGET",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-MainSection1:AddToggle({
-    Name = "Enable Auto Farm",
-    Default = Config.LoopFarm,
-    Color = Color3.fromRGB(65, 105, 225),
+-- Dropdown untuk memilih target
+FarmSection:AddDropdown({
+    Name = "Pilih Target",
+    Default = Config.AutoFarm.SelectedTarget,
+    Options = TargetLists.AllTargets,
+    Multi = false,
+    Search = true,
+    AllowNone = true,
     Outline = true,
-    Flag = "Toggle_LoopFarm",
+    Flag = "Dropdown_TargetSelect",
     Save = true,
     Callback = function(Value)
-        if Value and game.PlaceId ~= 77747658251236 then
-            Notify("Main Auto Farm is only available in Sailor Piece Main Game!")
-            Config.LoopFarm = false
-            return false
+        Config.AutoFarm.SelectedTarget = Value
+        -- Deteksi tipe target
+        for _, npc in ipairs(TargetLists.NPCs) do
+            if npc == Value then
+                Config.AutoFarm.TargetType = "NPC"
+                break
+            end
         end
-        Config.LoopFarm = Value
+        for _, boss in ipairs(TargetLists.Bosses) do
+            if boss == Value then
+                Config.AutoFarm.TargetType = "Boss"
+                break
+            end
+        end
     end
 })
 
-MainSection1:AddSlider({
+-- Toggle Auto Farm
+FarmSection:AddToggle({
+    Name = "Auto Farm ON/OFF",
+    Default = Config.AutoFarm.Enabled,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Toggle_AutoFarm",
+    Save = true,
+    Callback = function(Value)
+        if Value and Config.AutoFarm.SelectedTarget == "None" then
+            Notify("Pilih target terlebih dahulu!")
+            Config.AutoFarm.Enabled = false
+            return false
+        end
+        Config.AutoFarm.Enabled = Value
+        if Value then
+            Notify("Auto Farm Started - Target: " .. Config.AutoFarm.SelectedTarget)
+        else
+            Notify("Auto Farm Stopped")
+        end
+    end
+})
+
+-- Info target
+FarmSection:AddParagraph({
+    Title = "Target Info",
+    Desc = "Target: " .. Config.AutoFarm.SelectedTarget .. "\nType: " .. Config.AutoFarm.TargetType,
+    Image = "info",
+    ImageSize = 38
+})
+
+-- Separator
+FarmSection:AddParagraph({
+    Title = "",
+    Desc = "══════════════════════════",
+    Image = "",
+    ImageSize = 0
+})
+
+-- ==========================================
+-- || MAIN TAB - FARM SETTINGS
+-- ==========================================
+local FarmSettingsSection = MainTab:AddSection({
+    Name = "⚙️ FARM SETTINGS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+FarmSettingsSection:AddSlider({
     Name = "Teleport Delay",
     Min = 0,
     Max = 1,
-    Default = Config.TpTime,
+    Default = Config.FarmSettings.TpTime,
     Increment = 0.1,
     ValueName = "sec",
     Outline = true,
     Flag = "Slider_TpTime",
     Save = true,
-    Callback = function(Value) Config.TpTime = Value end
+    Callback = function(Value) Config.FarmSettings.TpTime = Value end
 })
 
-MainSection1:AddToggle({
-    Name = "Auto Armament Haki",
-    Default = Config.AutoHaki,
-    Color = Color3.fromRGB(65, 105, 225),
+FarmSettingsSection:AddSlider({
+    Name = "NPC Threshold",
+    Min = 1,
+    Max = 10,
+    Default = Config.FarmSettings.NPCAttackThreshold,
+    Increment = 1,
+    ValueName = "count",
     Outline = true,
-    Flag = "Toggle_AutoHaki",
+    Flag = "Slider_NPCThreshold",
     Save = true,
-    Callback = function(Value) Config.AutoHaki = Value end
+    Callback = function(Value) Config.FarmSettings.NPCAttackThreshold = Value end
 })
 
-MainSection1:AddToggle({
-    Name = "Auto Observation Haki",
-    Default = Config.AutoObservationHaki,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Toggle_AutoObsHaki",
-    Save = true,
-    Callback = function(Value) Config.AutoObservationHaki = Value end
-})
-
-local MainSection2 = MainTab:AddSection({
-    Name = "Inventory Management",
+-- ==========================================
+-- || MAIN TAB - WEAPON SELECTION
+-- ==========================================
+local WeaponSection = MainTab:AddSection({
+    Name = "🔧 WEAPON SELECTION",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-MainSection2:AddToggle({
+local weaponsList = Utility.GetWeapons()
+
+WeaponSection:AddToggle({
     Name = "Auto Equip Weapon",
-    Default = Config.AutoEquip,
+    Default = Config.FarmSettings.AutoEquip,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "Toggle_AutoEquip",
     Save = true,
-    Callback = function(Value) Config.AutoEquip = Value end
+    Callback = function(Value) Config.FarmSettings.AutoEquip = Value end
 })
 
--- Weapon dropdowns
-local weaponsList = Utility.GetWeapons()
-
-MainSection2:AddDropdown({
-    Name = "Weapon for NPCs",
-    Default = Config.SelectedWeapon_NPC,
+WeaponSection:AddDropdown({
+    Name = "Weapon untuk NPC",
+    Default = Config.FarmSettings.SelectedWeapon_NPC,
     Options = weaponsList,
     Multi = false,
     Search = true,
@@ -1440,12 +1287,12 @@ MainSection2:AddDropdown({
     Outline = true,
     Flag = "Dropdown_WeaponNPC",
     Save = true,
-    Callback = function(Value) Config.SelectedWeapon_NPC = Value end
+    Callback = function(Value) Config.FarmSettings.SelectedWeapon_NPC = Value end
 })
 
-MainSection2:AddDropdown({
-    Name = "Weapon for Bosses",
-    Default = Config.SelectedWeapon_Boss,
+WeaponSection:AddDropdown({
+    Name = "Weapon untuk Boss",
+    Default = Config.FarmSettings.SelectedWeapon_Boss,
     Options = weaponsList,
     Multi = false,
     Search = true,
@@ -1453,11 +1300,11 @@ MainSection2:AddDropdown({
     Outline = true,
     Flag = "Dropdown_WeaponBoss",
     Save = true,
-    Callback = function(Value) Config.SelectedWeapon_Boss = Value end
+    Callback = function(Value) Config.FarmSettings.SelectedWeapon_Boss = Value end
 })
 
-MainSection2:AddButton({
-    Name = "Refresh Weapon Lists",
+WeaponSection:AddButton({
+    Name = "Refresh Weapon List",
     Icon = "refresh-cw",
     Outline = true,
     Callback = function()
@@ -1466,14 +1313,47 @@ MainSection2:AddButton({
     end
 })
 
-local MainSection3 = MainTab:AddSection({
-    Name = "Auto Skills",
+-- ==========================================
+-- || MAIN TAB - HAKI SETTINGS
+-- ==========================================
+local HakiSection = MainTab:AddSection({
+    Name = "👊 HAKI SETTINGS",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-MainSection3:AddToggle({
+HakiSection:AddToggle({
+    Name = "Auto Armament Haki",
+    Default = Config.FarmSettings.AutoHaki,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Toggle_AutoHaki",
+    Save = true,
+    Callback = function(Value) Config.FarmSettings.AutoHaki = Value end
+})
+
+HakiSection:AddToggle({
+    Name = "Auto Observation Haki",
+    Default = Config.FarmSettings.AutoObservationHaki,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Toggle_AutoObsHaki",
+    Save = true,
+    Callback = function(Value) Config.FarmSettings.AutoObservationHaki = Value end
+})
+
+-- ==========================================
+-- || MAIN TAB - SKILL SETTINGS
+-- ==========================================
+local SkillSection = MainTab:AddSection({
+    Name = "⚡ SKILL SETTINGS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+SkillSection:AddToggle({
     Name = "Use Skills on Bosses",
     Default = Config.AutoSkill.Bosses,
     Color = Color3.fromRGB(65, 105, 225),
@@ -1483,8 +1363,8 @@ MainSection3:AddToggle({
     Callback = function(Value) Config.AutoSkill.Bosses = Value end
 })
 
-MainSection3:AddDropdown({
-    Name = "Boss Skills Selection",
+SkillSection:AddDropdown({
+    Name = "Boss Skills",
     Default = Config.AutoSkill.BossSkills,
     Options = { "Z", "X", "C", "V", "F" },
     Multi = true,
@@ -1496,7 +1376,7 @@ MainSection3:AddDropdown({
     Callback = function(Value) Config.AutoSkill.BossSkills = Value end
 })
 
-MainSection3:AddToggle({
+SkillSection:AddToggle({
     Name = "Use Skills on NPCs",
     Default = Config.AutoSkill.NPCs,
     Color = Color3.fromRGB(65, 105, 225),
@@ -1506,8 +1386,8 @@ MainSection3:AddToggle({
     Callback = function(Value) Config.AutoSkill.NPCs = Value end
 })
 
-MainSection3:AddDropdown({
-    Name = "NPC Skills Selection",
+SkillSection:AddDropdown({
+    Name = "NPC Skills",
     Default = Config.AutoSkill.NPCSkills,
     Options = { "Z", "X", "C", "V", "F" },
     Multi = true,
@@ -1520,120 +1400,16 @@ MainSection3:AddDropdown({
 })
 
 -- ==========================================
--- || MOBS / ENTITIES TAB
+-- || BOSS TAB
 -- ==========================================
-local MobsSection1 = MobsTab:AddSection({
-    Name = "NPC Settings",
+local BossSection1 = BossTab:AddSection({
+    Name = "🤖 STANDARD BOSS SPAWNER",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-MobsSection1:AddSlider({
-    Name = "Wait for NPCs",
-    Min = 1,
-    Max = 5,
-    Default = Config.NPCAttackThreshold,
-    Increment = 1,
-    ValueName = "count",
-    Outline = true,
-    Flag = "Slider_NPCThreshold",
-    Save = true,
-    Callback = function(Value) Config.NPCAttackThreshold = Value end
-})
-
-MobsSection1:AddParagraph({
-    Title = "Info",
-    Desc = "Script will only attack when this many NPCs are gathered.",
-    Image = "info",
-    ImageSize = 38
-})
-
-local MobsSection2 = MobsTab:AddSection({
-    Name = "Entity Targeting",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-MobsSection2:AddParagraph({
-    Title = "NPCs",
-    Desc = "Enable entities to farm",
-    Image = "users",
-    ImageSize = 38
-})
-
-local npcList = { "Hollow", "Quincy", "Swordsman", "AcademyTeacher", "Slime", "StrongSorcerer", "Curse" }
-for _, entityName in ipairs(npcList) do
-    MobsSection2:AddToggle({
-        Name = "Farm " .. entityName,
-        Default = not Config.IgnoredEntities[entityName],
-        Color = Color3.fromRGB(65, 105, 225),
-        Outline = true,
-        Flag = "Mob_" .. entityName,
-        Save = true,
-        Callback = function(Value) Config.IgnoredEntities[entityName] = not Value end
-    })
-end
-
-local MobsSection3 = MobsTab:AddSection({
-    Name = "Timed Bosses",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-local timedBossList = { "Gojo", "Yuji", "Sukuna", "Jinwoo", "Alucard", "Aizen", "Yamato" }
-for _, entityName in ipairs(timedBossList) do
-    MobsSection3:AddToggle({
-        Name = "Farm " .. entityName,
-        Default = not Config.IgnoredEntities[entityName],
-        Color = Color3.fromRGB(65, 105, 225),
-        Outline = true,
-        Flag = "Mob_" .. entityName,
-        Save = true,
-        Callback = function(Value) Config.IgnoredEntities[entityName] = not Value end
-    })
-end
-
-local MobsSection4 = MobsTab:AddSection({
-    Name = "Summon Bosses",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-local summonBossList = { "Saber", "Ichigo", "QinShi", "Gilgamesh", "BlessedMaiden", "SaberAlter", "StrongestinHistory", "StrongestofToday", "Rimuru", "Anos", "TrueAizen" }
-for _, entityName in ipairs(summonBossList) do
-    MobsSection4:AddToggle({
-        Name = "Farm " .. entityName,
-        Default = not Config.IgnoredEntities[entityName],
-        Color = Color3.fromRGB(65, 105, 225),
-        Outline = true,
-        Flag = "Mob_" .. entityName,
-        Save = true,
-        Callback = function(Value) Config.IgnoredEntities[entityName] = not Value end
-    })
-end
-
--- ==========================================
--- || BOSSES TAB
--- ==========================================
-local BossesSection1 = BossesTab:AddSection({
-    Name = "Standard Boss Spawner",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-BossesSection1:AddParagraph({
-    Title = "Info",
-    Desc = "Select one or more bosses. Each selected boss will be spawned independently when not alive.",
-    Image = "info",
-    ImageSize = 38
-})
-
-BossesSection1:AddToggle({
+BossSection1:AddToggle({
     Name = "Auto-Spawn Bosses",
     Default = Config.Boss.AutoSpawn,
     Color = Color3.fromRGB(65, 105, 225),
@@ -1643,8 +1419,8 @@ BossesSection1:AddToggle({
     Callback = function(Value) Config.Boss.AutoSpawn = Value end
 })
 
-BossesSection1:AddDropdown({
-    Name = "Select Bosses (Multi)",
+BossSection1:AddDropdown({
+    Name = "Pilih Boss (Multi)",
     Default = Config.Boss.Selected,
     Options = { "Saber", "Ichigo", "QinShi", "Gilgamesh", "BlessedMaiden", "SaberAlter" },
     Multi = true,
@@ -1656,7 +1432,7 @@ BossesSection1:AddDropdown({
     Callback = function(Value) Config.Boss.Selected = Value end
 })
 
-BossesSection1:AddDropdown({
+BossSection1:AddDropdown({
     Name = "Difficulty",
     Default = Config.Boss.Difficulty,
     Options = { "Normal", "Medium", "Hard", "Extreme" },
@@ -1669,27 +1445,17 @@ BossesSection1:AddDropdown({
     Callback = function(Value) Config.Boss.Difficulty = Value end
 })
 
--- ==========================================
--- || SPECIALS TAB
--- ==========================================
-local SpecialsSection = SpecialsTab:AddSection({
-    Name = "Special Boss Spawners",
+local BossSection2 = BossTab:AddSection({
+    Name = "⭐ SPECIAL BOSS SPAWNERS",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-SpecialsSection:AddParagraph({
-    Title = "Info",
-    Desc = "Configure auto-spawning for special bosses.",
-    Image = "info",
-    ImageSize = 38
-})
-
 local difficultyLevels = { "Normal", "Medium", "Hard", "Extreme" }
 
 for bossName, bossData in pairs(Config.Specials) do
-    SpecialsSection:AddToggle({
+    BossSection2:AddToggle({
         Name = "Auto Spawn " .. bossName,
         Default = bossData.Auto,
         Color = Color3.fromRGB(65, 105, 225),
@@ -1699,7 +1465,7 @@ for bossName, bossData in pairs(Config.Specials) do
         Callback = function(Value) Config.Specials[bossName].Auto = Value end
     })
 
-    SpecialsSection:AddDropdown({
+    BossSection2:AddDropdown({
         Name = bossName .. " Difficulty",
         Default = bossData.Diff,
         Options = difficultyLevels,
@@ -1717,21 +1483,14 @@ end
 -- || DUNGEON TAB
 -- ==========================================
 local DungeonSection1 = DungeonTab:AddSection({
-    Name = "Dungeon Auto Farm",
+    Name = "🏰 DUNGEON AUTO FARM",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-DungeonSection1:AddParagraph({
-    Title = "Info",
-    Desc = "Loops through workspace.NPCs. Bosses are attacked until dead; regular NPCs are hit once and skipped.",
-    Image = "info",
-    ImageSize = 38
-})
-
 DungeonSection1:AddToggle({
-    Name = "Enable Dungeon Auto Farm",
+    Name = "Enable Dungeon Farm",
     Default = Config.DungeonFarm.Enabled,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -1780,14 +1539,14 @@ DungeonSection1:AddSlider({
 })
 
 local DungeonSection2 = DungeonTab:AddSection({
-    Name = "Auto Run",
+    Name = "🔄 AUTO RUN",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
 DungeonSection2:AddToggle({
-    Name = "Auto Replay Dungeon",
+    Name = "Auto Replay",
     Default = Config.DungeonFarm.AutoReplay,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -1797,7 +1556,7 @@ DungeonSection2:AddToggle({
 })
 
 DungeonSection2:AddToggle({
-    Name = "Auto Vote Dungeon",
+    Name = "Auto Vote",
     Default = Config.DungeonFarm.AutoVote,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -1820,268 +1579,16 @@ DungeonSection2:AddDropdown({
 })
 
 -- ==========================================
--- || CRAFTING TAB FUNCTIONS
+-- || CRAFTING TAB (SEDERHANA)
 -- ==========================================
-local function GetItemQuantity(itemName)
-	local player = game:GetService("Players").LocalPlayer
-	local playerGui = player:FindFirstChild("PlayerGui")
-	if not playerGui then return 0 end
-	
-	local inventoryUI = playerGui:FindFirstChild("InventoryPanelUI")
-	if not inventoryUI then return 0 end
-	
-	local storage = inventoryUI:FindFirstChild("MainFrame")
-		and inventoryUI.MainFrame:FindFirstChild("Frame")
-		and inventoryUI.MainFrame.Frame:FindFirstChild("Content")
-		and inventoryUI.MainFrame.Frame.Content:FindFirstChild("Holder")
-		and inventoryUI.MainFrame.Frame.Content.Holder:FindFirstChild("StorageHolder")
-		and inventoryUI.MainFrame.Frame.Content.Holder.StorageHolder:FindFirstChild("Storage")
-		
-	if not storage then return 0 end
-
-	local itemFrame = storage:FindFirstChild("Item_" .. itemName)
-	if not itemFrame then return 0 end
-
-	local quantityText = itemFrame:FindFirstChild("Slot")
-		and itemFrame.Slot:FindFirstChild("Holder")
-		and itemFrame.Slot.Holder:FindFirstChild("Quantity")
-		
-	if quantityText and (quantityText:IsA("TextLabel") or quantityText:IsA("TextBox")) then
-		local text = quantityText.Text
-		local num = text:match("x(%d+)") or text:match("%d+")
-		return tonumber(num) or 0
-	end
-	return 0
-end
-
-local function CheckSetAmount(setName)
-	local setInfo = CONSTANTS.CraftingSets[setName]
-	if not setInfo then return 0, 0, 0 end
-
-	local normalReqs = {}
-	local skillReqs = {}
-	local combinedReqs = {}
-	
-	if setInfo.Items then
-		for _, req in ipairs(setInfo.Items) do
-			local itemName = req[1]
-			local requiredAmt = req[2]
-			normalReqs[itemName] = (normalReqs[itemName] or 0) + requiredAmt
-			combinedReqs[itemName] = (combinedReqs[itemName] or 0) + requiredAmt
-		end
-	end
-	
-	if setInfo.SkillUnlock then
-		if type(setInfo.SkillUnlock[1]) == "table" then
-			for _, req in ipairs(setInfo.SkillUnlock) do
-				local itemName = req[1]
-				local requiredAmt = req[2]
-				skillReqs[itemName] = (skillReqs[itemName] or 0) + requiredAmt
-				combinedReqs[itemName] = (combinedReqs[itemName] or 0) + requiredAmt
-			end
-		else
-			local itemName = setInfo.SkillUnlock[1]
-			local requiredAmt = setInfo.SkillUnlock[2]
-			skillReqs[itemName] = (skillReqs[itemName] or 0) + requiredAmt
-			combinedReqs[itemName] = (combinedReqs[itemName] or 0) + requiredAmt
-		end
-	end
-
-	local function calcMaxSets(reqsDict)
-		local maxSets = math.huge
-		local hasReqs = false
-		for itemName, requiredAmt in pairs(reqsDict) do
-			hasReqs = true
-			local hasAmt = GetItemQuantity(itemName)
-			local canMake = math.floor(hasAmt / requiredAmt)
-			if canMake < maxSets then
-				maxSets = canMake
-			end
-		end
-		return hasReqs and (maxSets == math.huge and 0 or maxSets) or 0
-	end
-
-	local normalSets = calcMaxSets(normalReqs)
-	local skillSets = calcMaxSets(skillReqs)
-	local combinedSets = calcMaxSets(combinedReqs)
-
-	return normalSets, skillSets, combinedSets
-end
-
--- ==========================================
--- || CRAFTING TAB
--- ==========================================
-local CraftingSection1 = CraftingTab:AddSection({
-    Name = "Crafting Calculator",
+local CraftSection = CraftingTab:AddSection({
+    Name = "🔨 AUTO CRAFT",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-CraftingSection1:AddParagraph({
-    Title = "Warning",
-    Desc = "⚠️ You must open inventory in items tabs only. And make every materials visible.",
-    Image = "alert-triangle",
-    ImageSize = 38
-})
-
-local craftingSetKeys = {}
-for k, _ in pairs(CONSTANTS.CraftingSets) do table.insert(craftingSetKeys, k) end
-
-local selectedSet = "StrongestinHistory"
-
-CraftingSection1:AddDropdown({
-    Name = "Select Set",
-    Default = selectedSet,
-    Options = craftingSetKeys,
-    Multi = false,
-    Search = true,
-    AllowNone = false,
-    Outline = true,
-    Flag = "Dropdown_CraftingSet",
-    Save = true,
-    Callback = function(Value) selectedSet = Value end
-})
-
-local setAmountParagraph = CraftingSection1:AddParagraph({
-    Title = "Craftable Amount",
-    Desc = "Can create: 0 sets\n(Select a set and check amount)",
-    Image = "package",
-    ImageSize = 38
-})
-
-CraftingSection1:AddButton({
-    Name = "Check Amount",
-    Icon = "search",
-    Outline = true,
-    Callback = function()
-		local setInfo = CONSTANTS.CraftingSets[selectedSet]
-		if not setInfo then return end
-
-		local normalSets, skillSets, combinedSets = CheckSetAmount(selectedSet)
-		local details = ""
-		
-		if setInfo.SkillUnlock then
-			details = "Can create:\n- Normal Sets: " .. normalSets .. "\n- SkillUnlock Sets: " .. skillSets .. "\n- Combined Sets: " .. combinedSets .. "\n"
-		else
-			details = "Can create:\n- Normal Sets: " .. normalSets .. "\n"
-		end
-		
-		if setInfo.Items then
-			details = details .. "\nNormal Items:"
-			for _, req in ipairs(setInfo.Items) do
-				local itemName = req[1]
-				local requiredAmt = req[2]
-				local hasAmt = GetItemQuantity(itemName)
-				details = details .. "\n- " .. itemName .. ": " .. hasAmt .. " / " .. requiredAmt
-			end
-		end
-
-		if setInfo.SkillUnlock then
-			details = details .. "\n\nSkill Unlock:"
-			
-			if type(setInfo.SkillUnlock[1]) == "table" then
-				for _, unlockReq in ipairs(setInfo.SkillUnlock) do
-					local unlockItem = unlockReq[1]
-					local unlockReqAmt = unlockReq[2]
-					local unlockHasAmt = GetItemQuantity(unlockItem)
-					local status = unlockHasAmt >= unlockReqAmt and "✅" or "❌"
-					details = details .. "\n- " .. unlockItem .. ": " .. unlockHasAmt .. " / " .. unlockReqAmt .. " " .. status
-				end
-			else
-				local unlockItem = setInfo.SkillUnlock[1]
-				local unlockReqAmt = setInfo.SkillUnlock[2]
-				local unlockHasAmt = GetItemQuantity(unlockItem)
-				local status = unlockHasAmt >= unlockReqAmt and "✅ (Unlocked)" or "❌ (Locked)"
-				details = details .. "\n- " .. unlockItem .. ": " .. unlockHasAmt .. " / " .. unlockReqAmt .. " " .. status
-			end
-		end
-		
-		if setAmountParagraph.SetDesc then
-			setAmountParagraph:SetDesc(details)
-		end
-		
-		local notifyText = "Normal: " .. normalSets
-		if setInfo.SkillUnlock then
-			notifyText = notifyText .. " | Combined: " .. combinedSets
-		end
-
-		Notify(notifyText)
-	end
-})
-
-local CraftingSection2 = CraftingTab:AddSection({
-    Name = "Craft Items",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-local craftAmount = 1
-
-CraftingSection2:AddTextbox({
-    Name = "Amount to Craft",
-    Default = "1",
-    Numeric = true,
-    Outline = true,
-    Flag = "Input_CraftAmount",
-    Save = true,
-    Callback = function(Value)
-		local num = tonumber(Value)
-		if num and num > 0 then
-			craftAmount = num
-		else
-			craftAmount = 1
-		end
-	end
-})
-
-CraftingSection2:AddButton({
-    Name = "Craft SlimeKey",
-    Icon = "hammer",
-    Outline = true,
-    Callback = function()
-		task.spawn(function()
-			local args = { "SlimeKey", craftAmount }
-			local ok, err = pcall(function()
-				game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestSlimeCraft"):InvokeServer(unpack(args))
-			end)
-			if ok then
-				Notify("Requested " .. craftAmount .. "x SlimeKey.")
-			else
-				warn("[CatrazHub] SlimeKey Craft Error:", err)
-			end
-		end)
-	end
-})
-
-CraftingSection2:AddButton({
-    Name = "Craft Divine Grail",
-    Icon = "hammer",
-    Outline = true,
-    Callback = function()
-		task.spawn(function()
-			local args = { "DivineGrail", craftAmount }
-			local ok, err = pcall(function()
-				game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestGrailCraft"):InvokeServer(unpack(args))
-			end)
-			if ok then
-				Notify("Requested " .. craftAmount .. "x Divine Grail.")
-			else
-				warn("[CatrazHub] Divine Grail Craft Error:", err)
-			end
-		end)
-	end
-})
-
-local CraftingSection3 = CraftingTab:AddSection({
-    Name = "Auto Crafting",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-CraftingSection3:AddToggle({
+CraftSection:AddToggle({
     Name = "Auto Craft SlimeKey",
     Default = Config.AutoCraft.SlimeKey,
     Color = Color3.fromRGB(65, 105, 225),
@@ -2091,7 +1598,7 @@ CraftingSection3:AddToggle({
     Callback = function(Value) Config.AutoCraft.SlimeKey = Value end
 })
 
-CraftingSection3:AddToggle({
+CraftSection:AddToggle({
     Name = "Auto Craft Divine Grail",
     Default = Config.AutoCraft.DivineGrail,
     Color = Color3.fromRGB(65, 105, 225),
@@ -2101,29 +1608,11 @@ CraftingSection3:AddToggle({
     Callback = function(Value) Config.AutoCraft.DivineGrail = Value end
 })
 
--- Auto Craft loop
-task.spawn(function()
-	while task.wait(5) do
-		if Config.AutoCraft.SlimeKey then
-			pcall(function()
-				local args = { "SlimeKey", 1 }
-				game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestSlimeCraft"):InvokeServer(unpack(args))
-			end)
-		end
-		if Config.AutoCraft.DivineGrail then
-			pcall(function()
-				local args = { "DivineGrail", 1 }
-				game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("RequestGrailCraft"):InvokeServer(unpack(args))
-			end)
-		end
-	end
-end)
-
 -- ==========================================
 -- || MISC TAB
 -- ==========================================
 local MiscSection1 = MiscTab:AddSection({
-    Name = "Code Redeemer",
+    Name = "🎁 CODE REDEEMER",
     TextSize = 18,
     Glass = true,
     Outline = true
@@ -2133,148 +1622,81 @@ MiscSection1:AddButton({
     Name = "Redeem Active Codes",
     Icon = "gift",
     Outline = true,
-    Callback = function()
-		task.spawn(RedeemCodes)
-	end
-})
-
-local MiscSection2 = MiscTab:AddSection({
-    Name = "Get Quest",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-local questNPCList = QuestManager.GetQuestNPCs()
-
-MiscSection2:AddDropdown({
-    Name = "Quest NPC",
-    Default = questNPCList[1],
-    Options = questNPCList,
-    Multi = false,
-    Search = true,
-    AllowNone = true,
-    Outline = true,
-    Flag = "Dropdown_QuestNPC",
-    Save = true,
-    Callback = function(Value) Config.AutoQuest.SelectedNPC = Value end
-})
-
-MiscSection2:AddButton({
-    Name = "Refresh Quest NPC List",
-    Icon = "refresh-cw",
-    Outline = true,
-    Callback = function()
-		local fresh = QuestManager.GetQuestNPCs()
-		Notify("Found " .. #fresh .. " Quest NPC(s).")
-	end
-})
-
-MiscSection2:AddButton({
-    Name = "Get Quest",
-    Icon = "check-circle",
-    Outline = true,
-    Callback = function()
-		task.spawn(function()
-			AutoQuest:AcceptOnce(Config.AutoQuest.SelectedNPC)
-		end)
-	end
+    Callback = RedeemCodes
 })
 
 -- ==========================================
 -- || SETTINGS TAB
 -- ==========================================
-local SettingsSection1 = SettingsTab:AddSection({
-    Name = "Script Utilities",
+local UtilSection = SettingsTab:AddSection({
+    Name = "🛠️ UTILITY SETTINGS",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-SettingsSection1:AddToggle({
+UtilSection:AddToggle({
     Name = "WhiteScreen Mode",
-    Default = Config.WhiteScreen,
+    Default = Config.Utility.WhiteScreen,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "Toggle_WhiteScreen",
     Save = true,
     Callback = function(Value)
-		Config.WhiteScreen = Value
-		game:GetService("RunService"):Set3dRenderingEnabled(not Value)
-		if Value then
-			Notify("WhiteScreen Mode Active.")
-		end
-	end
+        Config.Utility.WhiteScreen = Value
+        game:GetService("RunService"):Set3dRenderingEnabled(not Value)
+        if Value then Notify("WhiteScreen Mode Active.") end
+    end
 })
 
-SettingsSection1:AddToggle({
-    Name = "Auto Rejoin on Disconnect",
-    Default = Config.AutoRejoin,
+UtilSection:AddToggle({
+    Name = "Auto Rejoin",
+    Default = Config.Utility.AutoRejoin,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "Toggle_AutoRejoin",
     Save = true,
-    Callback = function(Value) Config.AutoRejoin = Value end
+    Callback = function(Value) Config.Utility.AutoRejoin = Value end
 })
 
-SettingsSection1:AddToggle({
-    Name = "Friend-Only Mode (Anti-Stranger)",
-    Default = Config.FriendOnly,
+UtilSection:AddToggle({
+    Name = "Friend-Only Mode",
+    Default = Config.Utility.FriendOnly,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "Toggle_FriendOnly",
     Save = true,
-    Callback = function(Value)
-		Config.FriendOnly = Value
-		if Value then
-			for _, player in ipairs(game.Players:GetPlayers()) do
-				if player ~= LocalPlayer then
-					local isFriend = false
-					pcall(function() isFriend = LocalPlayer:IsFriendsWith(player.UserId) end)
-					if not isFriend then
-						LocalPlayer:Kick("[CatrazHub Security] Friend-Only Mode Enabled: Stranger found.")
-					end
-				end
-			end
-		end
-	end
+    Callback = function(Value) Config.Utility.FriendOnly = Value end
 })
 
-local SettingsSection2 = SettingsTab:AddSection({
-    Name = "Timed Auto Rejoin",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-SettingsSection2:AddToggle({
-    Name = "Timed Auto Rejoin",
-    Default = Config.TimedRejoin,
+UtilSection:AddToggle({
+    Name = "Timed Rejoin",
+    Default = Config.Utility.TimedRejoin,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "Toggle_TimedRejoin",
     Save = true,
-    Callback = function(Value) Config.TimedRejoin = Value end
+    Callback = function(Value) Config.Utility.TimedRejoin = Value end
 })
 
-SettingsSection2:AddSlider({
+UtilSection:AddSlider({
     Name = "Rejoin Interval (minutes)",
     Min = 1,
     Max = 120,
-    Default = Config.RejoinDelay,
+    Default = Config.Utility.RejoinDelay,
     Increment = 1,
     ValueName = "min",
     Outline = true,
     Flag = "Slider_RejoinDelay",
     Save = true,
-    Callback = function(Value) Config.RejoinDelay = Value end
+    Callback = function(Value) Config.Utility.RejoinDelay = Value end
 })
 
 -- ==========================================
--- || FLY HEIGHT SETTINGS (TAMBAHAN)
+-- || FLY MODE SETTINGS
 -- ==========================================
 local FlySection = SettingsTab:AddSection({
-    Name = "🚀 Fly Mode Settings",
+    Name = "🚀 FLY MODE SETTINGS",
     TextSize = 18,
     Glass = true,
     Outline = true
@@ -2303,35 +1725,8 @@ FlySection:AddSlider({
     Callback = function(Value) Config.FlyHeight.Offset = Value end
 })
 
-FlySection:AddToggle({
-    Name = "Use Fly Mode for NPCs",
-    Default = Config.FlyHeight.UseForNPCs,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Toggle_FlyNPC",
-    Save = true,
-    Callback = function(Value) Config.FlyHeight.UseForNPCs = Value end
-})
-
-FlySection:AddToggle({
-    Name = "Use Fly Mode for Bosses",
-    Default = Config.FlyHeight.UseForBosses,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "Toggle_FlyBoss",
-    Save = true,
-    Callback = function(Value) Config.FlyHeight.UseForBosses = Value end
-})
-
-FlySection:AddParagraph({
-    Title = "Info",
-    Desc = "Aktifkan mode terbang untuk farming yang lebih aman.\nSesuaikan ketinggian sesuai kebutuhan.",
-    Image = "info",
-    ImageSize = 38
-})
-
 -- ==========================================
--- || ADD CONFIG TAB
+-- || CONFIG TAB
 -- ==========================================
 Window:AddConfigTab({
     Name = "Config",
@@ -2343,18 +1738,9 @@ Window:AddConfigTab({
 -- ==========================================
 OrionLib:Init()
 
--- Start loops
+-- Start services
 Spawner:Start()
 AutoFarm:Start()
 DungeonFarm:Start()
 
--- Auto-redeem on load (once per session)
-if not _codeRedeemDone then
-	_codeRedeemDone = true
-	task.spawn(function()
-		task.wait(2)
-		RedeemCodes()
-	end)
-end
-
-Notify("CatrazHub AutoFarm Loaded. Don't forget to refresh and select your weapon!")
+Notify("CatrazHub Ready! Pilih target di Main Tab lalu nyalakan Auto Farm.")
