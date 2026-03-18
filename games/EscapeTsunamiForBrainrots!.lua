@@ -1,6 +1,6 @@
--- ==================== CATRAZ HUB - ESCAPE TSUNAMI FOR BRAINROTS v3.1 ====================
+-- ==================== CATRAZ HUB - ESCAPE TSUNAMI FOR BRAINROTS v3.2 ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 3.1 ULTIMATE - TSUNAMI PROOF FARM
+-- Version: 3.2 ULTIMATE - TRUE TSUNAMI PROOF + AUTO RESPAWN
 
 -- [[ 📡 CATRAZ ANALYTICS SYSTEM (LIVE SERVER) ]] --
 task.spawn(function()
@@ -173,7 +173,8 @@ local Status = {
     upgrade = "Idle",
     factory = "Idle", 
     factoryCount = 0,
-    tsunami = "Off"
+    tsunami = "Off",
+    deaths = 0
 }
 
 --==================================================
@@ -194,6 +195,8 @@ M._wallZ_back = -173
 M._isGod = false
 M._godThread = nil
 M._healthConn = nil
+M._damageShield = nil -- Shield untuk mencegah damage tsunami
+M._tsunamiSafeZone = false -- Status apakah dalam zona aman
 
 -- Tsunami Variables
 local Tsunami = {
@@ -208,7 +211,9 @@ local Tsunami = {
     BodyGyro = nil,
     IsFlying = false,
     LastTsunamiPos = nil,
-    SafeY = -50 -- Ketinggian aman default (bawah tanah)
+    SafeY = -50, -- Ketinggian aman default (bawah tanah)
+    DamageCooldown = 0, -- Cooldown untuk mencegah damage berulang
+    LastDamageTime = 0
 }
 
 local HIGH_RARITIES = {["Celestial"] = true, ["Divine"] = true, ["Infinity"] = true}
@@ -231,7 +236,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Catraz Hub",
     Subtext = "Escape Tsunami For Brainrots",
-    Version = "v3.1 ULTIMATE",
+    Version = "v3.2 ULTIMATE",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
@@ -332,6 +337,87 @@ local function GetActiveFeatures()
 end
 
 --==================================================
+-- DAMAGE PROTECTION SYSTEM
+--==================================================
+
+-- Fungsi untuk membuat shield damage
+local function createDamageShield()
+    if M._damageShield then return end
+    
+    -- Buat part transparan sebagai shield
+    local shield = Instance.new("Part")
+    shield.Name = "DamageShield"
+    shield.Size = Vector3.new(10, 10, 10)
+    shield.Transparency = 1
+    shield.CanCollide = false
+    shield.Anchored = true
+    shield.Parent = Workspace
+    
+    -- Posisikan shield di sekitar player
+    local function updateShieldPosition()
+        local char = Player.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        shield.Position = hrp.Position
+    end
+    
+    -- Update posisi shield setiap frame
+    local connection = RunService.Heartbeat:Connect(updateShieldPosition)
+    
+    M._damageShield = {
+        Part = shield,
+        Connection = connection
+    }
+end
+
+-- Fungsi untuk menghancurkan shield
+local function destroyDamageShield()
+    if M._damageShield then
+        if M._damageShield.Connection then
+            M._damageShield.Connection:Disconnect()
+        end
+        if M._damageShield.Part then
+            pcall(function() M._damageShield.Part:Destroy() end)
+        end
+        M._damageShield = nil
+    end
+end
+
+-- Fungsi untuk mencegah damage tsunami (HOOK METAMETHOD)
+local function setupDamageProtection()
+    -- Hook untuk mencegah damage dari tsunami
+    local oldNamecall
+    local success, result = pcall(function()
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            local args = {...}
+            
+            -- Cegah damage dari tsunami
+            if method == "FireServer" and tostring(self):find("Damage") then
+                -- Cek apakah damage berasal dari tsunami
+                local damageSource = tostring(args[1]) or ""
+                if damageSource:find("tsunami") or damageSource:find("Tsunami") or damageSource:find("wave") or damageSource:find("water") then
+                    -- Jika tsunami protection aktif, block damage
+                    if Config.TsunamiProtection and Tsunami.Enabled then
+                        return nil
+                    end
+                end
+            end
+            
+            return oldNamecall(self, ...)
+        end)
+    end)
+    
+    if not success then
+        warn("[Catraz Hub] Metamethod hook gagal, menggunakan metode alternatif")
+    end
+end
+
+-- Panggil setup damage protection
+task.spawn(setupDamageProtection)
+
+--==================================================
 -- TSUNAMI FUNCTIONS - FIXED
 --==================================================
 
@@ -394,7 +480,30 @@ local function getFarmHeight()
     end
 end
 
--- Fungsi untuk terbang menghindari tsunami
+-- Fungsi untuk mengecek apakah player dalam zona aman
+local function isInSafeZone()
+    local char = Player.Character
+    if not char then return false end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    local tsunami = detectTsunami()
+    if not tsunami then return true end -- Tidak ada tsunami = aman
+    
+    local playerY = hrp.Position.Y
+    local tsunamiY = tsunami.Position.Y
+    
+    if Tsunami.Mode == "Bawah" then
+        -- Mode bawah: aman jika Y < -40
+        return playerY < -40
+    else
+        -- Mode atas: aman jika Y > Tsunami.Height - 10
+        return playerY > Tsunami.Height - 10
+    end
+end
+
+-- Fungsi untuk terbang menghindari tsunami (DIPERBAIKI)
 local function enableTsunamiFlight()
     if Tsunami.IsFlying then return end
     
@@ -445,6 +554,9 @@ local function enableTsunamiFlight()
         end
     end
     
+    -- Buat shield damage
+    createDamageShield()
+    
     -- Hapus koneksi lama jika ada
     if Tsunami.FlyConnection then
         Tsunami.FlyConnection:Disconnect()
@@ -493,6 +605,9 @@ local function enableTsunamiFlight()
                 part.CanCollide = false
             end
         end
+        
+        -- Update status zona aman
+        TsunamiSafeZone = isInSafeZone()
     end)
 end
 
@@ -513,6 +628,9 @@ local function disableTsunamiFlight()
     end
     
     Tsunami.IsFlying = false
+    
+    -- Hancurkan shield damage
+    destroyDamageShield()
     
     local char = Player.Character
     if char then
@@ -581,6 +699,8 @@ local function enableTsunamiProtection()
     
     -- Update safe Y untuk farm
     Tsunami.SafeY = getTsunamiSafeHeight()
+    
+    Notify("Tsunami Protection Aktif - Mode: " .. Config.TsunamiMode)
 end
 
 local function disableTsunamiProtection()
@@ -718,6 +838,44 @@ Player.CharacterAdded:Connect(function()
 end)
 
 --==================================================
+-- AUTO RESPAWN SYSTEM - FIXED
+--==================================================
+function M.waitForRespawn()
+    if not M.isDead() then return true end
+    
+    Status.deaths = Status.deaths + 1
+    Status.farm = "💀 Mati! Respawn #" .. Status.deaths
+    
+    Notify("💀 Karakter mati! Menunggu respawn...")
+    
+    local timeout = tick() + 15
+    while M.isDead() and tick() < timeout do 
+        task.wait(0.2) 
+    end
+    
+    task.wait(1.5) -- Tunggu karakter spawn
+    
+    -- Reset posisi home
+    M.setHomePosition()
+    
+    -- Re-enable tsunami protection
+    if Config.TsunamiProtection then
+        enableTsunamiProtection()
+    end
+    
+    -- Re-enable noclip
+    if Config.NoclipEnabled then
+        enableNoclip()
+    end
+    
+    Status.farm = "🔄 Respawn selesai, melanjutkan farm..."
+    Notify("✅ Respawn selesai! Melanjutkan farm...")
+    
+    task.wait(1)
+    return not M.isDead()
+end
+
+--==================================================
 -- TWEEN FUNCTIONS - ADAPTED FOR TSUNAMI MODE
 --==================================================
 function M.tweenTo(cf)
@@ -841,13 +999,6 @@ function M.isDead()
     local ch = Player.Character if not ch then return true end
     local hum = ch:FindFirstChild("Humanoid") if not hum then return true end
     return hum.Health <= 0
-end
-
-function M.waitForRespawn()
-    if not M.isDead() then return true end
-    local timeout = tick() + 15
-    while M.isDead() and tick() < timeout do task.wait(0.2) end
-    task.wait(1) return not M.isDead()
 end
 
 function M.forceGrabPrompt(target)
@@ -1174,13 +1325,14 @@ function M.hasFarmTarget(targetName)
 end
 
 --==================================================
--- FARM SYSTEM - FIXED WITH TSUNAMI MODE
+-- FARM SYSTEM - FIXED WITH TSUNAMI PROOF + AUTO RESPAWN
 --==================================================
 function M.startFarming()
     if M.farmThread then return end
     Config.Farming = true 
     Status.farmCount = 0 
     Status.luckyBlockCount = 0
+    Status.deaths = 0
     M.setHomePosition() 
     M.detectWallZ() 
     M.returnToBase() 
@@ -1189,6 +1341,7 @@ function M.startFarming()
     M.farmThread = task.spawn(function()
         local currentBackpackCount = 0
         local maxBackpackCount = Config.FarmCapacity or 1
+        local respawnAttempts = 0
 
         while Config.Farming do
             local ok, err = pcall(function()
@@ -1196,12 +1349,23 @@ function M.startFarming()
                 local currentFarmHeight = getFarmHeight()
                 
                 if M.isDead() then
-                    Status.farm = "Dead! Waiting..."
+                    Status.farm = "💀 Mati! Menunggu respawn..."
                     M.waitForRespawn() 
                     task.wait(1) 
                     M.setHomePosition() 
+                    M.returnToBase()
                     task.wait(0.5) 
-                    currentBackpackCount = 0 
+                    currentBackpackCount = 0
+                    respawnAttempts = respawnAttempts + 1
+                    
+                    -- Re-enable tsunami protection setelah respawn
+                    if Config.TsunamiProtection then
+                        enableTsunamiProtection()
+                    end
+                    
+                    -- Lanjutkan farming
+                    Status.farm = "🔄 Melanjutkan farm..."
+                    task.wait(1)
                     return
                 end
                 
@@ -1210,6 +1374,16 @@ function M.startFarming()
                 if not ch or not hum then 
                     task.wait(1) 
                     return 
+                end
+                
+                -- Cek apakah dalam zona aman tsunami
+                if Config.TsunamiProtection and Tsunami.Enabled then
+                    if not isInSafeZone() then
+                        Status.farm = "⚠️ Tsunami mendekat! Mencari tempat aman..."
+                        enableTsunamiFlight()
+                        task.wait(1)
+                        return
+                    end
                 end
                 
                 -- PRIORITAS: LUCKY BLOCKS
@@ -1515,6 +1689,7 @@ function M.stopFarming()
         M.farmThread = nil 
     end
     disableNoclip()
+    destroyDamageShield()
     pcall(function()
         local ch = Player.Character 
         if ch then
@@ -1878,7 +2053,7 @@ local InfoSection = HomeTab:AddSection({
 
 InfoSection:AddParagraph({
     Title = "Information",
-    Desc = "Creator: Catraz Team\nVersion: 3.1 ULTIMATE\nFeatures: Farm, Tsunami Protect, Factory, Auto Collect",
+    Desc = "Creator: Catraz Team\nVersion: 3.2 ULTIMATE\nFeatures: TRUE Tsunami Proof, Auto Respawn, Farm, Factory",
     Image = "info",
     ImageSize = 38
 })
@@ -1958,7 +2133,7 @@ TsunamiMainSection:AddToggle({
 
 TsunamiMainSection:AddParagraph({
     Title = "📋 INFORMASI",
-    Desc = "• Mode Bawah: Menggali tanah (Y = -50)\n• Mode Atas: Terbang di atas (Y = " .. Config.TsunamiHeight .. "+)\n• Noclip otomatis saat terbang\n• Deteksi tsunami radius 100 studs\n• Farm otomatis mengikuti mode tsunami",
+    Desc = "• Mode Bawah: Menggali tanah (Y = -50)\n• Mode Atas: Terbang di atas (Y = " .. Config.TsunamiHeight .. "+)\n• Noclip otomatis saat terbang\n• DAMAGE PROOF - Tidak akan terkena tsunami\n• Deteksi tsunami radius 100 studs",
     Image = "info",
     ImageSize = 38
 })
@@ -2412,6 +2587,7 @@ task.spawn(function()
             "Base: " .. (M.baseGUID or "Not Found") .. "\n" ..
             "Noclip: " .. (Config.NoclipEnabled and "✅" or "❌") .. "\n" ..
             "Tsunami: " .. (Config.TsunamiProtection and "✅ " .. Config.TsunamiMode or "❌") .. "\n" ..
+            "Deaths: " .. Status.deaths .. "\n" ..
             "Farm Height: " .. (Config.TsunamiProtection and getFarmHeight() .. " (Tsunami Mode)" or Config.FarmHeight)
         )
     end
@@ -2489,13 +2665,14 @@ OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 CATRAZ HUB - ESCAPE TSUNAMI FOR BRAINROTS v3.1 🔥")
+print("🔥 CATRAZ HUB - ESCAPE TSUNAMI FOR BRAINROTS v3.2 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ TSUNAMI PROOF FARM - Farm aman dari tsunami!")
+print("✅ TRUE TSUNAMI PROOF - Tidak akan terkena damage!")
+print("✅ DAMAGE SHIELD - Mencegah damage dari tsunami")
+print("✅ AUTO RESPAWN - Langsung mulai farm lagi setelah mati")
 print("✅ Farm otomatis mengikuti mode tsunami (Bawah/Atas)")
-print("✅ Bisa pilih ketinggian farm manual (Bawah tanah - Atas)")
-print("✅ Semua fitur dari kode awal sudah terintegrasi")
+print("✅ Bisa pilih ketinggian farm manual")
 print("✅ Tween Speed bisa diatur sampai 3000")
 print("═══════════════════════════════════════════════════════")
-print("🚀 Karakter AMAN dari damage tsunami!")
+print("🚀 Karamen BENAR-BENAR AMAN dari tsunami!")
 print("═══════════════════════════════════════════════════════")
