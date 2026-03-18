@@ -319,6 +319,9 @@ local SL = {} for i=1,40 do table.insert(SL,tostring(i)) end
 local CSPD = {"100","200","300","400","500","600","800","1000","1200","1500","2000","2500","3000"}
 local TSUNAMI_MODES = {"Bawah (Gali Tanah)", "Atas (Terbang di Atas)"}
 local FARM_HEIGHTS = {
+    "Bawah Tanah (-0.3)", 
+    "Bawah Tanah (-0.5)", 
+    "Bawah Tanah (-0.7)",
     "Bawah Tanah (-1)", 
     "Bawah Tanah (-2)", 
     "Bawah Tanah (-3)", 
@@ -2192,7 +2195,10 @@ FarmHeightSection:AddDropdown({
     Outline = true,
     Flag = "FarmHeight",
     Callback = function(v)
-        if v == "Bawah Tanah (-1)" then Config.FarmHeight = -1
+        if v == "Bawah Tanah (-0.3)" then Config.FarmHeight = -0.3
+        elseif v == "Bawah Tanah (-0.5)" then Config.FarmHeight = -0.5
+        elseif v == "Bawah Tanah (-0.7)" then Config.FarmHeight = -0.7
+        elseif v == "Bawah Tanah (-1)" then Config.FarmHeight = -1
         elseif v == "Bawah Tanah (-2)" then Config.FarmHeight = -2
         elseif v == "Bawah Tanah (-3)" then Config.FarmHeight = -3
         elseif v == "Bawah Tanah (-4)" then Config.FarmHeight = -4
