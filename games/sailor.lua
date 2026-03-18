@@ -1,6 +1,6 @@
 -- ==================== SAILOR PIECE - CATRAZ HUB EDITION v6.0 ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Menggabungkan semua fitur: ArcX, Sailor Piece v4/v5, Bypass, dll
+-- Auto Farm System - Fully Optimized
 -- Version: 6.0 ULTIMATE COMPLETE
 
 if _G.SP_Loaded then 
@@ -101,9 +101,12 @@ local Config = {
     LoopFarm = false,
     AutoHit = true,
     AutoStats = true,
+    AutoHeal = true,
+    AutoReQuest = true,
+    AutoTeleport = true,
     
     -- Movement
-    MoveMode = "Tween", -- "Tween" or "Teleport"
+    MoveMode = "Tween",
     FarmSpeed = 50,
     FarmHeight = 25,
     PlankMode = false,
@@ -128,6 +131,13 @@ local Config = {
     SelectedSummonBoss = nil,
     SummonDifficulty = "Normal",
     IgnoredEntities = {},
+    
+    -- Safe Spot
+    SafeSpot = false,
+    SafeSpotPosition = nil,
+    AutoReturn = false,
+    AutoLeave = false,
+    LowHealthThreshold = 30,
     
     -- Boss Settings
     AutoBossSpawn = false,
@@ -227,6 +237,31 @@ local inventoryByRarity = {
     Epic = {}, Rare = {}, Uncommon = {}, Common = {}
 }
 local cratesAndBoxes = {}
+
+--==================================================
+-- AUTO FARM SYSTEM - VARIABLES
+--==================================================
+local farmStatus = {
+    isRunning = false,
+    currentTarget = nil,
+    currentQuest = nil,
+    lastAttackTime = 0,
+    lastSkillTime = 0,
+    lastEquipTime = 0,
+    lastTeleportTime = 0,
+    farmStartTime = 0,
+    totalKills = 0,
+    totalXP = 0,
+}
+
+-- Quest Configuration
+local questConfig = nil
+pcall(function() 
+    questConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("QuestConfig"))
+end)
+
+-- Mob Database
+local mobDatabase = {}
 
 --==================================================
 -- NOTIFICATION
@@ -339,10 +374,9 @@ local InfoTab = Window:MakeTab({
 })
 
 --==================================================
--- BYPASS SYSTEM (ANTI-TELEPORT, ANTI-KICK)
+-- BYPASS SYSTEM
 --==================================================
 local function setupBypass()
-    -- Blocked remote names
     local BLOCKED_NAMES = {
         "sanity", "checksanity", "positioncheck", "antiteleport",
         "validateposition", "checkpos", "anticheat", "positionvalidate",
@@ -356,20 +390,17 @@ local function setupBypass()
         blockedLookup[name] = true
     end
 
-    -- Hook __namecall
     local OldNamecall
     OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
         local method = getnamecallmethod()
         local args = {...}
 
-        -- Block kick
         if (method == "Kick" or method == "kick") then
             if self == Player or self == Players then
                 return nil
             end
         end
 
-        -- Block anti-TP remotes
         if method == "FireServer" or method == "InvokeServer" then
             local ok, isRemote = pcall(function()
                 return self:IsA("RemoteEvent") or self:IsA("RemoteFunction")
@@ -385,9 +416,7 @@ local function setupBypass()
         return OldNamecall(self, ...)
     end)
 
-    -- Hook getgc functions
     if getgc and hookfunction then
-        local hookedCount = 0
         for _, v in pairs(getgc(true)) do
             if type(v) == "function" then
                 local ok, info = pcall(getinfo, v)
@@ -395,31 +424,11 @@ local function setupBypass()
                     local src = info.source:lower()
                     if src:find("anticheat") or src:find("controlclient") or src:find("sanity")
                         or src:find("idle") or src:find("movement") or src:find("speed") then
-                        local fname = info.name and info.name:lower() or ""
-                        if fname:find("kick") or fname:find("ban") or fname:find("teleport")
-                            or fname:find("position") or fname:find("sanity") or fname:find("speed")
-                            or fname:find("check") then
-                            pcall(function()
-                                hookfunction(v, function(...) return nil end)
-                                hookedCount = hookedCount + 1
-                            end)
-                        end
+                        pcall(function()
+                            hookfunction(v, function(...) return nil end)
+                        end)
                     end
                 end
-                -- Patch upvalues
-                pcall(function()
-                    local upvals = getupvalues(v)
-                    for key, val in pairs(upvals) do
-                        if type(key) == "string" then
-                            local k = key:lower()
-                            if k == "isteleporting" then
-                                setupvalue(v, key, false)
-                            elseif k == "maxspeed" or k == "speedlimit" then
-                                setupvalue(v, key, 99999)
-                            end
-                        end
-                    end
-                end)
             end
         end
     end
@@ -622,7 +631,7 @@ local function getPlayerList()
 end
 
 --==================================================
--- ENTITY TRACKER SYSTEM (ArcX)
+-- ENTITY TRACKER SYSTEM
 --==================================================
 local function registerNPC(npc)
     task.spawn(function()
@@ -695,28 +704,282 @@ local function isNPCActive(queryName, isBossType, requiredCount)
 end
 
 --==================================================
--- QUEST SYSTEM (ArcX)
+-- AUTO FARM SYSTEM - CORE FUNCTIONS
 --==================================================
-local questcheck = require(ReplicatedStorage.Modules.QuestConfig)
 
-local function getTargetQuest()
-    local level = Player.Data.Level.Value
-    local bestNPC = nil
-    local maxLevel = -1
-    local targetMob = nil
-
-    for npcName, data in pairs(questcheck.RepeatableQuests) do
-        local req = tonumber(data.recommendedLevel) or 0
-        if level >= req and req > maxLevel then
-            maxLevel = req
-            bestNPC = npcName
-            if data.requirements and data.requirements[1] then
-                targetMob = data.requirements[1].npcType
+-- Build mob database
+local function buildMobDatabase()
+    table.clear(mobDatabase)
+    
+    local npcFolder = Workspace:FindFirstChild("NPCs")
+    if not npcFolder then return end
+    
+    for _, npc in ipairs(npcFolder:GetChildren()) do
+        if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
+            local hum = npc:FindFirstChildOfClass("Humanoid")
+            if hum then
+                local level = 0
+                local name = npc.Name
+                
+                local levelMatch = name:match("Lv%.?(%d+)") or name:match("Level (%d+)")
+                if levelMatch then
+                    level = tonumber(levelMatch) or 0
+                end
+                
+                if questConfig and questConfig.RepeatableQuests then
+                    for questName, questData in pairs(questConfig.RepeatableQuests) do
+                        if questData.requirements then
+                            for _, req in ipairs(questData.requirements) do
+                                if req.npcType and name:find(req.npcType) then
+                                    level = tonumber(questData.recommendedLevel) or level
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                mobDatabase[name] = {
+                    name = name,
+                    level = level,
+                    health = hum.MaxHealth,
+                    position = npc.HumanoidRootPart.Position,
+                }
             end
         end
     end
+end
 
-    return bestNPC, maxLevel, targetMob
+-- Get best quest based on level
+local function getBestQuest()
+    local playerLevel = 0
+    pcall(function() playerLevel = Player.Data.Level.Value or 0 end)
+    
+    local bestQuest = nil
+    local bestNPC = nil
+    local bestMob = nil
+    local highestLevel = -1
+    
+    if not questConfig or not questConfig.RepeatableQuests then
+        return nil, nil, nil
+    end
+    
+    for npcName, questData in pairs(questConfig.RepeatableQuests) do
+        local reqLevel = tonumber(questData.recommendedLevel) or 0
+        
+        if playerLevel >= reqLevel and reqLevel > highestLevel then
+            if questData.requirements and #questData.requirements > 0 then
+                local req = questData.requirements[1]
+                if req and req.npcType then
+                    highestLevel = reqLevel
+                    bestQuest = npcName
+                    bestNPC = npcName
+                    bestMob = req.npcType
+                end
+            end
+        end
+    end
+    
+    return bestQuest, bestNPC, bestMob
+end
+
+-- Check quest status
+local function checkQuestStatus()
+    local questUI = Player.PlayerGui:FindFirstChild("QuestUI")
+    if not questUI then return "none" end
+    
+    local questFrame = questUI:FindFirstChild("Quest")
+    if not questFrame or not questFrame.Visible then
+        return "none"
+    end
+    
+    local completed = false
+    local progress = "0/0"
+    
+    pcall(function()
+        local content = questFrame.Quest.Holder.Content.QuestInfo
+        if content then
+            local title = content.QuestTitle and content.QuestTitle.QuestTitle and content.QuestTitle.QuestTitle.Text
+            if title and title:find("Completed") then
+                completed = true
+            end
+            
+            for _, child in pairs(content:GetDescendants()) do
+                if child:IsA("TextLabel") then
+                    local text = child.Text
+                    local cur, tot = text:match("(%d+)/(%d+)")
+                    if cur and tot then
+                        progress = text
+                        if tonumber(cur) >= tonumber(tot) then
+                            completed = true
+                        end
+                        break
+                    end
+                end
+            end
+        end
+    end)
+    
+    if completed then
+        return "completed"
+    else
+        return "active"
+    end
+end
+
+-- Accept quest
+local function acceptQuest(questNPC)
+    if not questNPC or questNPC == "" then return false end
+    
+    local success = pcall(function()
+        questRemote:FireServer(questNPC)
+    end)
+    
+    if success then
+        farmStatus.currentQuest = questNPC
+        return true
+    end
+    return false
+end
+
+-- Complete quest
+local function completeQuest()
+    local questNPC = farmStatus.currentQuest
+    if not questNPC then return false end
+    
+    local npcPos = nil
+    pcall(function()
+        if questConfig and questConfig.RepeatableQuests and questConfig.RepeatableQuests[questNPC] then
+            npcPos = questConfig.RepeatableQuests[questNPC].position
+        end
+    end)
+    
+    if npcPos then
+        tweenToPosition(CFrame.new(npcPos).Position)
+        task.wait(2)
+    end
+    
+    for i = 1, 3 do
+        pcall(function()
+            local char = Player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = CFrame.new(npcPos) * CFrame.new(0, 0, 3)
+            end
+        end)
+        task.wait(0.5)
+        VirtualUser:Button1Down(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
+        task.wait(0.1)
+        VirtualUser:Button1Up(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
+        task.wait(1)
+    end
+    
+    farmStatus.currentQuest = nil
+    return true
+end
+
+-- Abandon quest
+local function abandonQuest()
+    pcall(function() abandonRemote:FireServer("repeatable") end)
+    farmStatus.currentQuest = nil
+    task.wait(1)
+end
+
+-- Find nearest mob
+local function findNearestMob(targetMobType)
+    local npcFolder = Workspace:FindFirstChild("NPCs")
+    if not npcFolder then return nil end
+    
+    local char = Player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+    
+    local playerPos = char.HumanoidRootPart.Position
+    local nearestMob = nil
+    local nearestDist = math.huge
+    
+    for _, npc in ipairs(npcFolder:GetChildren()) do
+        if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
+            local hum = npc:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                -- Check if mob is ignored
+                if Config.IgnoredEntities and Config.IgnoredEntities[npc.Name] then
+                    continue
+                end
+                
+                local match = false
+                if targetMobType then
+                    match = (npc.Name == targetMobType) or 
+                            string.find(npc.Name, targetMobType) or
+                            (hum.DisplayName and string.find(hum.DisplayName, targetMobType))
+                else
+                    match = true
+                end
+                
+                if match then
+                    local dist = (npc.HumanoidRootPart.Position - playerPos).Magnitude
+                    if dist < nearestDist then
+                        nearestDist = dist
+                        nearestMob = npc
+                    end
+                end
+            end
+        end
+    end
+    
+    return nearestMob, nearestDist
+end
+
+-- Check if mobs are nearby
+local function hasMobsNearby(range)
+    range = range or 50
+    local npcFolder = Workspace:FindFirstChild("NPCs")
+    if not npcFolder then return false end
+    
+    local char = Player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return false end
+    
+    local playerPos = char.HumanoidRootPart.Position
+    
+    for _, npc in ipairs(npcFolder:GetChildren()) do
+        if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
+            local hum = npc:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                local dist = (npc.HumanoidRootPart.Position - playerPos).Magnitude
+                if dist <= range then
+                    return true
+                end
+            end
+        end
+    end
+    
+    return false
+end
+
+-- Auto heal
+local function autoHeal()
+    if not Config.AutoHeal then return end
+    
+    local char = Player.Character
+    if not char then return end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    
+    if hum.Health < hum.MaxHealth * 0.3 then
+        local backpack = Player:FindFirstChild("Backpack")
+        if backpack then
+            for _, tool in pairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") and (tool.Name:find("Potion") or tool.Name:find("Heal") or tool.Name:find("Medkit")) then
+                    local char = Player.Character
+                    if char and char:FindFirstChild("Humanoid") then
+                        char.Humanoid:EquipTool(tool)
+                        task.wait(0.3)
+                        pcall(function() tool:Activate() end)
+                    end
+                    break
+                end
+            end
+        end
+    end
 end
 
 --==================================================
@@ -791,7 +1054,7 @@ local function tweenToMob(mob)
 end
 
 --==================================================
--- WEAPON SYSTEM (ArcX)
+-- WEAPON SYSTEM
 --==================================================
 local function equipWeapon(isBoss)
     if not Config.AutoEquip then return end
@@ -830,25 +1093,200 @@ end
 --==================================================
 -- COMBAT SYSTEM
 --==================================================
-local function autoAttack(mob, isBoss)
-    if not mob or not mob:FindFirstChild("HumanoidRootPart") then return end
-
-    equipWeapon(isBoss)
-
-    local tool = char and char:FindFirstChildOfClass("Tool")
-    if tool then
-        pcall(function() tool:Activate() end)
+local function performAutoAttack(mob, isBoss)
+    local now = tick()
+    
+    if now - farmStatus.lastAttackTime < Config.AttackCooldown then
+        return
     end
-
+    
+    if Config.AutoEquip and now - farmStatus.lastEquipTime > 1 then
+        equipWeapon(isBoss)
+        farmStatus.lastEquipTime = now
+    end
+    
     pcall(function() hitRemote:FireServer() end)
+    
+    local char = Player.Character
+    if char then
+        local tool = char:FindFirstChildOfClass("Tool")
+        if tool then
+            pcall(function() tool:Activate() end)
+        end
+    end
+    
+    farmStatus.lastAttackTime = now
+    
+    if mob and mob:FindFirstChild("Humanoid") then
+        local mobHum = mob.Humanoid
+        if mobHum and mobHum.Health <= 0 then
+            farmStatus.totalKills = farmStatus.totalKills + 1
+            farmStatus.totalXP = farmStatus.totalXP + (mobHum.MaxHealth * 0.1)
+        end
+    end
+end
 
-    -- Individual skills
+local function performAutoSkills()
+    local now = tick()
+    
+    if now - farmStatus.lastSkillTime < Config.SkillCooldown then
+        return
+    end
+    
     local skillMap = { Z = 1, X = 2, C = 3, V = 4, F = 5 }
     for key, slot in pairs(skillMap) do
         if Config.AutoSkills[key] then
             pcall(function() abilityRemote:FireServer(slot) end)
         end
     end
+    
+    farmStatus.lastSkillTime = now
+end
+
+--==================================================
+-- AUTO FARM MAIN LOOP
+--==================================================
+local function autoFarmLoop()
+    farmStatus.isRunning = true
+    farmStatus.farmStartTime = tick()
+    farmStatus.totalKills = 0
+    farmStatus.totalXP = 0
+    
+    Notify("✅ Auto Farm started!")
+    
+    while farmStatus.isRunning and Config.LoopFarm do
+        task.wait(0.2)
+        
+        local char = Player.Character
+        if not char then 
+            task.wait(1)
+            continue 
+        end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
+        
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then 
+            task.wait(3)
+            continue 
+        end
+        
+        -- Auto heal
+        autoHeal()
+        
+        -- Auto Haki
+        if Config.AutoHaki then
+            pcall(toggleHaki)
+        end
+        if Config.AutoObsHaki then
+            pcall(toggleObsHaki)
+        end
+        
+        -- Auto stats
+        if Config.AutoStats then
+            pcall(allocateStats)
+        end
+        
+        -- Check quest status
+        local questStatus = checkQuestStatus()
+        
+        -- Get best quest based on level
+        local bestQuest, bestQuestNPC, bestMob = getBestQuest()
+        
+        -- Handle quest system
+        if Config.AutoReQuest then
+            if questStatus == "none" or questStatus == "completed" then
+                if questStatus == "completed" then
+                    completeQuest()
+                    task.wait(1)
+                end
+                
+                if bestQuest and bestQuestNPC then
+                    if farmStatus.currentQuest then
+                        abandonQuest()
+                        task.wait(1)
+                    end
+                    
+                    local npcPos = nil
+                    pcall(function()
+                        if questConfig and questConfig.RepeatableQuests and questConfig.RepeatableQuests[bestQuestNPC] then
+                            npcPos = questConfig.RepeatableQuests[bestQuestNPC].position
+                        end
+                    end)
+                    
+                    if npcPos then
+                        tweenToPosition(CFrame.new(npcPos).Position)
+                        task.wait(2)
+                        
+                        if acceptQuest(bestQuestNPC) then
+                            farmStatus.currentTarget = bestMob
+                            Notify("📋 Quest accepted: " .. bestMob)
+                        end
+                    end
+                end
+                task.wait(1)
+                continue
+            end
+        end
+        
+        -- Auto teleport to island if no mobs
+        if Config.AutoTeleport and not hasMobsNearby(100) then
+            local targetMob = Config.SelectedMob or bestMob or farmStatus.currentTarget
+            if targetMob and getgenv().TeleportToMobIsland then
+                getgenv().TeleportToMobIsland(targetMob)
+                task.wait(3)
+                continue
+            end
+        end
+        
+        -- Find mob to kill
+        local targetMob = Config.SelectedMob or bestMob or farmStatus.currentTarget
+        if not targetMob then
+            task.wait(1)
+            continue
+        end
+        
+        local mob, dist = findNearestMob(targetMob)
+        
+        if mob then
+            if dist > 7 then
+                tweenToMob(mob)
+            end
+            
+            performAutoAttack(mob, false)
+            performAutoSkills()
+            
+            -- Auto return to safe spot if too far
+            if Config.AutoReturn and Config.SafeSpotPosition then
+                local distFromSafe = (hrp.Position - Config.SafeSpotPosition).Magnitude
+                if distFromSafe > 100 then
+                    tweenToPosition(Config.SafeSpotPosition)
+                    Notify("📍 Returning to safe spot...")
+                end
+            end
+        else
+            task.wait(1)
+        end
+    end
+    
+    farmStatus.isRunning = false
+    Notify("⏸️ Auto Farm stopped!")
+end
+
+-- Start auto farm
+local function startAutoFarm()
+    if farmStatus.isRunning then
+        Notify("Auto Farm already running!")
+        return
+    end
+    
+    task.spawn(autoFarmLoop)
+end
+
+-- Stop auto farm
+local function stopAutoFarm()
+    farmStatus.isRunning = false
 end
 
 --==================================================
@@ -912,7 +1350,6 @@ local function allocateStats()
     pcall(function() level = Player.Data.Level.Value or 0 end)
 
     if level < 3000 then
-        -- Low level: Melee focus
         local melee, defense = 0, 0
         while points > 0 do
             local m = math.min(2, points)
@@ -924,7 +1361,6 @@ local function allocateStats()
             task.wait(0.1)
         end
     else
-        -- High level: Sword/Defense/Power
         local sword, defense, power = 0, 0, 0
         while points > 0 do
             local s = math.min(3, points)
@@ -943,71 +1379,7 @@ local function allocateStats()
 end
 
 --==================================================
--- FIND MOB FUNCTION
---==================================================
-local function findMob(targetName)
-    local npcFolder = Workspace:FindFirstChild("NPCs")
-    if not npcFolder then return nil, math.huge end
-
-    local closest = nil
-    local closestDist = math.huge
-    local char = Player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil, math.huge end
-    local playerPos = char.HumanoidRootPart.Position
-
-    for _, npc in ipairs(npcFolder:GetChildren()) do
-        if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
-            local humanoid = npc:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                local match = false
-                if targetName then
-                    match = (npc.Name == targetName) or string.find(npc.Name, targetName)
-                else
-                    match = true
-                end
-
-                if match then
-                    local dist = (npc.HumanoidRootPart.Position - playerPos).Magnitude
-                    if dist < closestDist then
-                        closestDist = dist
-                        closest = npc
-                    end
-                end
-            end
-        end
-    end
-
-    return closest, closestDist
-end
-
---==================================================
--- FIND BOSS FUNCTION
---==================================================
-local function findBoss(bossName)
-    for _, folder in ipairs({"NPCs", "Bosses", "Boss", "WorldBoss"}) do
-        local f = Workspace:FindFirstChild(folder)
-        if f then
-            for _, npc in ipairs(f:GetChildren()) do
-                if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
-                    local h = npc:FindFirstChildOfClass("Humanoid")
-                    if h and h.Health > 0 then
-                        if bossName then
-                            if npc.Name == bossName or string.find(npc.Name, bossName) then
-                                return npc
-                            end
-                        else
-                            return npc
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return nil
-end
-
---==================================================
--- SUMMON BOSS SYSTEM (ArcX)
+-- SUMMON BOSS SYSTEM
 --==================================================
 local function summonBoss()
     if Config.AutoSummonBoss and Config.SelectedSummonBoss then
@@ -1376,7 +1748,8 @@ local function farmSaberBoss()
 
                 equipWeapon(true)
                 tweenToMob(boss)
-                autoAttack(boss, true)
+                performAutoAttack(boss, true)
+                performAutoSkills()
 
             until not boss.Parent or bossHumanoid.Health <= 0 or char.Humanoid.Health <= 0
 
@@ -1514,12 +1887,11 @@ local function buyObservationHaki()
 end
 
 --==================================================
--- ISLAND SCANNER SYSTEM (TELEPORT BYPASS)
+-- ISLAND SCANNER SYSTEM
 --==================================================
 local function getAllIslands()
     local islands = {}
     
-    -- Try TravelConfig
     local ok, travelConfig = pcall(function()
         return require(ReplicatedStorage:WaitForChild("TravelConfig", 5))
     end)
@@ -1534,7 +1906,6 @@ local function getAllIslands()
         end
     end
     
-    -- Hardcoded fallback
     if #islands == 0 then
         local hardcoded = {
             "Starter", "Jungle", "Desert", "Snow", "Boss",
@@ -1740,13 +2111,12 @@ task.spawn(function()
 end)
 
 --==================================================
--- SPECIAL BOSS SPAWN LOOP (ArcX)
+-- SPECIAL BOSS SPAWN LOOP
 --==================================================
 task.spawn(function()
     while true do
         task.wait(0.5)
         
-        -- Special Bosses
         local specs = Config.SpecialBosses
         if specs.TrueAizen.Auto and not isNPCActive("TrueAizen", true) then
             summonSpecialBoss("TrueAizen", specs.TrueAizen.Diff)
@@ -1767,6 +2137,52 @@ task.spawn(function()
 end)
 
 --==================================================
+-- AUTO LEAVE WHEN LOW HEALTH
+--==================================================
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if Config.AutoLeave and farmStatus.isRunning then
+            local char = Player.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    local healthPercent = (hum.Health / hum.MaxHealth) * 100
+                    if healthPercent <= (Config.LowHealthThreshold or 30) then
+                        Notify("Low health! Returning to safe spot...")
+                        farmStatus.isRunning = false
+                        if Config.SafeSpotPosition then
+                            tweenToPosition(Config.SafeSpotPosition)
+                        end
+                        task.wait(5)
+                        farmStatus.isRunning = true
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--==================================================
+-- AUTO RETURN TO SAFE SPOT
+--==================================================
+task.spawn(function()
+    while true do
+        task.wait(5)
+        if Config.AutoReturn and Config.SafeSpotPosition and farmStatus.isRunning then
+            local char = Player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local dist = (char.HumanoidRootPart.Position - Config.SafeSpotPosition).Magnitude
+                if dist > 100 then
+                    tweenToPosition(Config.SafeSpotPosition)
+                    Notify("Returning to safe spot...")
+                end
+            end
+        end
+    end
+end)
+
+--==================================================
 -- FARM TAB UI
 --==================================================
 local FarmMainSection = FarmTab:AddSection({
@@ -1777,7 +2193,7 @@ local FarmMainSection = FarmTab:AddSection({
 })
 
 FarmMainSection:AddToggle({
-    Name = "ENABLE LOOP FARM",
+    Name = "ENABLE AUTO FARM",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -1786,7 +2202,12 @@ FarmMainSection:AddToggle({
     Callback = function(Value)
         Config.LoopFarm = Value
         getgenv().IsFarm = Value
-        Notify(Value and "Loop Farm Enabled" or "Loop Farm Disabled")
+        
+        if Value then
+            startAutoFarm()
+        else
+            stopAutoFarm()
+        end
     end
 })
 
@@ -1808,6 +2229,36 @@ FarmMainSection:AddToggle({
     Flag = "AutoStats",
     Save = true,
     Callback = function(Value) Config.AutoStats = Value end
+})
+
+FarmMainSection:AddToggle({
+    Name = "AUTO HEAL",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoHeal",
+    Save = true,
+    Callback = function(Value) Config.AutoHeal = Value end
+})
+
+FarmMainSection:AddToggle({
+    Name = "AUTO RE-QUEST",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoReQuest",
+    Save = true,
+    Callback = function(Value) Config.AutoReQuest = Value end
+})
+
+FarmMainSection:AddToggle({
+    Name = "AUTO TELEPORT TO ISLAND",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoTeleport",
+    Save = true,
+    Callback = function(Value) Config.AutoTeleport = Value end
 })
 
 FarmMainSection:AddToggle({
@@ -1895,6 +2346,43 @@ FarmMainSection:AddSlider({
     Callback = function(Value) Config.TpTime = Value end
 })
 
+-- Farm Stats
+local FarmStatsPara = FarmTab:AddSection({
+    Name = "📊 FARM STATS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+local FarmStatsText = FarmStatsPara:AddParagraph({
+    Title = "Current Session",
+    Desc = "Kills: 0\nXP: 0\nRuntime: 00:00:00",
+    Image = "bar-chart-2",
+    ImageSize = 38
+})
+
+-- Update farm stats
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if farmStatus.isRunning then
+            local runtime = tick() - farmStatus.farmStartTime
+            local hours = math.floor(runtime / 3600)
+            local minutes = math.floor((runtime % 3600) / 60)
+            local seconds = math.floor(runtime % 60)
+            local runtimeStr = string.format("%02d:%02d:%02d", hours, minutes, seconds)
+            
+            FarmStatsText:SetDesc(string.format(
+                "Kills: %d\nXP: %s\nRuntime: %s",
+                farmStatus.totalKills,
+                formatNumber(farmStatus.totalXP),
+                runtimeStr
+            ))
+        end
+    end
+end)
+
+-- Weapon Selection
 FarmMainSection:AddSection({
     Name = "🎯 WEAPON SELECTION",
     TextSize = 18,
@@ -1928,9 +2416,143 @@ FarmMainSection:AddButton({
     Outline = true,
     Callback = function()
         local weapons = getWeapons()
-        Notify("Weapon list refreshed")
+        Notify("Weapon list refreshed!")
     end
 })
+
+-- Target Selection
+FarmMainSection:AddSection({
+    Name = "🎯 TARGET SELECTION",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+FarmMainSection:AddDropdown({
+    Name = "SELECT SPECIFIC MOB",
+    Default = "Auto (Quest Based)",
+    Options = {"Auto (Quest Based)", "Thief", "Bandit", "Pirate", "Marine", "Swordsman", "Shinigami", "Hollow"},
+    Multi = false,
+    Search = true,
+    Outline = true,
+    Callback = function(Value)
+        if Value == "Auto (Quest Based)" then
+            Config.SelectedMob = nil
+        else
+            Config.SelectedMob = Value
+        end
+    end
+})
+
+FarmMainSection:AddButton({
+    Name = "REFRESH MOB LIST",
+    Icon = "refresh-cw",
+    Outline = true,
+    Callback = function()
+        buildMobDatabase()
+        Notify("Mob database refreshed!")
+    end
+})
+
+-- Safe Spot
+FarmMainSection:AddSection({
+    Name = "🛡️ SAFE SPOT",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+FarmMainSection:AddToggle({
+    Name = "ENABLE SAFE SPOT",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SafeSpot",
+    Save = true,
+    Callback = function(Value) Config.SafeSpot = Value end
+})
+
+FarmMainSection:AddToggle({
+    Name = "AUTO RETURN TO SAFE SPOT",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoReturn",
+    Save = true,
+    Callback = function(Value) Config.AutoReturn = Value end
+})
+
+FarmMainSection:AddToggle({
+    Name = "AUTO LEAVE WHEN LOW HEALTH",
+    Default = false,
+    Color = Color3.fromRGB(255, 0, 0),
+    Outline = true,
+    Flag = "AutoLeave",
+    Save = true,
+    Callback = function(Value) Config.AutoLeave = Value end
+})
+
+FarmMainSection:AddSlider({
+    Name = "LOW HEALTH THRESHOLD",
+    Min = 10,
+    Max = 50,
+    Default = 30,
+    Increment = 5,
+    ValueName = "%",
+    Outline = true,
+    Callback = function(Value) Config.LowHealthThreshold = Value end
+})
+
+FarmMainSection:AddButton({
+    Name = "SET CURRENT AS SAFE SPOT",
+    Icon = "map-pin",
+    Outline = true,
+    Callback = function()
+        local char = Player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            Config.SafeSpotPosition = char.HumanoidRootPart.Position
+            Notify("Safe spot set!")
+        end
+    end
+})
+
+FarmMainSection:AddButton({
+    Name = "TELEPORT TO SAFE SPOT",
+    Icon = "navigation",
+    Outline = true,
+    Callback = function()
+        if Config.SafeSpotPosition then
+            tweenToPosition(Config.SafeSpotPosition)
+        else
+            Notify("No safe spot set!")
+        end
+    end
+})
+
+-- Ignore Mobs
+FarmMainSection:AddSection({
+    Name = "🚫 IGNORE MOBS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+local ignoreMobsList = {"Slime", "Bat", "Spider", "Zombie", "Skeleton", "Ghost"}
+
+for _, mobName in ipairs(ignoreMobsList) do
+    FarmMainSection:AddToggle({
+        Name = "IGNORE " .. mobName,
+        Default = false,
+        Color = Color3.fromRGB(255, 0, 0),
+        Outline = true,
+        Flag = "Ignore_" .. mobName,
+        Save = true,
+        Callback = function(Value)
+            if not Config.IgnoredEntities then Config.IgnoredEntities = {} end
+            Config.IgnoredEntities[mobName] = Value
+        end
+    })
+end
 
 --==================================================
 -- BOSS TAB UI
@@ -2352,20 +2974,6 @@ CraftMainSection:AddButton({
     end
 })
 
-CraftMainSection:AddSection({
-    Name = "📊 CRAFTING INFO",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-CraftMainSection:AddParagraph({
-    Title = "MATERIALS NEEDED",
-    Desc = "Slime Key: Slime Fragment x10\nDivine Grail: Holy Crystal x5, Gold x10000",
-    Image = "info",
-    ImageSize = 38
-})
-
 --==================================================
 -- MISC TAB UI
 --==================================================
@@ -2664,7 +3272,6 @@ local PlayerInfoPara = InfoSection:AddParagraph({
     }
 })
 
--- Auto refresh player info
 task.spawn(function()
     while true do
         task.wait(2)
@@ -2712,7 +3319,6 @@ local ServerInfoPara = ServerInfoSection:AddParagraph({
     }
 })
 
--- Auto refresh server info
 task.spawn(function()
     while true do
         task.wait(1)
@@ -2757,7 +3363,6 @@ local ActiveFeaturesPara = ActiveFeaturesSection:AddParagraph({
     ImageSize = 38
 })
 
--- Update active features setiap detik
 task.spawn(function()
     while true do
         local active = GetActiveFeatures()
@@ -2801,6 +3406,7 @@ setupAutoRejoin()
 setupTimedRejoin()
 setupFriendOnly()
 initEntityTracker()
+buildMobDatabase()
 
 --==================================================
 -- CHARACTER UPDATES
@@ -2813,158 +3419,10 @@ Player.CharacterAdded:Connect(function(char)
 end)
 
 --==================================================
--- MAIN FARM LOOP
---==================================================
-task.spawn(function()
-    while true do
-        task.wait(Config.AttackCooldown)
-        
-        local char = Player.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then
-            task.wait(1)
-            continue
-        end
-        
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if not humanoid or humanoid.Health <= 0 then
-            task.wait(2)
-            continue
-        end
-
-        -- Priority: Dungeon Quest
-        if getgenv().IsDungeonQuest then
-            enterDungeon()
-            task.wait(Config.AttackCooldown)
-            continue
-        end
-
-        -- Priority: Hogyoku Quest
-        if getgenv().IsHogyokuQuest then
-            local boss = findBoss("Boss")
-            if boss then
-                tweenToMob(boss)
-                autoAttack(boss, true)
-            end
-            task.wait(Config.AttackCooldown)
-            continue
-        end
-
-        -- Priority: Auto Dungeon
-        if getgenv().IsAutoDungeon then
-            enterDungeon()
-            task.wait(Config.AttackCooldown)
-            continue
-        end
-
-        -- Priority: Boss Rush
-        if getgenv().IsBossRush then
-            enterBossRush()
-            task.wait(Config.AttackCooldown)
-            continue
-        end
-
-        -- Priority: Summon Boss
-        if getgenv().IsSummonBoss then
-            summonBoss()
-            task.wait(2)
-            continue
-        end
-
-        -- Priority: Boss Fight
-        if getgenv().IsBossFight and Config.SelectedBoss then
-            local boss = findBoss(Config.SelectedBoss)
-            if boss then
-                tweenToMob(boss)
-                autoAttack(boss, true)
-            end
-            task.wait(Config.AttackCooldown)
-            continue
-        end
-
-        -- Priority: Saber Boss Farm
-        if Config.FarmSaberBoss then
-            task.spawn(farmSaberBoss)
-            task.wait(10)
-            continue
-        end
-
-        -- Default: Auto Farm
-        if getgenv().IsFarm then
-            local _, _, targetMob = getTargetQuest()
-            local mob, dist = findMob(targetMob or Config.SelectedMob)
-
-            if mob then
-                tweenToMob(mob)
-                autoAttack(mob, false)
-            else
-                -- Try teleport to mob's island
-                if targetMob and getgenv().TeleportToMobIsland then
-                    getgenv().TeleportToMobIsland(targetMob)
-                end
-                task.wait(1)
-            end
-        end
-    end
-end)
-
---==================================================
--- FRUIT FARM LOOP
---==================================================
-local function fruitFarmLoop()
-    while Config.FruitFarm and getgenv().IsFruitFarming do
-        task.wait(0.5)
-        
-        local char = Player.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
-        if char.Humanoid.Health <= 0 then continue end
-        
-        local hrp = char.HumanoidRootPart
-        local lockPos = Config.FruitFarmPos
-
-        if (hrp.Position - lockPos.Position).Magnitude > 5 then
-            hrp.CFrame = lockPos
-        end
-
-        equipFruit(Config.TargetFruit)
-        pcall(toggleHaki)
-        pcall(toggleObsHaki)
-
-        local keyCodes = {Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.C, Enum.KeyCode.V}
-        for i, keyCode in ipairs(keyCodes) do
-            pcall(function()
-                local args = {
-                    "UseAbility",
-                    {
-                        TargetPosition = hrp.Position,
-                        FruitPower = Config.TargetFruit,
-                        KeyCode = keyCode
-                    }
-                }
-                RemoteEvents:WaitForChild("FruitPowerRemote"):FireServer(unpack(args))
-            end)
-            task.wait(0.3)
-        end
-        
-        task.wait(1.5)
-    end
-end
-
-task.spawn(function()
-    while true do
-        task.wait(10)
-        if Config.FruitFarm and not getgenv().IsFruitFarming then
-            getgenv().IsFruitFarming = true
-            task.spawn(fruitFarmLoop)
-        end
-    end
-end)
-
---==================================================
 -- INITIALIZE
 --==================================================
 OrionLib:Init()
 
--- Start island scan after UI loads
 task.spawn(function()
     task.wait(5)
     task.spawn(function() getgenv().ScanAllIslands() end)
@@ -2974,11 +3432,18 @@ Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
 print("🔥 SAILOR PIECE - CATRAZ HUB EDITION v6.0 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ Auto Farm - Quest-based farming")
+print("✅ AUTO FARM SYSTEM - FULLY OPTIMIZED")
+print("  • Quest-based farming with auto accept/complete")
+print("  • Auto heal when low health")
+print("  • Auto skills with cooldown")
+print("  • Auto equip weapons")
+print("  • Farm stats tracking")
+print("  • Safe spot with auto return")
+print("  • Ignore mobs list")
 print("✅ Auto Boss - Fight & Summon bosses")
 print("✅ Special Bosses - TrueAizen, Sukuna, Gojo, Rimuru, Anos")
 print("✅ Auto Dungeon - Shadow/Rune/Cid dungeons")
-print("✅ Auto Skills - Z, X, C, V, F with cooldown")
+print("✅ Auto Skills - Z, X, C, V, F")
 print("✅ Auto Haki - Armament & Observation")
 print("✅ Fruit Farm - Target fruit farming")
 print("✅ Crafting - Slime Key & Divine Grail")
@@ -2987,5 +3452,4 @@ print("✅ Island Scanner - Cache all mob locations")
 print("✅ Artifacts - Unlock & equip system")
 print("✅ Boss Key - Auto buy & Saber boss farm")
 print("✅ Ichigo - Exchange system")
-print("✅ Anti AFK, Noclip, FPS Boost, White Screen")
 print("═══════════════════════════════════════════════════════")
