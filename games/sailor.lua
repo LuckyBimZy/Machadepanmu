@@ -1,5 +1,5 @@
 -- ==========================================
--- || INITIALIZATION
+-- || CATRAZ HUB - SAILOR PIECE AUTO FARM
 -- ==========================================
 repeat task.wait() until game:IsLoaded()
 
@@ -33,6 +33,12 @@ local Config = {
 	SelectedWeapon_Boss   = "None",
 	AutoHaki              = false,
 	AutoObservationHaki   = false,
+	FlyHeight = {
+		Enabled = true,
+		Offset = 5,
+		UseForNPCs = true,
+		UseForBosses = true,
+	},
 	IgnoredEntities = {
 		Hollow             = true,
 		Quincy             = true,
@@ -62,7 +68,7 @@ local Config = {
 	},
 	Boss = {
 		AutoSpawn  = false,
-		Selected   = {}, -- Multi-select sebagai table
+		Selected   = {},
 		Difficulty = "Normal",
 	},
 	Specials = {
@@ -282,6 +288,26 @@ local CONSTANTS = {
 		}
 	}
 }
+
+-- ==========================================
+-- || FLY HEIGHT HELPER FUNCTION
+-- ==========================================
+local function GetFlyPosition(targetCF, targetPos)
+	local cfg = _G.FarmConfig
+	if not cfg.FlyHeight.Enabled then
+		return targetCF
+	end
+	
+	local offset = cfg.FlyHeight.Offset or 5
+	local pos = targetPos or (targetCF and targetCF.Position)
+	
+	if not pos then
+		return targetCF
+	end
+	
+	local flyPos = Vector3.new(pos.X, pos.Y + offset, pos.Z)
+	return CFrame.new(flyPos, pos)
+end
 
 -- ==========================================
 -- || CLASS: Entity Tracker
@@ -557,7 +583,7 @@ function Farmer:CastSkills(isBoss)
 	local shouldCast = isBoss and cfg.AutoSkill.Bosses or (not isBoss and cfg.AutoSkill.NPCs)
 	if not shouldCast then return end
 
-	if tick() - self.LastSkillTime <= 0.3 then return end
+	if tick() - self.LastSkillTime <= 0.1 then return end
 	self.LastSkillTime = tick()
 
 	local activeSkills = isBoss and cfg.AutoSkill.BossSkills or cfg.AutoSkill.NPCSkills
@@ -566,6 +592,7 @@ function Farmer:CastSkills(isBoss)
 			local skillId = cfg.AutoSkill.SkillIds[skillName]
 			if skillId then
 				pcall(function() self.AbilityRemote:FireServer(skillId) end)
+				task.wait(0.05)
 			end
 		end
 	end
@@ -641,12 +668,24 @@ function Farmer:Start()
 								self.TpRemote:FireServer(target.Remote)
 								task.wait(0.5)
 							end
-							curHrp.CFrame = CFrame.lookAt(
-								targetGoal.Position + Vector3.new(0, 0, 3),
-								lookAtPos
-							)
+							-- FLY MODE UNTUK BOSS
+							if cfg.FlyHeight.UseForBosses then
+								local flyPos = GetFlyPosition(targetGoal, lookAtPos)
+								curHrp.CFrame = flyPos
+							else
+								curHrp.CFrame = CFrame.lookAt(
+									targetGoal.Position + Vector3.new(0, 0, 3),
+									lookAtPos
+								)
+							end
 						else
-							curHrp.CFrame = CFrame.lookAt(curHrp.Position, lookAtPos)
+							-- FLY MODE UNTUK BOSS (jarak dekat)
+							if cfg.FlyHeight.UseForBosses then
+								local flyPos = GetFlyPosition(targetGoal, lookAtPos)
+								curHrp.CFrame = CFrame.lookAt(flyPos.Position, lookAtPos)
+							else
+								curHrp.CFrame = CFrame.lookAt(curHrp.Position, lookAtPos)
+							end
 						end
 
 						task.wait(cfg.TpTime)
@@ -677,7 +716,12 @@ function Farmer:Start()
 
 						local distance = (curHrp.Position - spawnCF.Position).Magnitude
 						if distance > 10 then
-							curHrp.CFrame = spawnCF
+							-- FLY MODE UNTUK NPC
+							if cfg.FlyHeight.UseForNPCs then
+								curHrp.CFrame = GetFlyPosition(spawnCF, spawnCF.Position)
+							else
+								curHrp.CFrame = spawnCF
+							end
 						end
 
 						task.wait(cfg.TpTime)
@@ -732,14 +776,20 @@ function DungeonFarmer:_destabilize(hrp)
 end
 
 function DungeonFarmer:_getGoal(npcHRP, position)
+	local cfg = _G.FarmConfig
 	local pos = npcHRP.Position
-	local cf  = npcHRP.CFrame
-	local dist = _G.FarmConfig.DungeonFarm.Distance or 5
+	local cf = npcHRP.CFrame
 	
-	if position == "Top" then
-		return CFrame.new(pos + Vector3.new(0, dist, 0), pos)
-	else -- Behind
-		return cf * CFrame.new(0, 2, dist)
+	if cfg.FlyHeight.Enabled then
+		local offset = cfg.FlyHeight.Offset or 5
+		return CFrame.new(pos + Vector3.new(0, offset, 0), pos)
+	else
+		local dist = cfg.DungeonFarm.Distance or 5
+		if position == "Top" then
+			return CFrame.new(pos + Vector3.new(0, dist, 0), pos)
+		else
+			return cf * CFrame.new(0, 2, dist)
+		end
 	end
 end
 
@@ -810,7 +860,6 @@ function DungeonFarmer:Start()
 					while self._running and cfg.DungeonFarm.Enabled do
 						cfg = _G.FarmConfig
 						speed = cfg.DungeonFarm.TweenSpeed
-						pos   = cfg.DungeonFarm.FarmPosition
 
 						if _G.ArcX_Farmer then
 							_G.ArcX_Farmer:CheckObservationHaki()
@@ -887,7 +936,7 @@ function Utility.EnableAutoRejoin()
 		if not cfg.AutoRejoin then return end
 
 		local lastError = GuiService:GetErrorMessage()
-		if lastError:find("ArcX Security") then
+		if lastError:find("CatrazHub Security") then
 			warn("Auto-Rejoin blocked: Security Kick.")
 			return
 		end
@@ -955,7 +1004,7 @@ function Utility.EnableFriendCheck()
 
 		if not isFriend then
 			LocalPlayer:Kick(
-				"\n[ArcX Security]\nStranger Detected: " .. player.Name
+				"\n[CatrazHub Security]\nStranger Detected: " .. player.Name
 				.. "\nAuto-Rejoin disabled to prevent looping."
 			)
 		end
@@ -1043,7 +1092,7 @@ local function RedeemCodes()
 	end)
 
 	if not ok or not CodesConfig then
-		warn("[ArcX] Code Redeemer: CodesConfig module not found.")
+		warn("[CatrazHub] Code Redeemer: CodesConfig module not found.")
 		return
 	end
 
@@ -1052,31 +1101,31 @@ local function RedeemCodes()
 		:FindFirstChild("CodeRedeem")
 
 	if not CodeRedeem then
-		warn("[ArcX] Code Redeemer: CodeRedeem remote not found.")
+		warn("[CatrazHub] Code Redeemer: CodeRedeem remote not found.")
 		return
 	end
 
-	print("[ArcX] Starting code auto-redeem...")
+	print("[CatrazHub] Starting code auto-redeem...")
 
 	for codeName, _ in pairs(CodesConfig.Codes) do
 		if CodesConfig.IsValid(codeName) then
-			print("[ArcX] Redeeming: " .. codeName)
+			print("[CatrazHub] Redeeming: " .. codeName)
 
 			local success, serverResponse = pcall(function()
 				return CodeRedeem:InvokeServer(codeName)
 			end)
 
 			if success then
-				print("[ArcX] Response for " .. codeName .. ":", serverResponse)
+				print("[CatrazHub] Response for " .. codeName .. ":", serverResponse)
 			else
-				warn("[ArcX] Error redeeming " .. codeName .. ":", serverResponse)
+				warn("[CatrazHub] Error redeeming " .. codeName .. ":", serverResponse)
 			end
 
 			task.wait(0.5)
 		end
 	end
 
-	print("[ArcX] Code auto-redeem finished.")
+	print("[CatrazHub] Code auto-redeem finished.")
 end
 
 -- ==========================================
@@ -1111,7 +1160,7 @@ end
 
 function QuestManager:AcceptOnce(npcName)
 	if not npcName or npcName == "None" or npcName == "" then
-		warn("[ArcX] AcceptOnce: No Quest NPC selected.")
+		warn("[CatrazHub] AcceptOnce: No Quest NPC selected.")
 		return false
 	end
 
@@ -1121,7 +1170,7 @@ function QuestManager:AcceptOnce(npcName)
 	end
 
 	if not self._remote then
-		warn("[ArcX] QuestAccept remote not found.")
+		warn("[CatrazHub] QuestAccept remote not found.")
 		return false
 	end
 
@@ -1130,10 +1179,10 @@ function QuestManager:AcceptOnce(npcName)
 	end)
 
 	if ok then
-		print("[ArcX] Quest accepted from " .. npcName)
+		print("[CatrazHub] Quest accepted from " .. npcName)
 		return true
 	else
-		warn("[ArcX] Quest accept failed:", err)
+		warn("[CatrazHub] Quest accept failed:", err)
 		return false
 	end
 end
@@ -1143,7 +1192,7 @@ end
 -- ==========================================
 local function Notify(msg)
 	OrionLib:MakeNotification({
-		Name = "ArcX",
+		Name = "CatrazHub",
 		Content = msg,
 		Image = "info",
 		Time = 2.5
@@ -1153,15 +1202,15 @@ end
 -- ==========================================
 -- || CLEANUP PREVIOUS INSTANCES
 -- ==========================================
-if _G.ArcX_Spawner       then _G.ArcX_Spawner:Stop()             end
-if _G.ArcX_Farmer        then _G.ArcX_Farmer:Stop()              end
-if _G.ArcX_DungeonFarmer then _G.ArcX_DungeonFarmer:Stop()       end
-if _G.ArcX_Tracker       then _G.ArcX_Tracker:Destroy()          end
+if _G.CatrazHub_Spawner       then _G.CatrazHub_Spawner:Stop()             end
+if _G.CatrazHub_Farmer        then _G.CatrazHub_Farmer:Stop()              end
+if _G.CatrazHub_DungeonFarmer then _G.CatrazHub_DungeonFarmer:Stop()       end
+if _G.CatrazHub_Tracker       then _G.CatrazHub_Tracker:Destroy()          end
 Utility.Cleanup()
 
-if _G.ArcX_Window then
-	pcall(function() _G.ArcX_Window:Destroy() end)
-	_G.ArcX_Window = nil
+if _G.CatrazHub_Window then
+	pcall(function() _G.CatrazHub_Window:Destroy() end)
+	_G.CatrazHub_Window = nil
 end
 
 -- ==========================================
@@ -1198,10 +1247,10 @@ local AutoFarm  = Farmer.new(
 local AutoQuest     = QuestManager.new()
 local DungeonFarm   = DungeonFarmer.new()
 
-_G.ArcX_Tracker       = Tracker
-_G.ArcX_Spawner       = Spawner
-_G.ArcX_Farmer        = AutoFarm
-_G.ArcX_DungeonFarmer = DungeonFarm
+_G.CatrazHub_Tracker       = Tracker
+_G.CatrazHub_Spawner       = Spawner
+_G.CatrazHub_Farmer        = AutoFarm
+_G.CatrazHub_DungeonFarmer = DungeonFarm
 
 Utility.EnableAntiAFK()
 Utility.EnableAutoRejoin()
@@ -1209,21 +1258,21 @@ Utility.EnableTimedRejoin()
 Utility.EnableFriendCheck()
 Utility.SetupCharacterEvents(GameRemotes.Haki, GameRemotes.ObservationHaki)
 
-print("ArcX AutoFarm Initialized Successfully.")
+print("CatrazHub AutoFarm Initialized Successfully.")
 
 -- ==========================================
 -- || CREATE MAIN WINDOW (CATRAZ HUB)
 -- ==========================================
 local Window = OrionLib:MakeWindow({
-    Name = "ArcX",
-    Subtext = "| Developer",
-    Version = "v1.0",
+    Name = "CatrazHub",
+    Subtext = "| Sailor Piece",
+    Version = "v2.0",
     VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "ArcX",
+    ConfigFolder = "CatrazHub",
     IntroEnabled = true,
-    IntroText = "ArcX AutoFarm",
+    IntroText = "CatrazHub AutoFarm",
     IntroIcon = "rbxassetid://105921924721005",
     Icon = "rbxassetid://105921924721005",
     ShowIcon = true,
@@ -1238,9 +1287,9 @@ local Window = OrionLib:MakeWindow({
 
 OrionLib.SelectedTheme = "Ocean"
 
-_G.ArcX_Window = Window
+_G.CatrazHub_Window = Window
 
-Notify("ArcX AutoFarm Loaded Successfully!")
+Notify("CatrazHub AutoFarm Loaded Successfully!")
 
 -- ==========================================
 -- || CREATE TABS
@@ -1413,7 +1462,6 @@ MainSection2:AddButton({
     Outline = true,
     Callback = function()
         local weapons = Utility.GetWeapons()
-        -- Note: In Catraz Hub, you'd need to properly refresh dropdowns
         Notify("Weapon list refreshed")
     end
 })
@@ -1508,7 +1556,6 @@ local MobsSection2 = MobsTab:AddSection({
     Outline = true
 })
 
--- NPCs
 MobsSection2:AddParagraph({
     Title = "NPCs",
     Desc = "Enable entities to farm",
@@ -2002,7 +2049,7 @@ CraftingSection2:AddButton({
 			if ok then
 				Notify("Requested " .. craftAmount .. "x SlimeKey.")
 			else
-				warn("[ArcX] SlimeKey Craft Error:", err)
+				warn("[CatrazHub] SlimeKey Craft Error:", err)
 			end
 		end)
 	end
@@ -2021,7 +2068,7 @@ CraftingSection2:AddButton({
 			if ok then
 				Notify("Requested " .. craftAmount .. "x Divine Grail.")
 			else
-				warn("[ArcX] Divine Grail Craft Error:", err)
+				warn("[CatrazHub] Divine Grail Craft Error:", err)
 			end
 		end)
 	end
@@ -2185,7 +2232,7 @@ SettingsSection1:AddToggle({
 					local isFriend = false
 					pcall(function() isFriend = LocalPlayer:IsFriendsWith(player.UserId) end)
 					if not isFriend then
-						LocalPlayer:Kick("[ArcX Security] Friend-Only Mode Enabled: Stranger found.")
+						LocalPlayer:Kick("[CatrazHub Security] Friend-Only Mode Enabled: Stranger found.")
 					end
 				end
 			end
@@ -2224,6 +2271,66 @@ SettingsSection2:AddSlider({
 })
 
 -- ==========================================
+-- || FLY HEIGHT SETTINGS (TAMBAHAN)
+-- ==========================================
+local FlySection = SettingsTab:AddSection({
+    Name = "🚀 Fly Mode Settings",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+FlySection:AddToggle({
+    Name = "Enable Fly Mode",
+    Default = Config.FlyHeight.Enabled,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Toggle_FlyMode",
+    Save = true,
+    Callback = function(Value) Config.FlyHeight.Enabled = Value end
+})
+
+FlySection:AddSlider({
+    Name = "Fly Height Offset",
+    Min = 1,
+    Max = 20,
+    Default = Config.FlyHeight.Offset,
+    Increment = 1,
+    ValueName = "studs",
+    Outline = true,
+    Flag = "Slider_FlyOffset",
+    Save = true,
+    Callback = function(Value) Config.FlyHeight.Offset = Value end
+})
+
+FlySection:AddToggle({
+    Name = "Use Fly Mode for NPCs",
+    Default = Config.FlyHeight.UseForNPCs,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Toggle_FlyNPC",
+    Save = true,
+    Callback = function(Value) Config.FlyHeight.UseForNPCs = Value end
+})
+
+FlySection:AddToggle({
+    Name = "Use Fly Mode for Bosses",
+    Default = Config.FlyHeight.UseForBosses,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "Toggle_FlyBoss",
+    Save = true,
+    Callback = function(Value) Config.FlyHeight.UseForBosses = Value end
+})
+
+FlySection:AddParagraph({
+    Title = "Info",
+    Desc = "Aktifkan mode terbang untuk farming yang lebih aman.\nSesuaikan ketinggian sesuai kebutuhan.",
+    Image = "info",
+    ImageSize = 38
+})
+
+-- ==========================================
 -- || ADD CONFIG TAB
 -- ==========================================
 Window:AddConfigTab({
@@ -2250,4 +2357,4 @@ if not _codeRedeemDone then
 	end)
 end
 
-Notify("ArcX AutoFarm Loaded. Don't forget to refresh and select your weapon!")
+Notify("CatrazHub AutoFarm Loaded. Don't forget to refresh and select your weapon!")
