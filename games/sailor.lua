@@ -1,6 +1,6 @@
 -- ==================== SAILOR PIECE - CATRAZ ULTIMATE ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 2.2 FIXED - VirtualInputManager Error
+-- Version: 2.3 FIXED - Auto Farm Attack & Static Position
 
 if _G.SP_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -26,7 +26,7 @@ local Mouse = Player:GetMouse()
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local VirtualUser = game:GetService("VirtualUser") -- Untuk Anti AFK
+local VirtualUser = game:GetService("VirtualUser")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
@@ -34,9 +34,6 @@ local Camera = Workspace.CurrentCamera
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
-
--- HAPUS VirtualInputService - TIDAK DIGUNAKAN
--- local VIM = game:GetService("VirtualInputManager") -- Ini yang benar, tapi tidak kita gunakan
 
 -- Remote References
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -192,14 +189,15 @@ local Config = {
         TweenSpeed = 100,
         OffsetDist = 15,
         FarmMode = "Behind",
-        FollowStyle = "Dodge",
-        MoveMode = "Tween",
+        FollowStyle = "Static", -- UBAH DEFAULT JADI STATIC
+        MoveMode = "Teleport",
         SelectedIsland = "Auto",
         SelectedEnemy = "All",
         AntiAFK = true,
         AutoQuest = true,
         AutoSpawn = false,
-        AutoChest = false
+        AutoChest = false,
+        AttackSpeed = 0.2 -- Kecepatan attack (detik)
     },
     
     -- Dungeon Settings
@@ -211,8 +209,9 @@ local Config = {
         TweenSpeed = 50,
         MoveMode = "Teleport",
         FarmMode = "Behind",
-        FollowStyle = "Dodge",
-        OffsetDist = 15
+        FollowStyle = "Static",
+        OffsetDist = 15,
+        AttackSpeed = 0.2
     },
     
     -- Boss Rush
@@ -222,8 +221,9 @@ local Config = {
         TweenSpeed = 50,
         MoveMode = "Teleport",
         FarmMode = "Behind",
-        FollowStyle = "Dodge",
-        OffsetDist = 15
+        FollowStyle = "Static",
+        OffsetDist = 15,
+        AttackSpeed = 0.2
     },
     
     -- Boss Systems
@@ -284,6 +284,7 @@ local State = {
     LastEquip = 0,
     LastTP = 0,
     LastEnemy = 0,
+    LastAttack = 0,
     TPCount = 0,
     TPRest = tick(),
     IslandTPd = false,
@@ -320,6 +321,7 @@ local State = {
 
 -- Inisialisasi RayParams
 State.RayParams.FilterType = Enum.RaycastFilterType.Exclude
+State.RayParams.FilterDescendantsInstances = {Player.Character}
 
 --==================================================
 -- UTILITY FUNCTIONS
@@ -647,114 +649,106 @@ local function NearestFrom(list)
     return best
 end
 
-local function GetGoalForEnemy(enemy)
+-- FUNGSI UNTUK MENDAPATKAN POSISI STATIC DI ATAS MUSUH
+local function GetStaticPositionAboveEnemy(enemy)
     local pos = RootPos(enemy)
-    if not pos then return nil, nil end
-    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil, nil end
+    if not pos then return nil end
     
-    -- Gunakan Height Offset dari config
-    local heightOffset = Config.Farm.HeightOffset
-    
-    -- Hitung arah berdasarkan mode farm
-    local dir = (hrp.Position - pos).Unit
-    dir = Vector3.new(dir.X, 0, dir.Z).Unit
-    
-    local farmMode = Config.Farm.FarmMode
-    local goal
-    
-    if farmMode == "In Front" then
-        goal = pos - dir * Config.Farm.OffsetDist
-    elseif farmMode == "Left Side" then
-        goal = pos + Vector3.new(dir.Z, 0, -dir.X) * Config.Farm.OffsetDist
-    elseif farmMode == "Right Side" then
-        goal = pos + Vector3.new(-dir.Z, 0, dir.X) * Config.Farm.OffsetDist
-    else -- Behind (default)
-        goal = pos + dir * Config.Farm.OffsetDist
-    end
-    
-    goal = Vector3.new(goal.X, pos.Y + heightOffset, goal.Z)
-    return goal, pos
+    -- Posisi static di atas musuh dengan height offset
+    return Vector3.new(pos.X, pos.Y + Config.Farm.HeightOffset, pos.Z)
 end
 
-local function TweenTo(enemy)
+local function MoveToStaticPosition(enemy)
     if not enemy then return end
-    if State.LockTarget == enemy and Config.Farm.FollowStyle ~= "Dodge" then
-        local ep = RootPos(enemy)
-        local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-        if ep and hrp then
-            local d = (hrp.Position - ep).Magnitude
-            if d <= Config.Farm.OffsetDist + 25 then return end
-            State.LockTarget = nil
-        else
-            return
-        end
-    end
     
-    local goal, look = GetGoalForEnemy(enemy)
-    if not goal then return end
+    local targetPos = GetStaticPositionAboveEnemy(enemy)
+    if not targetPos then return end
     
     local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    local d = (hrp.Position - goal).Magnitude
-    if d > 600 then return end
+    local distance = (hrp.Position - targetPos).Magnitude
     
-    if d < Config.Farm.OffsetDist + 2 then
+    -- Jika sudah di posisi, tidak perlu gerak
+    if distance < 2 then
         State.LockTarget = enemy
-        StopTween()
-        return
+        return true
     end
     
+    -- Teleport langsung ke posisi (static)
     if Config.Farm.MoveMode == "Teleport" then
+        hrp.CFrame = CFrame.new(targetPos)
+        State.LockTarget = enemy
+        return true
+    else
+        -- Tween ke posisi
         StopTween()
-        hrp.CFrame = CFrame.new(goal, look or goal)
-        State.LockTarget = enemy
-        return
+        State.TweenOn = true
+        State.TweenTarget = enemy
+        
+        local dur = math.clamp(distance / math.max(Config.Farm.TweenSpeed, 1), 0.1, 2.0)
+        State.ATween = TweenService:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
+        State.ATweenConn = State.ATween.Completed:Connect(function()
+            State.ATween = nil
+            State.ATweenConn = nil
+            State.TweenOn = false
+            State.TweenTarget = nil
+            State.LockTarget = enemy
+        end)
+        State.ATween:Play()
+        return true
     end
+end
+
+-- FUNGSI ATTACK YANG DIPERBAIKI
+local function AttackEnemy()
+    if not Config.AutoFarm.AutoHit then return end
     
-    if State.TweenOn and State.TweenTarget == enemy then return end
+    local currentTime = tick()
+    if currentTime - State.LastAttack < Config.Farm.AttackSpeed then return end
+    State.LastAttack = currentTime
     
-    StopTween()
-    State.TweenOn = true
-    State.TweenTarget = enemy
-    State.LockTarget = nil
+    -- Fire hit remote
+    pcall(function() hitRemote:FireServer() end)
     
-    local stepDist = math.min(d, 80)
-    local dir = (goal - hrp.Position).Unit
-    local stepGoal = hrp.Position + (dir * stepDist)
-    local cf = CFrame.new(stepGoal, look or goal)
-    local dur = math.clamp(stepDist / math.max(Config.Farm.TweenSpeed, 1), 0.06, 3.0)
-    
-    State.ATween = TweenService:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = cf})
-    State.ATweenConn = State.ATween.Completed:Connect(function()
-        State.ATween = nil
-        State.ATweenConn = nil
-        State.TweenOn = false
-        State.TweenTarget = nil
-        State.LockTarget = enemy
-    end)
-    State.ATween:Play()
+    -- Fire abilities
+    FireAbilities()
 end
 
 local function FireAbilities()
     if tick() - State.LastSkill < Config.AutoFarm.SkillCooldown then return end
+    
+    -- Cek apakah ada skill yang aktif
+    local hasSkills = Config.AutoFarm.SkillZ or Config.AutoFarm.SkillX or Config.AutoFarm.SkillC or Config.AutoFarm.SkillV or Config.AutoFarm.SkillF
+    if not hasSkills then return end
+    
     State.LastSkill = tick()
     
-    if Config.AutoFarm.SkillZ then pcall(function() AbilityRemote:FireServer(1) end) end
-    if Config.AutoFarm.SkillX then pcall(function() AbilityRemote:FireServer(2) end) end
-    if Config.AutoFarm.SkillC then pcall(function() AbilityRemote:FireServer(3) end) end
-    if Config.AutoFarm.SkillV then pcall(function() AbilityRemote:FireServer(4) end) end
-    if Config.AutoFarm.SkillF then pcall(function() AbilityRemote:FireServer(5) end) end
-end
-
-local function Attack()
-    pcall(function() hitRemote:FireServer() end)
-    FireAbilities()
+    -- Fire skills sesuai urutan
+    if Config.AutoFarm.SkillZ then
+        pcall(function() AbilityRemote:FireServer(1) end)
+        task.wait(0.05)
+    end
+    if Config.AutoFarm.SkillX then
+        pcall(function() AbilityRemote:FireServer(2) end)
+        task.wait(0.05)
+    end
+    if Config.AutoFarm.SkillC then
+        pcall(function() AbilityRemote:FireServer(3) end)
+        task.wait(0.05)
+    end
+    if Config.AutoFarm.SkillV then
+        pcall(function() AbilityRemote:FireServer(4) end)
+        task.wait(0.05)
+    end
+    if Config.AutoFarm.SkillF then
+        pcall(function() AbilityRemote:FireServer(5) end)
+        task.wait(0.05)
+    end
 end
 
 --==================================================
--- FIXED EQUIP WEAPON FUNCTIONS (BISA GANTI PEDANG/COMBAT/BUAH)
+-- FIXED EQUIP WEAPON FUNCTIONS
 --==================================================
 local function GetAllTools()
     local tools = {}
@@ -938,7 +932,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Sailor Piece",
     Subtext = "Catraz Ultimate Edition",
-    Version = "v2.2",
+    Version = "v2.3",
     VersionIcon = "ship",
     HidePremium = false,
     SaveConfig = true,
@@ -1193,10 +1187,11 @@ FarmMainSection:AddDropdown({
     end
 })
 
+-- UBAH DEFAULT COMBAT STYLE JADI STATIC
 FarmMainSection:AddDropdown({
     Name = "COMBAT STYLE",
-    Default = "Dodge",
-    Options = {"Dodge", "Static", "Orbit", "Strafe"},
+    Default = "Static",
+    Options = {"Static", "Dodge", "Orbit", "Strafe"},
     Multi = false,
     Outline = true,
     Flag = "FollowStyle",
@@ -1208,7 +1203,7 @@ FarmMainSection:AddDropdown({
 
 FarmMainSection:AddDropdown({
     Name = "TRAVEL MODE",
-    Default = "Tween",
+    Default = "Teleport",
     Options = {"Tween", "Teleport"},
     Multi = false,
     Outline = true,
@@ -1234,6 +1229,22 @@ FarmMainSection:AddSlider({
     Callback = function(Value)
         Config.Farm.HeightOffset = Value
         Notify("Height offset set to: " .. Value)
+    end
+})
+
+-- SLIDER UNTUK ATTACK SPEED
+FarmMainSection:AddSlider({
+    Name = "ATTACK SPEED",
+    Min = 0.1,
+    Max = 1.0,
+    Default = 0.2,
+    Increment = 0.05,
+    ValueName = "sec",
+    Outline = true,
+    Flag = "AttackSpeed",
+    Save = true,
+    Callback = function(Value)
+        Config.Farm.AttackSpeed = Value
     end
 })
 
@@ -1288,7 +1299,7 @@ FarmMainSection:AddToggle({
 })
 
 FarmMainSection:AddToggle({
-    Name = "AUTO EQUIP WEAPON (FIXED)",
+    Name = "AUTO EQUIP WEAPON",
     Default = true,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -1456,7 +1467,7 @@ FarmMainSection:AddButton({
 })
 
 --==================================================
--- SKILL TAB
+-- SKILL TAB (DIPERBAIKI)
 --==================================================
 local SkillSection = SkillTab:AddSection({
     Name = "🎯 AUTO SKILLS",
@@ -1530,6 +1541,19 @@ SkillSection:AddSlider({
     end
 })
 
+SkillSection:AddButton({
+    Name = "🔥 TEST ALL SKILLS",
+    Icon = "zap",
+    Outline = true,
+    Callback = function()
+        Notify("Testing skills...")
+        for i = 1, 5 do
+            pcall(function() AbilityRemote:FireServer(i) end)
+            task.wait(0.1)
+        end
+    end
+})
+
 --==================================================
 -- DUNGEON TAB
 --==================================================
@@ -1597,6 +1621,21 @@ DungeonSection:AddSlider({
     Save = true,
     Callback = function(Value)
         Config.Dungeon.HeightOffset = Value
+    end
+})
+
+DungeonSection:AddSlider({
+    Name = "ATTACK SPEED",
+    Min = 0.1,
+    Max = 1.0,
+    Default = 0.2,
+    Increment = 0.05,
+    ValueName = "sec",
+    Outline = true,
+    Flag = "DungeonAttackSpeed",
+    Save = true,
+    Callback = function(Value)
+        Config.Dungeon.AttackSpeed = Value
     end
 })
 
@@ -2050,7 +2089,7 @@ Window:AddConfigTab({
 })
 
 --==================================================
--- MAIN FARM LOOP
+-- MAIN FARM LOOP (DIPERBAIKI)
 --==================================================
 local function DoFarmTick()
     local tgtIsland = GetFarmIsland()
@@ -2087,10 +2126,13 @@ local function DoFarmTick()
         return
     end
     
+    -- Cari musuh
     local enemies = FindEnemies(State.CurIsland)
     
     if #enemies > 0 then
         State.LastEnemy = tick()
+        
+        -- Validasi target saat ini
         if State.CurTarget then
             local hm = GetHum(State.CurTarget)
             if not hm or hm.Health <= 0 or not State.CurTarget.Parent then
@@ -2101,22 +2143,41 @@ local function DoFarmTick()
                 State.LockTarget = nil
             end
         end
+        
+        -- Cari target baru jika tidak ada
         if not State.CurTarget then
             State.CurTarget = NearestFrom(enemies)
         end
+        
+        -- Jika ada target, attack
         if State.CurTarget then
-            TweenTo(State.CurTarget)
-            Attack()
-            
-            -- AUTO EQUIP LOGIC (FIXED)
+            -- Auto equip logic
             if Config.AutoFarm.AutoEquip and tick() - State.LastEquip > 2 then
                 State.LastEquip = tick()
                 AutoEquipLogic()
             end
+            
+            -- Auto haki logic
+            if Config.AutoFarm.AutoHaki then
+                pcall(function() hakiRemote:FireServer("Toggle") end)
+            end
+            
+            if Config.AutoFarm.AutoObsHaki then
+                pcall(function() obsHakiRemote:FireServer("Toggle") end)
+            end
+            
+            -- Pindah ke posisi static di atas musuh
+            local moved = MoveToStaticPosition(State.CurTarget)
+            
+            -- Attack terus menerus
+            AttackEnemy()
         end
     else
+        -- Tidak ada musuh
         State.CurTarget = nil
         State.LockTarget = nil
+        
+        -- Jika terlalu lama tanpa musuh, reset island TP
         if tick() - State.LastEnemy > 20 then
             State.IslandTPd = false
             State.SpawnDone = false
@@ -2241,6 +2302,10 @@ end)
 Player.CharacterAdded:Connect(function(char)
     task.wait(1)
     ClearTarget()
+    
+    -- Update filter
+    State.RayParams.FilterDescendantsInstances = {char}
+    
     if Config.AutoFarm.AutoEquip and Config.AutoFarm.SelectedWeapon ~= "None" then
         task.spawn(function()
             task.wait(1.5)
@@ -2253,35 +2318,6 @@ end)
 -- SEMUA KEYBIND DIHAPUS - HANYA F4 UNTUK TOGGLE UI
 -- Catraz Hub sudah punya F4 default untuk toggle UI
 --==================================================
--- Tidak ada keybind handler
-
---==================================================
--- HEARTBEAT MOVEMENT
---==================================================
-RunService.Heartbeat:Connect(function()
-    if not State.Running then return end
-    
-    -- Follow-style movement jika LockTarget ada
-    if State.LockTarget and Config.Farm.FollowStyle == "Dodge" then
-        local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-        local enemyPos = RootPos(State.LockTarget)
-        if hrp and enemyPos then
-            local dir = (hrp.Position - enemyPos).Unit
-            local right = Vector3.new(-dir.Z, 0, dir.X)
-            local dodgeDir = (math.sin(tick() * 4) > 0) and 1 or -1
-            local goal = enemyPos + dir * Config.Farm.OffsetDist + right * dodgeDir * 4
-            goal = Vector3.new(goal.X, enemyPos.Y + Config.Farm.HeightOffset, goal.Z)
-            local lookAt = Vector3.new(enemyPos.X, hrp.Position.Y, enemyPos.Z)
-            
-            local d = (Vector3.new(hrp.Position.X, 0, hrp.Position.Z) - Vector3.new(goal.X, 0, goal.Z)).Magnitude
-            if d > 1 then
-                hrp.CFrame = CFrame.new(hrp.Position + (goal - hrp.Position).Unit * math.min(d, 3), lookAt)
-            else
-                hrp.CFrame = CFrame.new(goal, lookAt)
-            end
-        end
-    end
-end)
 
 --==================================================
 -- INITIALIZE
@@ -2290,17 +2326,13 @@ OrionLib:Init()
 
 Notify("Press F4 to toggle UI")
 print("═══════════════════════════════════════════════════════")
-print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v2.2 🔥")
+print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v2.3 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ FIXED: VirtualInputService Error")
-print("✅ FIXED: Equip Weapon (bisa ganti pedang/combat/buah)")
-print("✅ HAPUS: Semua keybind (V, B, M)")
+print("✅ FIXED: Auto Farm sekarang menyerang!")
+print("✅ FIXED: Posisi karakter STATIC di atas musuh")
+print("✅ FIXED: Auto Skill sekarang berfungsi")
+print("✅ Menambahkan Attack Speed slider")
+print("✅ Default Combat Style: Static")
+print("✅ Default Travel Mode: Teleport")
 print("✅ Hanya F4 untuk toggle UI")
-print("✅ Auto Farm with Enemy Dropdown")
-print("✅ Height Offset Slider (5-50 studs)")
-print("✅ Multiple Combat Styles (Dodge/Static/Orbit/Strafe)")
-print("✅ Dungeon Auto Mode")
-print("✅ Boss Systems (World + Summon)")
-print("✅ Auto Merchant")
-print("✅ Quest Systems")
 print("═══════════════════════════════════════════════════════")
