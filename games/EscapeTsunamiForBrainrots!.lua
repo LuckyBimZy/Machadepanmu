@@ -318,8 +318,21 @@ local LBR = {"Any","Common","Uncommon","Rare","Epic","Legendary","Mythical","Cos
 local SL = {} for i=1,40 do table.insert(SL,tostring(i)) end
 local CSPD = {"100","200","300","400","500","600","800","1000","1200","1500","2000","2500","3000"}
 local TSUNAMI_MODES = {"Bawah (Gali Tanah)", "Atas (Terbang di Atas)"}
-local FARM_HEIGHTS = {"Bawah Tanah (-25)", "Permukaan (0)", "Ketinggian 50", "Ketinggian 100", "Ketinggian 150", "Ketinggian 200"}
-
+local FARM_HEIGHTS = {
+    "Bawah Tanah (-1)", 
+    "Bawah Tanah (-2)", 
+    "Bawah Tanah (-3)", 
+    "Bawah Tanah (-4)", 
+    "Bawah Tanah (-5)", 
+    "Bawah Tanah (-7)", 
+    "Bawah Tanah (-10)",
+    "Bawah Tanah (-25)", 
+    "Permukaan (0)", 
+    "Ketinggian 50", 
+    "Ketinggian 100", 
+    "Ketinggian 150", 
+    "Ketinggian 200"
+}
 --==================================================
 -- ACTIVE FEATURES COUNTER
 --==================================================
@@ -2170,6 +2183,7 @@ local FarmHeightSection = FarmTab:AddSection({
     Outline = true
 })
 
+-- DIPERBARUI: Dropdown dengan opsi rendah -1 sampai -10
 FarmHeightSection:AddDropdown({
     Name = "Pilih Ketinggian Farm",
     Default = "Bawah Tanah (-25)",
@@ -2178,7 +2192,14 @@ FarmHeightSection:AddDropdown({
     Outline = true,
     Flag = "FarmHeight",
     Callback = function(v)
-        if v == "Bawah Tanah (-25)" then Config.FarmHeight = -25
+        if v == "Bawah Tanah (-1)" then Config.FarmHeight = -1
+        elseif v == "Bawah Tanah (-2)" then Config.FarmHeight = -2
+        elseif v == "Bawah Tanah (-3)" then Config.FarmHeight = -3
+        elseif v == "Bawah Tanah (-4)" then Config.FarmHeight = -4
+        elseif v == "Bawah Tanah (-5)" then Config.FarmHeight = -5
+        elseif v == "Bawah Tanah (-7)" then Config.FarmHeight = -7
+        elseif v == "Bawah Tanah (-10)" then Config.FarmHeight = -10
+        elseif v == "Bawah Tanah (-25)" then Config.FarmHeight = -25
         elseif v == "Permukaan (0)" then Config.FarmHeight = 0
         elseif v == "Ketinggian 50" then Config.FarmHeight = 50
         elseif v == "Ketinggian 100" then Config.FarmHeight = 100
@@ -2191,7 +2212,7 @@ FarmHeightSection:AddDropdown({
 
 FarmHeightSection:AddParagraph({
     Title = "ℹ️ INFO KETINGGIAN",
-    Desc = "• Ketinggian farm akan otomatis mengikuti mode tsunami jika tsunami aktif\n• Mode Bawah: Y = -50\n• Mode Atas: Y = " .. Config.TsunamiHeight .. "\n• Farm tetap aman dari tsunami",
+    Desc = "• Opsi rendah: -1, -2, -3, -4, -5, -7, -10, -25\n• Ketinggian farm akan otomatis mengikuti mode tsunami jika tsunami aktif\n• Mode Bawah: Y = -50\n• Mode Atas: Y = " .. Config.TsunamiHeight .. "\n• Farm tetap aman dari tsunami",
     Image = "info",
     ImageSize = 30
 })
