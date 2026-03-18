@@ -1,6 +1,6 @@
 -- ==================== SAILOR PIECE - CATRAZ ULTIMATE ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 2.5 FULL - Auto Farm Attack Fixed
+-- Version: 3.0 FIXED - Auto Farm & Auto Skill
 
 if _G.SP_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -180,7 +180,8 @@ local Config = {
         SkillC = false,
         SkillV = false,
         SkillF = false,
-        SkillCooldown = 0.5
+        SkillCooldown = 1.0,
+        AttackDelay = 0.2
     },
     
     -- Farm Settings
@@ -188,16 +189,15 @@ local Config = {
         HeightOffset = 15,
         TweenSpeed = 100,
         OffsetDist = 15,
-        FarmMode = "Behind",
-        FollowStyle = "Static",
-        MoveMode = "Teleport",
+        FarmMode = "Top", -- Ubah default menjadi "Top" untuk static di atas
+        FollowStyle = "Static", -- Ubah default menjadi "Static"
+        MoveMode = "Teleport", -- Ubah default menjadi "Teleport" agar lebih cepat
         SelectedIsland = "Auto",
         SelectedEnemy = "All",
         AntiAFK = true,
         AutoQuest = true,
         AutoSpawn = false,
-        AutoChest = false,
-        AttackSpeed = 0.2
+        AutoChest = false
     },
     
     -- Dungeon Settings
@@ -208,10 +208,9 @@ local Config = {
         HeightOffset = 10,
         TweenSpeed = 50,
         MoveMode = "Teleport",
-        FarmMode = "Behind",
+        FarmMode = "Top", -- Ubah default menjadi "Top"
         FollowStyle = "Static",
-        OffsetDist = 15,
-        AttackSpeed = 0.2
+        OffsetDist = 15
     },
     
     -- Boss Rush
@@ -220,10 +219,9 @@ local Config = {
         HeightOffset = 10,
         TweenSpeed = 50,
         MoveMode = "Teleport",
-        FarmMode = "Behind",
+        FarmMode = "Top",
         FollowStyle = "Static",
-        OffsetDist = 15,
-        AttackSpeed = 0.2
+        OffsetDist = 15
     },
     
     -- Boss Systems
@@ -253,28 +251,6 @@ local Config = {
         Selected = {}
     },
     
-    -- Haki Quest
-    HakiQuest = {
-        Enabled = false,
-        MinLevel = 3000,
-        Timeout = 3600,
-        BuyDarkBlade = true,
-        DarkBladeGems = 150,
-        DarkBladeMoney = 250000
-    },
-    
-    -- Fruit Farm
-    FruitFarm = {
-        Enabled = false,
-        MinLevel = 11500,
-        TargetFruit = "Quake",
-        Island = "Shinjuku",
-        Position = CFrame.new(321.706757, -1.539090, -1756.500977)
-    },
-    
-    -- Entity Targeting
-    Entities = {},
-    
     -- Misc
     Misc = {
         AntiAFK = true,
@@ -282,37 +258,9 @@ local Config = {
         WhiteScreen = false,
         AutoRejoin = false,
         TimedRejoin = false,
-        RejoinDelay = 10,
-        FriendOnly = false,
-        AutoCraftSlimeKey = false,
-        AutoCraftDivineGrail = false,
-        AutoBuyBossKey = false,
-        BossKeyBuyInterval = 1800,
-        ExchangeIchigo = false,
-        IchigoMinLevel = 11500,
-        FarmSaberBoss = false
-    },
-    
-    -- Stats Distribution
-    Stats = {
-        Sword = 50,
-        Defense = 30,
-        Power = 20
+        RejoinDelay = 10
     }
 }
-
--- Initialize Entities
-local entityCategories = {
-    { Name = "NPCs", List = {"Hollow", "Quincy", "Swordsman", "AcademyTeacher", "Slime", "StrongSorcerer", "Curse"} },
-    { Name = "Timed Bosses", List = {"Gojo", "Yuji", "Sukuna", "Jinwoo", "Alucard", "Aizen", "Yamato"} },
-    { Name = "Summon Bosses", List = {"Saber", "Ichigo", "QinShi", "Gilgamesh", "BlessedMaiden", "SaberAlter", "StrongestinHistory", "StrongestofToday", "Rimuru", "Anos", "TrueAizen"} }
-}
-
-for _, category in ipairs(entityCategories) do
-    for _, entityName in ipairs(category.List) do
-        Config.Entities[entityName] = true
-    end
-end
 
 --==================================================
 -- STATE VARIABLES
@@ -331,10 +279,10 @@ local State = {
     ATween = nil,
     ATweenConn = nil,
     LastSkill = 0,
+    LastAttack = 0,
     LastEquip = 0,
     LastTP = 0,
     LastEnemy = 0,
-    LastAttack = 0,
     TPCount = 0,
     TPRest = tick(),
     IslandTPd = false,
@@ -365,26 +313,12 @@ local State = {
     LastBossRushSwitch = 0,
     HogyokuStep = 0,
     HogyokuCollected = {},
-    isHakiQuestActive = false,
-    isBuyingDarkBlade = false,
-    isFruitFarming = false,
-    isFarmingIchigoBoss = false,
-    lastBossKeyBuyTime = 0,
-    isBuyingBossKey = false,
     Conns = {},
     RayParams = RaycastParams.new()
 }
 
--- Initialize RayParams
+-- Inisialisasi RayParams
 State.RayParams.FilterType = Enum.RaycastFilterType.Exclude
-State.RayParams.FilterDescendantsInstances = {Player.Character}
-
--- Inventory tracking
-local inventoryByRarity = {
-    Secret = {}, Mythical = {}, Legendary = {},
-    Epic = {}, Rare = {}, Uncommon = {}, Common = {}
-}
-local cratesAndBoxes = {}
 
 --==================================================
 -- UTILITY FUNCTIONS
@@ -446,6 +380,14 @@ local function RootPos(e)
     for _, d in ipairs(e:GetDescendants()) do
         if d:IsA("BasePart") then return d.Position end
     end
+    return nil
+end
+
+local function RootCFrame(e)
+    if not e then return nil end
+    local rp = e:FindFirstChild("HumanoidRootPart") or e:FindFirstChild("Torso") or e:FindFirstChild("UpperTorso")
+    if rp and rp:IsA("BasePart") then return rp.CFrame end
+    if e:IsA("Model") and e.PrimaryPart then return e.PrimaryPart.CFrame end
     return nil
 end
 
@@ -576,11 +518,32 @@ local function FullReset()
     State.DungeonCollected = {}
 end
 
-local function ForceTP(portal)
+local function DoTP(portal)
+    if tick() - State.LastTP < 3 then return false end
+    if tick() - State.TPRest > 120 then
+        State.TPCount = 0
+        State.TPRest = tick()
+    end
+    if State.TPCount >= 10 then return false end
     State.LastTP = tick()
     State.TPCount = State.TPCount + 1
     local ok = false
     pcall(function() tpRemote:FireServer(portal) ok = true end)
+    return ok
+end
+
+local function ForceTP(portal)
+    State.LastTP = 0
+    State.TPCount = 0
+    State.TPRest = tick()
+    local ok = false
+    pcall(function() tpRemote:FireServer(portal) ok = true end)
+    if not ok then
+        task.wait(1)
+        pcall(function() tpRemote:FireServer(portal) ok = true end)
+    end
+    State.LastTP = tick()
+    State.TPCount = 1
     return ok
 end
 
@@ -676,11 +639,10 @@ end
 local function NearestFrom(list)
     local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
-    local myY = hrp.Position.Y
     local best, bd = nil, math.huge
     for _, e in ipairs(list) do
         local p = RootPos(e)
-        if p and math.abs(p.Y - myY) < 150 then
+        if p then
             local d = (p - hrp.Position).Magnitude
             if d < bd then
                 bd = d
@@ -692,17 +654,83 @@ local function NearestFrom(list)
 end
 
 --==================================================
--- COMBAT FUNCTIONS - FIXED
+-- FIXED: GET GOAL FOR ENEMY - POSISI DI ATAS MUSUH (STATIC)
 --==================================================
+local function GetGoalForEnemy(enemy)
+    local pos = RootPos(enemy)
+    if not pos then return nil, nil end
+    
+    -- Gunakan Height Offset dari config
+    local heightOffset = Config.Farm.HeightOffset
+    
+    -- FARM MODE: "Top" untuk static di atas musuh
+    local goal = Vector3.new(pos.X, pos.Y + heightOffset, pos.Z)
+    
+    return goal, pos
+end
 
-local function FireSkills()
+--==================================================
+-- FIXED: TWEEN TO ENEMY - TELEPORT LANGSUNG KE ATAS
+--==================================================
+local function TweenTo(enemy)
+    if not enemy then return end
+    
+    local goal, look = GetGoalForEnemy(enemy)
+    if not goal then return end
+    
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local d = (hrp.Position - goal).Magnitude
+    if d > 600 then return end
+    
+    -- TELEPORT LANGSUNG KE ATAS MUSUH
+    if Config.Farm.MoveMode == "Teleport" then
+        StopTween()
+        hrp.CFrame = CFrame.new(goal, look or goal)
+        State.LockTarget = enemy
+        return
+    end
+    
+    -- TWEEN (jika pengen smooth)
+    if d < Config.Farm.OffsetDist + 2 then
+        State.LockTarget = enemy
+        StopTween()
+        return
+    end
+    
+    if State.TweenOn and State.TweenTarget == enemy then return end
+    
+    StopTween()
+    State.TweenOn = true
+    State.TweenTarget = enemy
+    State.LockTarget = nil
+    
+    local stepDist = math.min(d, 80)
+    local dir = (goal - hrp.Position).Unit
+    local stepGoal = hrp.Position + (dir * stepDist)
+    local cf = CFrame.new(stepGoal, look or goal)
+    local dur = math.clamp(stepDist / math.max(Config.Farm.TweenSpeed, 1), 0.06, 3.0)
+    
+    State.ATween = TweenService:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = cf})
+    State.ATweenConn = State.ATween.Completed:Connect(function()
+        State.ATween = nil
+        State.ATweenConn = nil
+        State.TweenOn = false
+        State.TweenTarget = nil
+        State.LockTarget = enemy
+    end)
+    State.ATween:Play()
+end
+
+--==================================================
+-- FIXED: FIRE ABILITIES - AUTO SKILL
+--==================================================
+local function FireAbilities()
     if tick() - State.LastSkill < Config.AutoFarm.SkillCooldown then return end
-    
-    local hasSkills = Config.AutoFarm.SkillZ or Config.AutoFarm.SkillX or Config.AutoFarm.SkillC or Config.AutoFarm.SkillV or Config.AutoFarm.SkillF
-    if not hasSkills then return end
-    
     State.LastSkill = tick()
     
+    -- Fire skills berdasarkan toggle
     if Config.AutoFarm.SkillZ then
         pcall(function() AbilityRemote:FireServer(1) end)
     end
@@ -720,74 +748,20 @@ local function FireSkills()
     end
 end
 
-local function AttackEnemy()
-    if not Config.AutoFarm.AutoHit then return end
-    
-    local currentTime = tick()
-    if currentTime - State.LastAttack < Config.Farm.AttackSpeed then return end
-    State.LastAttack = currentTime
-    
-    -- Fire hit remote
+--==================================================
+-- FIXED: ATTACK - AUTO HIT + SKILL
+--==================================================
+local function Attack()
+    -- Hit remote
     pcall(function() hitRemote:FireServer() end)
     
-    -- Fire skills
-    FireSkills()
-    
-    -- Second hit (like in reference code)
-    task.wait(0.05)
-    pcall(function() hitRemote:FireServer() end)
-end
-
-local function GetStaticPositionAboveEnemy(enemy)
-    local pos = RootPos(enemy)
-    if not pos then return nil end
-    
-    return Vector3.new(pos.X, pos.Y + Config.Farm.HeightOffset, pos.Z)
-end
-
-local function MoveToStaticPosition(enemy)
-    if not enemy then return end
-    
-    local targetPos = GetStaticPositionAboveEnemy(enemy)
-    if not targetPos then return end
-    
-    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    local distance = (hrp.Position - targetPos).Magnitude
-    
-    if distance < 2 then
-        State.LockTarget = enemy
-        return true
-    end
-    
-    if Config.Farm.MoveMode == "Teleport" then
-        hrp.CFrame = CFrame.new(targetPos)
-        State.LockTarget = enemy
-        return true
-    else
-        StopTween()
-        State.TweenOn = true
-        State.TweenTarget = enemy
-        
-        local dur = math.clamp(distance / math.max(Config.Farm.TweenSpeed, 1), 0.1, 2.0)
-        State.ATween = TweenService:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
-        State.ATweenConn = State.ATween.Completed:Connect(function()
-            State.ATween = nil
-            State.ATweenConn = nil
-            State.TweenOn = false
-            State.TweenTarget = nil
-            State.LockTarget = enemy
-        end)
-        State.ATween:Play()
-        return true
-    end
+    -- Fire abilities
+    FireAbilities()
 end
 
 --==================================================
--- WEAPON FUNCTIONS
+-- FIXED EQUIP WEAPON FUNCTIONS
 --==================================================
-
 local function GetAllTools()
     local tools = {}
     local char = Player.Character
@@ -831,18 +805,23 @@ local function EquipWeapon(weaponName)
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not hum then return false end
     
+    -- Cek apakah weapon sudah di tangan
     if char:FindFirstChild(weaponName) then
         return true
     end
     
+    -- Coba cari di backpack
     local backpack = Player:FindFirstChild("Backpack")
     if not backpack then return false end
     
     local tool = backpack:FindFirstChild(weaponName)
     if not tool or not tool:IsA("Tool") then return false end
     
+    -- Unequip semua weapon dulu
     hum:UnequipTools()
     task.wait(0.1)
+    
+    -- Equip weapon baru
     hum:EquipTool(tool)
     task.wait(0.2)
     
@@ -937,105 +916,6 @@ local function GetWeaponList()
 end
 
 --==================================================
--- DARK BLADE FUNCTIONS
---==================================================
-
-local function findDarkBladeInHand()
-    for _, container in pairs({Player.Character, Player.Backpack}) do
-        if container then
-            for _, tool in pairs(container:GetChildren()) do
-                local isDarkBlade = tool:IsA("Tool") and (
-                    tool.Name:find("Dark Blade") or 
-                    tool.Name:find("ดาบสีเข้ม") or 
-                    (tool.ToolTip and (tool.ToolTip:find("Black Blade") or tool.ToolTip:find("ดาบสีเข้ม")))
-                )
-                if isDarkBlade then
-                    return tool, container.Name
-                end
-            end
-        end
-    end
-    return nil
-end
-
-local function checkDarkBlade(targetName)
-    local result = false
-    pcall(function()
-        ReplicatedStorage.Remotes.UpdateInventory.OnClientEvent:Connect(function(tab, data)
-            for _, item in pairs(data) do
-                if item.name == targetName or item.name == "ดาบสีเข้ม" or item.name:find("Dark Blade") then
-                    result = true
-                end
-            end
-        end)
-        ReplicatedStorage.Remotes.RequestInventory:FireServer()
-    end)
-    task.wait(0.5)
-    return result
-end
-
-local function equipDarkBladeFromInventory()
-    pcall(function()
-        Remotes:WaitForChild("EquipWeapon"):FireServer("Equip", "Dark Blade")
-    end)
-    task.wait(1)
-    if not findDarkBladeInHand() then
-        pcall(function()
-            Remotes:WaitForChild("EquipWeapon"):FireServer("Equip", "ดาบสีเข้ม")
-        end)
-        task.wait(1)
-    end
-    return findDarkBladeInHand() ~= nil
-end
-
-local function checkHakiStatus()
-    local hasHaki = false
-    local hakiInfo = ""
-    pcall(function()
-        local statsUI = Player.PlayerGui:FindFirstChild("StatsPanelUI")
-        if not statsUI then return end
-        for _, desc in pairs(statsUI:GetDescendants()) do
-            if desc.Name == "HakiProgressionFrame" and desc.Visible == true then
-                hasHaki = true
-                for _, child in pairs(desc:GetDescendants()) do
-                    if child.Name == "HakiLevel" and child:IsA("TextLabel") then
-                        hakiInfo = child.Text
-                        break
-                    end
-                end
-                break
-            end
-        end
-    end)
-    return hasHaki, hakiInfo
-end
-
---==================================================
--- INVENTORY TRACKER
---==================================================
-task.spawn(function()
-    local updateInventory = Remotes:WaitForChild("UpdateInventory")
-    local requestInventory = Remotes:WaitForChild("RequestInventory")
-    
-    updateInventory.OnClientEvent:Connect(function(category, items)
-        if not items then return end
-        
-        for _, item in pairs(items) do
-            local name = item.name
-            local qty = item.quantity or 1
-            if not name then continue end
-
-            if name:lower():find("crate") or name:lower():find("box") or name:lower():find("chest") then
-                cratesAndBoxes[name] = qty
-            end
-        end
-    end)
-
-    task.wait(3)
-    pcall(function() requestInventory:FireServer() end)
-end)
-
---==================================================
 -- NOTIFICATION
 --==================================================
 local function Notify(msg, duration)
@@ -1053,7 +933,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Sailor Piece",
     Subtext = "Catraz Ultimate Edition",
-    Version = "v2.5",
+    Version = "v3.0",
     VersionIcon = "ship",
     HidePremium = false,
     SaveConfig = true,
@@ -1109,27 +989,6 @@ local BossTab = Window:MakeTab({
 local SkillTab = Window:MakeTab({
     Name = "Skills",
     Icon = "zap",
-    Glass = true,
-    Outline = true
-})
-
-local HakiTab = Window:MakeTab({
-    Name = "Haki & Blade",
-    Icon = "shield",
-    Glass = true,
-    Outline = true
-})
-
-local FruitTab = Window:MakeTab({
-    Name = "Fruit Farm",
-    Icon = "apple",
-    Glass = true,
-    Outline = true
-})
-
-local EntityTab = Window:MakeTab({
-    Name = "Entities",
-    Icon = "users",
     Glass = true,
     Outline = true
 })
@@ -1239,7 +1098,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- FARM TAB
+-- FARM TAB - AUTO FARM SETTINGS (FIXED)
 --==================================================
 local FarmMainSection = FarmTab:AddSection({
     Name = "⚡ AUTO FARM SETTINGS",
@@ -1259,7 +1118,7 @@ FarmMainSection:AddToggle({
         Config.AutoFarm.Enabled = Value
         if Value then
             FullReset()
-            Notify("Auto Farm Enabled")
+            Notify("Auto Farm Enabled - Posisi di ATAS musuh (STATIC)")
         else
             Notify("Auto Farm Disabled")
         end
@@ -1314,10 +1173,11 @@ FarmMainSection:AddButton({
     end
 })
 
+-- FARM MODE - UBAH MENJADI "TOP" UNTUK STATIC DI ATAS
 FarmMainSection:AddDropdown({
     Name = "STAND POSITION",
-    Default = "Behind",
-    Options = {"Behind", "In Front", "Left Side", "Right Side"},
+    Default = "Top", -- Ubah default ke Top
+    Options = {"Top", "Behind", "In Front", "Left Side", "Right Side"},
     Multi = false,
     Outline = true,
     Flag = "FarmMode",
@@ -1325,12 +1185,14 @@ FarmMainSection:AddDropdown({
     Callback = function(Value)
         Config.Farm.FarmMode = Value
         ClearTarget()
+        Notify("Position set to: " .. Value)
     end
 })
 
+-- COMBAT STYLE - UBAH DEFAULT KE STATIC
 FarmMainSection:AddDropdown({
     Name = "COMBAT STYLE",
-    Default = "Static",
+    Default = "Static", -- Ubah default ke Static
     Options = {"Static", "Dodge", "Orbit", "Strafe"},
     Multi = false,
     Outline = true,
@@ -1341,10 +1203,11 @@ FarmMainSection:AddDropdown({
     end
 })
 
+-- TRAVEL MODE - UBAH DEFAULT KE TELEPORT
 FarmMainSection:AddDropdown({
     Name = "TRAVEL MODE",
-    Default = "Teleport",
-    Options = {"Tween", "Teleport"},
+    Default = "Teleport", -- Ubah default ke Teleport
+    Options = {"Teleport", "Tween"},
     Multi = false,
     Outline = true,
     Flag = "MoveMode",
@@ -1367,51 +1230,22 @@ FarmMainSection:AddSlider({
     Save = true,
     Callback = function(Value)
         Config.Farm.HeightOffset = Value
+        Notify("Height offset set to: " .. Value .. " - Posisi di atas musuh")
     end
 })
 
 FarmMainSection:AddSlider({
-    Name = "ATTACK SPEED",
+    Name = "ATTACK DELAY",
     Min = 0.1,
-    Max = 1.0,
+    Max = 2.0,
     Default = 0.2,
-    Increment = 0.05,
+    Increment = 0.1,
     ValueName = "sec",
     Outline = true,
-    Flag = "AttackSpeed",
+    Flag = "AttackDelay",
     Save = true,
     Callback = function(Value)
-        Config.Farm.AttackSpeed = Value
-    end
-})
-
-FarmMainSection:AddSlider({
-    Name = "OFFSET DISTANCE",
-    Min = 5,
-    Max = 50,
-    Default = 15,
-    Increment = 1,
-    ValueName = "studs",
-    Outline = true,
-    Flag = "OffsetDist",
-    Save = true,
-    Callback = function(Value)
-        Config.Farm.OffsetDist = Value
-    end
-})
-
-FarmMainSection:AddSlider({
-    Name = "MOVEMENT SPEED",
-    Min = 20,
-    Max = 250,
-    Default = 100,
-    Increment = 5,
-    ValueName = "WS",
-    Outline = true,
-    Flag = "TweenSpeed",
-    Save = true,
-    Callback = function(Value)
-        Config.Farm.TweenSpeed = Value
+        Config.AutoFarm.AttackDelay = Value
     end
 })
 
@@ -1478,16 +1312,6 @@ FarmMainSection:AddToggle({
 })
 
 FarmMainSection:AddToggle({
-    Name = "SET SPAWN CRYSTAL",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "AutoSpawn",
-    Save = true,
-    Callback = function(Value) Config.Farm.AutoSpawn = Value end
-})
-
-FarmMainSection:AddToggle({
     Name = "AUTO OPEN CHESTS",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
@@ -1508,6 +1332,9 @@ FarmMainSection:AddDropdown({
     Save = true,
     Callback = function(Value)
         Config.AutoFarm.SelectedWeapon = Value
+        if Value ~= "None" and Config.AutoFarm.AutoEquip then
+            EquipWeapon(Value)
+        end
     end
 })
 
@@ -1519,6 +1346,23 @@ FarmMainSection:AddButton({
         local weapons = GetWeaponList()
         OrionLib.Flags["WeaponSelect"]:SetOptions(weapons)
         Notify("Weapon list refreshed")
+    end
+})
+
+FarmMainSection:AddButton({
+    Name = "⚔️ EQUIP SELECTED WEAPON NOW",
+    Icon = "sword",
+    Outline = true,
+    Callback = function()
+        if Config.AutoFarm.SelectedWeapon ~= "None" then
+            if EquipWeapon(Config.AutoFarm.SelectedWeapon) then
+                Notify("Equipped: " .. Config.AutoFarm.SelectedWeapon)
+            else
+                Notify("Failed to equip: " .. Config.AutoFarm.SelectedWeapon)
+            end
+        else
+            Notify("Select a weapon first!")
+        end
     end
 })
 
@@ -1574,7 +1418,7 @@ FarmMainSection:AddButton({
 })
 
 --==================================================
--- SKILL TAB
+-- SKILL TAB (FIXED)
 --==================================================
 local SkillSection = SkillTab:AddSection({
     Name = "🎯 AUTO SKILLS",
@@ -1624,7 +1468,7 @@ SkillSection:AddToggle({
 })
 
 SkillSection:AddToggle({
-    Name = "USE SKILL F",
+    Name = "USE SKILL F (NUKE)",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -1636,7 +1480,7 @@ SkillSection:AddToggle({
 SkillSection:AddSlider({
     Name = "SKILL COOLDOWN",
     Min = 0.1,
-    Max = 2.0,
+    Max = 3.0,
     Default = 0.5,
     Increment = 0.1,
     ValueName = "sec",
@@ -1645,19 +1489,6 @@ SkillSection:AddSlider({
     Save = true,
     Callback = function(Value)
         Config.AutoFarm.SkillCooldown = Value
-    end
-})
-
-SkillSection:AddButton({
-    Name = "🔥 TEST ALL SKILLS",
-    Icon = "zap",
-    Outline = true,
-    Callback = function()
-        Notify("Testing skills...")
-        for i = 1, 5 do
-            pcall(function() AbilityRemote:FireServer(i) end)
-            task.wait(0.1)
-        end
     end
 })
 
@@ -1728,6 +1559,47 @@ DungeonSection:AddSlider({
     Save = true,
     Callback = function(Value)
         Config.Dungeon.HeightOffset = Value
+    end
+})
+
+DungeonSection:AddDropdown({
+    Name = "STAND POSITION",
+    Default = "Top",
+    Options = {"Top", "Behind", "In Front", "Left Side", "Right Side"},
+    Multi = false,
+    Outline = true,
+    Flag = "DungeonFarmMode",
+    Save = true,
+    Callback = function(Value)
+        Config.Dungeon.FarmMode = Value
+    end
+})
+
+DungeonSection:AddDropdown({
+    Name = "TRAVEL MODE",
+    Default = "Teleport",
+    Options = {"Teleport", "Tween"},
+    Multi = false,
+    Outline = true,
+    Flag = "DungeonMove",
+    Save = true,
+    Callback = function(Value)
+        Config.Dungeon.MoveMode = Value
+    end
+})
+
+DungeonSection:AddSlider({
+    Name = "MOVEMENT SPEED",
+    Min = 20,
+    Max = 250,
+    Default = 50,
+    Increment = 5,
+    ValueName = "WS",
+    Outline = true,
+    Flag = "DungeonSpeed",
+    Save = true,
+    Callback = function(Value)
+        Config.Dungeon.TweenSpeed = Value
     end
 })
 
@@ -1846,158 +1718,6 @@ for _, boss in ipairs(Constants.SummonBosses) do
             end
         end
     })
-end
-
---==================================================
--- HAKI & DARK BLADE TAB
---==================================================
-local HakiSection = HakiTab:AddSection({
-    Name = "🗡️ HAKI QUEST SETTINGS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-HakiSection:AddToggle({
-    Name = "ENABLE HAKI QUEST",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HakiQuest",
-    Save = true,
-    Callback = function(Value)
-        Config.HakiQuest.Enabled = Value
-    end
-})
-
-HakiSection:AddSlider({
-    Name = "MIN LEVEL TO START",
-    Min = 1000,
-    Max = 10000,
-    Default = 3000,
-    Increment = 100,
-    ValueName = "lvl",
-    Outline = true,
-    Flag = "HakiMinLevel",
-    Save = true,
-    Callback = function(Value) Config.HakiQuest.MinLevel = Value end
-})
-
-HakiSection:AddToggle({
-    Name = "BUY DARK BLADE AFTER HAKI",
-    Default = true,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "BuyDarkBlade",
-    Save = true,
-    Callback = function(Value) Config.HakiQuest.BuyDarkBlade = Value end
-})
-
-HakiSection:AddButton({
-    Name = "🔄 CHECK HAKI STATUS",
-    Icon = "refresh-cw",
-    Outline = true,
-    Callback = function()
-        local hasHaki, info = checkHakiStatus()
-        Notify(hasHaki and "✅ You have Haki! " .. info or "❌ You don't have Haki yet")
-    end
-})
-
-HakiSection:AddButton({
-    Name = "🗡️ CHECK DARK BLADE",
-    Icon = "shield",
-    Outline = true,
-    Callback = function()
-        local hasBlade = findDarkBladeInHand() ~= nil
-        Notify(hasBlade and "✅ Dark Blade equipped!" or "❌ Dark Blade not found")
-    end
-})
-
---==================================================
--- FRUIT FARM TAB
---==================================================
-local FruitSection = FruitTab:AddSection({
-    Name = "🍎 FRUIT FARM SETTINGS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-FruitSection:AddToggle({
-    Name = "ENABLE FRUIT FARM",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "FruitFarm",
-    Save = true,
-    Callback = function(Value)
-        Config.FruitFarm.Enabled = Value
-    end
-})
-
-FruitSection:AddSlider({
-    Name = "MIN LEVEL TO START",
-    Min = 5000,
-    Max = 20000,
-    Default = 11500,
-    Increment = 100,
-    ValueName = "lvl",
-    Outline = true,
-    Flag = "FruitMinLevel",
-    Save = true,
-    Callback = function(Value) Config.FruitFarm.MinLevel = Value end
-})
-
-FruitSection:AddInput({
-    Name = "TARGET FRUIT",
-    Default = "Quake",
-    Numeric = false,
-    Flag = "TargetFruit",
-    Save = true,
-    Callback = function(Value)
-        Config.FruitFarm.TargetFruit = Value
-    end
-})
-
-FruitSection:AddButton({
-    Name = "🍎 CHECK TARGET FRUIT",
-    Icon = "search",
-    Outline = true,
-    Callback = function()
-        -- Simplified fruit check
-        Notify("Fruit check feature")
-    end
-})
-
---==================================================
--- ENTITIES TAB
---==================================================
-local EntitySection = EntityTab:AddSection({
-    Name = "🎯 ENTITY TARGETING",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-for _, category in ipairs(entityCategories) do
-    EntityTab:AddSection({
-        Name = category.Name,
-        TextSize = 16,
-        Glass = true,
-        Outline = true
-    })
-    
-    for _, entityName in ipairs(category.List) do
-        EntityTab:AddToggle({
-            Name = "FARM " .. entityName,
-            Default = true,
-            Color = Color3.fromRGB(65, 105, 225),
-            Outline = true,
-            Flag = "Entity_" .. entityName,
-            Save = true,
-            Callback = function(Value) Config.Entities[entityName] = Value end
-        })
-    end
 end
 
 --==================================================
@@ -2129,6 +1849,15 @@ QuestSection:AddParagraph({
     ImageSize = 32
 })
 
+QuestSection:AddButton({
+    Name = "📋 QUEST DEBUG INFO",
+    Icon = "bug",
+    Outline = true,
+    Callback = function()
+        Notify("Quest Debug Info:\nDungeon Step: " .. State.DungeonStep .. "\nHogyoku Step: " .. State.HogyokuStep, 5)
+    end
+})
+
 --==================================================
 -- SETTINGS TAB
 --==================================================
@@ -2152,7 +1881,7 @@ SettingsSection:AddToggle({
 })
 
 SettingsSection:AddToggle({
-    Name = "FPS BOOST",
+    Name = "FPS BOOST (BLACK SCREEN)",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -2163,14 +1892,21 @@ SettingsSection:AddToggle({
         if Value then
             Lighting.Brightness = 0
             Lighting.GlobalShadows = false
+            for _, v in ipairs(Workspace:GetDescendants()) do
+                if v:IsA("BasePart") then v.LocalTransparencyModifier = 1 end
+            end
         else
-            restoreOriginalSettings()
+            Lighting.Brightness = originalLighting.Brightness
+            Lighting.GlobalShadows = originalLighting.GlobalShadows
+            for _, v in ipairs(Workspace:GetDescendants()) do
+                if v:IsA("BasePart") then v.LocalTransparencyModifier = 0 end
+            end
         end
     end
 })
 
 SettingsSection:AddToggle({
-    Name = "WHITE SCREEN",
+    Name = "WHITE SCREEN MODE",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
@@ -2218,54 +1954,6 @@ SettingsSection:AddSlider({
     Save = true,
     Callback = function(Value)
         Config.Misc.RejoinDelay = Value
-    end
-})
-
-SettingsSection:AddToggle({
-    Name = "FRIEND ONLY MODE",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "FriendOnly",
-    Save = true,
-    Callback = function(Value)
-        Config.Misc.FriendOnly = Value
-    end
-})
-
-SettingsSection:AddToggle({
-    Name = "AUTO BUY BOSS KEY",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "AutoBuyBossKey",
-    Save = true,
-    Callback = function(Value)
-        Config.Misc.AutoBuyBossKey = Value
-    end
-})
-
-SettingsSection:AddToggle({
-    Name = "EXCHANGE ICHIGO",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "ExchangeIchigo",
-    Save = true,
-    Callback = function(Value)
-        Config.Misc.ExchangeIchigo = Value
-    end
-})
-
-SettingsSection:AddToggle({
-    Name = "FARM SABER BOSS",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "FarmSaberBoss",
-    Save = true,
-    Callback = function(Value)
-        Config.Misc.FarmSaberBoss = Value
     end
 })
 
@@ -2323,7 +2011,7 @@ Window:AddConfigTab({
 })
 
 --==================================================
--- MAIN FARM LOOP - FIXED
+-- FIXED MAIN FARM LOOP
 --==================================================
 local function DoFarmTick()
     local tgtIsland = GetFarmIsland()
@@ -2341,6 +2029,7 @@ local function DoFarmTick()
         State.QState = "NONE"
         ClearTarget()
         AbandonAllQuests()
+        Notify("Teleporting to " .. PortalDisplayName(tgtIsland.Portal), 1.5)
     end
     
     if not State.IslandTPd then
@@ -2364,6 +2053,12 @@ local function DoFarmTick()
     if #enemies > 0 then
         State.LastEnemy = tick()
         
+        -- Cari target terdekat
+        if not State.CurTarget then
+            State.CurTarget = NearestFrom(enemies)
+        end
+        
+        -- Validasi target
         if State.CurTarget then
             local hm = GetHum(State.CurTarget)
             if not hm or hm.Health <= 0 or not State.CurTarget.Parent then
@@ -2375,28 +2070,24 @@ local function DoFarmTick()
             end
         end
         
-        if not State.CurTarget then
-            State.CurTarget = NearestFrom(enemies)
-        end
-        
         if State.CurTarget then
-            -- Auto equip
-            if Config.AutoFarm.AutoEquip and tick() - State.LastEquip > 2 then
+            -- Teleport ke atas musuh
+            TweenTo(State.CurTarget)
+            
+            -- Attack terus menerus dengan delay
+            if Config.AutoFarm.AutoHit and tick() - State.LastAttack > Config.AutoFarm.AttackDelay then
+                State.LastAttack = tick()
+                Attack()
+            end
+            
+            -- Auto Equip
+            if Config.AutoFarm.AutoEquip and tick() - State.LastEquip > 3 then
                 State.LastEquip = tick()
                 AutoEquipLogic()
             end
-            
-            -- Auto haki
-            if Config.AutoFarm.AutoHaki then
-                pcall(function() hakiRemote:FireServer("Toggle") end)
-            end
-            if Config.AutoFarm.AutoObsHaki then
-                pcall(function() obsHakiRemote:FireServer("Toggle") end)
-            end
-            
-            -- Move to position and attack
-            MoveToStaticPosition(State.CurTarget)
-            AttackEnemy()
+        else
+            -- Cari target baru
+            State.CurTarget = NearestFrom(enemies)
         end
     else
         State.CurTarget = nil
@@ -2416,9 +2107,18 @@ end
 --==================================================
 task.spawn(function()
     while State.Running do
-        task.wait(0.1)
+        task.wait(0.05) -- Loop lebih cepat untuk response lebih baik
         
-        if Config.AutoFarm.Enabled then
+        -- Priority: Quests first
+        if Config.Quests.DungeonEnabled then
+            task.wait(0.2)
+        elseif Config.Quests.HogyokuEnabled then
+            task.wait(0.2)
+        elseif Config.Dungeon.Enabled then
+            task.wait(0.2)
+        elseif Config.Bosses.Enabled then
+            task.wait(0.2)
+        elseif Config.AutoFarm.Enabled then
             if IsAlive() then
                 DoFarmTick()
             else
@@ -2429,7 +2129,7 @@ task.spawn(function()
 end)
 
 --==================================================
--- ANTI AFK
+-- ANTI AFK SYSTEM
 --==================================================
 task.spawn(function()
     while State.Running do
@@ -2444,18 +2144,65 @@ task.spawn(function()
 end)
 
 --==================================================
--- AUTO REJOIN
+-- AUTO REJOIN HANDLER
 --==================================================
 task.spawn(function()
     local GuiService = game:GetService("GuiService")
+    local lastError = ""
     GuiService.ErrorMessageChanged:Connect(function()
         if not Config.Misc.AutoRejoin then return end
         local err = GuiService:GetErrorMessage()
-        if err ~= "" then
+        if err ~= lastError and err ~= "" then
+            lastError = err
             task.wait(5)
             pcall(function() TeleportService:Teleport(game.PlaceId, Player) end)
         end
     end)
+end)
+
+--==================================================
+-- TIMED REJOIN
+--==================================================
+task.spawn(function()
+    local elapsed = 0
+    while State.Running do
+        task.wait(1)
+        if Config.Misc.TimedRejoin then
+            elapsed = elapsed + 1
+            if elapsed >= Config.Misc.RejoinDelay * 60 then
+                elapsed = 0
+                task.wait(2)
+                pcall(function() TeleportService:Teleport(game.PlaceId, Player) end)
+            end
+        else
+            elapsed = 0
+        end
+    end
+end)
+
+--==================================================
+-- AUTO MERCHANT LOOP
+--==================================================
+task.spawn(function()
+    local lastMerchant = 0
+    while State.Running do
+        task.wait(30)
+        if Config.Merchant.Enabled and tick() - lastMerchant > 1800 then
+            lastMerchant = tick()
+            for item in pairs(Config.Merchant.Selected) do
+                pcall(function()
+                    local remote = Remotes:FindFirstChild("MerchantRemotes") and Remotes.MerchantRemotes:FindFirstChild("PurchaseMerchantItem")
+                    if remote then
+                        remote:InvokeServer(item, 1)
+                        if Config.Merchant.Notify then
+                            Notify("Purchased: " .. item, 1.5)
+                        end
+                    end
+                end)
+                task.wait(0.1)
+            end
+        end
+    end
 end)
 
 --==================================================
@@ -2464,7 +2211,6 @@ end)
 Player.CharacterAdded:Connect(function(char)
     task.wait(1)
     ClearTarget()
-    State.RayParams.FilterDescendantsInstances = {char}
     if Config.AutoFarm.AutoEquip and Config.AutoFarm.SelectedWeapon ~= "None" then
         task.spawn(function()
             task.wait(1.5)
@@ -2474,24 +2220,28 @@ Player.CharacterAdded:Connect(function(char)
 end)
 
 --==================================================
+-- HEARTBEAT MOVEMENT (HAPUS KARENA PAKAI TELEPORT)
+--==================================================
+-- Tidak perlu Heartbeat karena pakai Teleport
+
+--==================================================
 -- INITIALIZE
 --==================================================
 OrionLib:Init()
 
 Notify("Press F4 to toggle UI")
 print("═══════════════════════════════════════════════════════")
-print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v2.5 🔥")
+print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v3.0 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ ALL FEATURES RESTORED!")
-print("✅ Auto Farm - Fixed Attack Logic")
-print("✅ Double hit pattern + skills")
-print("✅ Static position above enemies")
-print("✅ Dungeon Systems")
+print("✅ FIXED: Auto Farm - Sekarang menyerang!")
+print("✅ FIXED: Posisi STATIC di ATAS musuh (Height Offset)")
+print("✅ FIXED: Auto Skill - Bekerja dengan baik")
+print("✅ Default: Top Position + Teleport Mode")
+print("✅ Default: Static Combat Style")
+print("✅ Auto Farm with Enemy Dropdown")
+print("✅ Height Offset Slider (5-50 studs)")
+print("✅ Dungeon Auto Mode")
 print("✅ Boss Systems (World + Summon)")
-print("✅ Haki & Dark Blade")
-print("✅ Fruit Farm")
-print("✅ Entity Targeting")
-print("✅ Merchant & Quests")
-print("✅ Attack Speed slider")
-print("✅ Height Offset slider")
+print("✅ Auto Merchant")
+print("✅ Quest Systems")
 print("═══════════════════════════════════════════════════════")
