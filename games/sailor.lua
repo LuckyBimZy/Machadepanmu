@@ -1,11 +1,10 @@
--- ==================== SAILOR PIECE HUB - CATRAZ EDITION ====================
--- Full Edition dengan UI Catraz Hub
--- Adapted from jachvn112-droid
--- Version: v4.0 Catraz
+-- ==================== SAILOR PIECE - CATRAZ EDITION ====================
+-- Adapted from PIMPLE v7.5 untuk UI Catraz Hub
+-- Version: 1.0
 
 if _G.SP_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Sailor Piece Hub",
+        Title = "Sailor Piece",
         Text = "Script already loaded!",
         Duration = 2
     })
@@ -20,73 +19,251 @@ _G.SP_Loaded = true
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
 
 --==================================================
--- SERVICES & GLOBALS
+-- VARIABLES
 --==================================================
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local RepStorage = game:GetService("ReplicatedStorage")
-local UIS = game:GetService("UserInputService")
+local Player = game.Players.LocalPlayer
+local Mouse = Player:GetMouse()
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local VirtualUser = game:GetService("VirtualUser")
-
-local player = Players.LocalPlayer
-local Mouse = player:GetMouse()
-
--- Cek apakah questcheck dan checkmap tersedia
-local questcheck = pcall(function() return require(RepStorage:FindFirstChild("Modules") and RepStorage.Modules:FindFirstChild("QuestConfig")) end) and require(RepStorage.Modules.QuestConfig) or {}
-local checkmap = pcall(function() return require(RepStorage:FindFirstChild("TravelConfig")) end) and require(RepStorage.TravelConfig) or {}
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local Camera = Workspace.CurrentCamera
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --==================================================
--- FARM STATE
+-- REMOTE PATHS
 --==================================================
-getgenv().IsFarm = false
-getgenv().SelectedMob = nil
-getgenv().WeaponMode = "Melee"
-getgenv().AttackCooldown = 0.3
-getgenv().IsTeleporting = false
-getgenv().PlankMode = false
-getgenv().FarmHeight = 25
-getgenv().FarmSpeed = 50
-getgenv().MoveMode = "Tween"
-
--- Skill State
-getgenv().SelectedSkill = 0
-getgenv().AutoSkills = { Z = false, X = false, C = false, V = false, F = false }
-getgenv().SkillCooldown = 0.5
-
--- Boss State
-getgenv().IsBossFight = false
-getgenv().SelectedBoss = nil
-getgenv().IsSummonBoss = false
-getgenv().SummonDifficulty = "Normal"
-
--- Dungeon / Gamemode State
-getgenv().IsAutoDungeon = false
-getgenv().DungeonType = "Shadow"
-getgenv().IsBossRush = false
-
--- Quest Chain State
-getgenv().IsDungeonQuest = false
-getgenv().IsHogyokuQuest = false
-
--- Item State
-getgenv().IsAutoChest = false
-getgenv().IsAutoMerchant = false
-getgenv().MerchantItem = nil
-
--- Misc State
-getgenv().IsNoclip = false
-getgenv()._antiAFK = true
+local R = {
+    TP = {"Remotes", "TeleportToPortal"},
+    QuestAccept = {"RemoteEvents", "QuestAccept"},
+    QuestAbandon = {"RemoteEvents", "QuestAbandon"},
+    UseItem = {"Remotes", "UseItem"},
+    Hit = {"CombatSystem", "Remotes", "RequestHit"},
+    Ability = {"AbilitySystem", "Remotes", "RequestAbility"},
+    Merchant = {"Remotes", "MerchantRemotes", "PurchaseMerchantItem"},
+    Settings = {"RemoteEvents", "SettingsToggle"},
+    QuestRepeat = {"RemoteEvents", "QuestRepeat"},
+    SummonBoss = {"Remotes", "RequestSummonBoss"},
+    AnosBoss = {"Remotes", "RequestSpawnAnosBoss"},
+    StrongestBoss = {"Remotes", "RequestSpawnStrongestBoss"},
+    AutoSpawnBoss = {"Remotes", "RequestAutoSpawn"},
+    AutoSpawnAnos = {"Remotes", "RequestAutoSpawnAnos"},
+    AutoSpawnStrongest = {"Remotes", "RequestAutoSpawnStrongest"},
+    SlimeCraft = {"Remotes", "RequestSlimeCraft"},
+    RimuruSpawn = {"RemoteEvents", "RequestSpawnRimuru"},
+    AutoSpawnRimuru = {"RemoteEvents", "RequestAutoSpawnRimuru"},
+    DungeonVote = {"Remotes", "DungeonWaveVote"},
+    DungeonPortal = {"Remotes", "RequestDungeonPortal"},
+}
 
 --==================================================
--- NOTIFICATION FUNCTION
+-- CONFIG
 --==================================================
-local function Notify(msg)
+local F = {
+    AutoFarmLevel = false,
+    AutoDungeon = false,
+    AutoBossRush = false,
+    HeightOffset = 15,
+    TweenSpeed = 100,
+    RuneHeight = 10,
+    RuneSpeed = 50,
+    RuneMove = "Teleport",
+    RuneDiff = "Normal",
+    CidHeight = 10,
+    CidSpeed = 50,
+    CidMove = "Teleport",
+    CidDiff = "Normal",
+    DoubleHeight = 10,
+    DoubleSpeed = 50,
+    DoubleMove = "Teleport",
+    DoubleDiff = "Normal",
+    BossRushHeightOffset = 10,
+    BossRushTweenSpeed = 50,
+    AntiAFK = true,
+    AutoEquip = true,
+    AutoQuest = true,
+    AutoSpawn = false,
+    SelectedIsland = "Auto",
+    SkillZ = false,
+    SkillX = false,
+    SkillC = false,
+    SkillV = false,
+    SkillF = false,
+    SkillCooldown = 1.0,
+    BossEnabled = false,
+    SummonBossEnabled = false,
+    GilgameshDiff = "Normal",
+    BlessedMaidenDiff = "Normal",
+    SaberAlterDiff = "Normal",
+    RimuruDiff = "Normal",
+    AnosDiff = "Normal",
+    StrongestTodayDiff = "Normal",
+    StrongestHistoryDiff = "Normal",
+    AutoChest = false,
+    FarmMode = "Plank",
+    BossRushFarmMode = "Plank",
+    BossRushMoveMode = "Teleport",
+    MoveMode = "Tween",
+    OffsetDist = 5,
+    AutoMerchant = false,
+    MerchNotify = true,
+    DungeonQuest = false,
+    HogyokuQuest = false,
+    DungeonType = "Rune",
+}
+
+--==================================================
+-- CONSTANTS & DATA
+--==================================================
+local S = {
+    ICON = "rbxthumb://type=AvatarHeadShot&id=583572860&w=420&h=420",
+    DISCORD = "https://discord.gg/B3PurfCy",
+    NPC_FOLDER = "NPCs",
+    BOSS_ISLAND_PORTAL = "Boss",
+    ANOS_ISLAND = "Academy",
+    LOOK_DOWN = Vector3.new(0, -1, 0),
+    FARM_MAX_DIST_FROM_PLAYER = 900,
+    FARM_MAX_DIST_FROM_ORIGIN = 1200,
+    GENERIC_HOSTILE_MAX_DIST = 900,
+}
+
+S.Islands = {
+    {Portal = "Starter", FarmUntil = 250, Enemies = {"Thief"}, QuestNPC = "QuestNPC1"},
+    {Portal = "Jungle", FarmUntil = 750, Enemies = {"Monkey"}, QuestNPC = "QuestNPC3"},
+    {Portal = "Desert", FarmUntil = 1500, Enemies = {"DesertBandit"}, QuestNPC = "QuestNPC5"},
+    {Portal = "Snow", FarmUntil = 3000, Enemies = {"Swordsman", "FrostRogue"}, QuestNPC = "QuestNPC7"},
+    {Portal = "Shibuya", FarmUntil = 5000, Enemies = {"Sorcerer", "Curse"}, QuestNPC = "QuestNPC9"},
+    {Portal = "HuecoMundo", FarmUntil = 6250, Enemies = {"Hollow", "Quincy"}, QuestNPC = "QuestNPC11"},
+    {Portal = "Shinjuku", FarmUntil = 8000, Enemies = {"StrongSorcerer"}, QuestNPC = "QuestNPC12"},
+    {Portal = "Slime", FarmUntil = 9000, Enemies = {"Slime"}, QuestNPC = "QuestNPC14"},
+    {Portal = "Academy", FarmUntil = 10000, Enemies = {"AcademyTeacher"}, QuestNPC = "QuestNPC15"},
+    {Portal = "Judgement", FarmUntil = 10750, Enemies = {"Swordsman"}, QuestNPC = "QuestNPC16"},
+    {Portal = "SoulSociety", FarmUntil = 999999, Enemies = {"Quincy1", "Quincy2", "Quincy3", "Quincy4", "Quincy5"}, QuestNPC = "QuestNPC17"},
+}
+
+S.TpIslands = {"Starter", "Jungle", "Desert", "Snow", "Sailor", "Shibuya", "HuecoMundo", "Boss", "Dungeon", "Shinjuku", "Slime", "Academy", "Judgement", "SoulSociety"}
+
+S.Bosses = {
+    {Name = "AizenBoss", Display = "Aizen", Island = "HuecoMundo"},
+    {Name = "AlucardBoss", Display = "Alucard", Island = "Sailor"},
+    {Name = "GojoBoss", Display = "Gojo", Island = "Shibuya", RenderNear = "YujiBoss"},
+    {Name = "JinwooBoss", Display = "Jinwoo", Island = "Sailor"},
+    {Name = "SukunaBoss", Display = "Sukuna", Island = "Shibuya"},
+    {Name = "YamatoBoss", Display = "Yamato", Island = "Judgement"},
+    {Name = "YujiBoss", Display = "Yuji", Island = "Shibuya"},
+}
+
+S.SummonBosses = {
+    {Name = "IchigoBoss", Display = "Ichigo"},
+    {Name = "QinShiBoss", Display = "Qin Shi"},
+    {Name = "SaberBoss", Display = "Saber"},
+    {Name = "AnosBoss", Display = "Anos", Island = "Academy", Difficulties = {"Normal", "Medium", "Hard", "Extreme"}},
+    {Name = "BlessedMaidenBoss", Display = "Blessed Maiden", Difficulties = {"Normal", "Medium", "Hard", "Extreme"}},
+    {Name = "GilgameshBoss", Display = "Gilgamesh", Difficulties = {"Normal", "Medium", "Hard", "Extreme"}},
+    {Name = "RimuruBoss", Display = "Rimuru", Island = "Slime", Difficulties = {"Normal", "Medium", "Hard", "Extreme"}},
+    {Name = "SaberAlterBoss", Display = "Saber Alter", Difficulties = {"Normal", "Medium", "Hard", "Extreme"}},
+    {Name = "StrongestHistoryBoss", Display = "Strongest in History", Island = "Shinjuku", Difficulties = {"Normal", "Medium", "Hard", "Extreme"}},
+    {Name = "StrongestTodayBoss", Display = "Strongest Today", Island = "Shinjuku", Difficulties = {"Normal", "Medium", "Hard", "Extreme"}},
+}
+
+S.DungeonEnemyNames = {"DungeonNPC1", "DungeonNPC2", "DungeonNPC3", "DungeonNPC4", "DungeonNPC5"}
+S.DungeonEnemySet = {}
+for _, n in ipairs(S.DungeonEnemyNames) do S.DungeonEnemySet[(n or ""):lower()] = true end
+
+S.DungeonTypes = {"Double", "Rune", "Cid"}
+S.DungeonDifficulties = {"Easy", "Normal", "Hard", "Extreme"}
+S.DungeonPortalNames = {Double = "DoubleDungeon", Rune = "RuneDungeon", Cid = "CidDungeon"}
+
+S.IgnoreList = {"groupreward", "katana", "buyer", "madoka", "training", "dummy", "merchant", "shop", "vendor", "shadow questline", "shadowmonarch", "obshakilsinhead", "buff", "questnpc"}
+S.ChestNames = {"Common Chest", "Rare Chest", "Epic Chest", "Legendary Chest", "Mythical Chest"}
+S.MerchantItems = {"Boss Key", "Clan Reroll", "Dungeon Key", "Haki Color Reroll", "Race Reroll", "Rush Key", "Trait Reroll"}
+
+S.SkillKeys = {"SkillZ", "SkillX", "SkillC", "SkillV", "SkillF"}
+
+--==================================================
+-- STATE VARIABLES
+--==================================================
+local state = {
+    Kills = 0,
+    BossKills = 0,
+    Running = true,
+    CurIsland = nil,
+    CurTarget = nil,
+    LockTarget = nil,
+    HoverPos = nil,
+    TweenOn = false,
+    TweenTarget = nil,
+    ATween = nil,
+    ATweenConn = nil,
+    HumCache = setmetatable({}, {__mode = "k"}),
+    CharHum = nil,
+    LastSkill = 0,
+    LastEquip = 0,
+    LastTP = 0,
+    LastEnemy = 0,
+    LastQuestAccept = 0,
+    LastMerchant = 0,
+    TPCount = 0,
+    TPReset = tick(),
+    ConfLevel = 0,
+    LastLevelScanTick = 0,
+    IslandTPd = false,
+    SpawnDone = false,
+    FarmOrigin = nil,
+    FarmGenericMode = false,
+    QState = "NONE",
+    BossFight = false,
+    BossTargetName = nil,
+    BossTPDone = false,
+    LastBossTP = 0,
+    BossCurrentIsland = nil,
+    SummonBossFight = false,
+    SummonBossTarget = nil,
+    SummonBossTPDone = false,
+    LastSummonBossTP = 0,
+    SummonBossCommitted = {},
+    SummonBossCurrentIsland = nil,
+    SummonBossOrder = 0,
+    SummonBossFailCount = {},
+    SummonBossFireTime = {},
+    SummonBossLockedDiff = {},
+    AutoSpawnActive = {},
+    BF = {},
+    BSF = {},
+    FC = {},
+    FM = {},
+    SkillToggles = {},
+    RayParams = RaycastParams.new(),
+    NoclipParts = {},
+    NoclipActive = false,
+    LastCanCollide = 0,
+    LastSmoothMove = 0,
+    SmoothY = nil,
+    CachedAbilityRemote = nil,
+    CachedUseItem = nil,
+    CachedQuestAbandon = nil,
+}
+
+-- Initialize boss flags
+for _, b in ipairs(S.Bosses) do state.BF[b.Name] = false end
+for _, b in ipairs(S.SummonBosses) do state.BSF[b.Name] = false end
+for _, item in ipairs(S.MerchantItems) do state.FM[item] = false end
+for _, chest in ipairs(S.ChestNames) do state.FC[chest] = true end
+
+state.RayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+--==================================================
+-- NOTIFICATION
+--==================================================
+local function Notify(msg, duration)
     OrionLib:MakeNotification({
-        Name = "Sailor Piece Hub",
+        Name = "Sailor Piece",
         Content = msg,
         Image = "info",
-        Time = 2.5
+        Time = duration or 2.5
     })
 end
 
@@ -94,15 +271,15 @@ end
 -- CREATE MAIN WINDOW
 --==================================================
 local Window = OrionLib:MakeWindow({
-    Name = "Sailor Piece Hub",
-    Subtext = "Full Edition v4.0",
-    Version = "v4.0",
-    VersionIcon = "anchor",
+    Name = "Sailor Piece",
+    Subtext = "Catraz Edition v1.0",
+    Version = "v1.0",
+    VersionIcon = "ship",
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "SailorPiece_Catraz",
     IntroEnabled = true,
-    IntroText = "Sailor Piece Hub",
+    IntroText = "Sailor Piece",
     IntroIcon = "rbxassetid://105921924721005",
     Icon = "rbxassetid://105921924721005",
     ShowIcon = true,
@@ -127,35 +304,42 @@ Notify("Script loaded successfully!")
 --==================================================
 local FarmTab = Window:MakeTab({
     Name = "Farm",
-    Icon = "zap",
+    Icon = "sword",
     Glass = true,
     Outline = true
 })
 
-local BossTab = Window:MakeTab({
-    Name = "Boss",
-    Icon = "skull",
+local GameModesTab = Window:MakeTab({
+    Name = "Gamemodes",
+    Icon = "shield",
     Glass = true,
     Outline = true
 })
 
-local ModeTab = Window:MakeTab({
-    Name = "Modes",
-    Icon = "gamepad",
-    Glass = true,
-    Outline = true
-})
-
-local SkillTab = Window:MakeTab({
+local SkillsTab = Window:MakeTab({
     Name = "Skills",
-    Icon = "zap-off",
+    Icon = "flame",
     Glass = true,
     Outline = true
 })
 
-local ItemTab = Window:MakeTab({
-    Name = "Items",
-    Icon = "package",
+local QuestsTab = Window:MakeTab({
+    Name = "Quests",
+    Icon = "bookmark",
+    Glass = true,
+    Outline = true
+})
+
+local MerchantTab = Window:MakeTab({
+    Name = "Merchant",
+    Icon = "shopping-cart",
+    Glass = true,
+    Outline = true
+})
+
+local TeleportTab = Window:MakeTab({
+    Name = "Teleport",
+    Icon = "map-pin",
     Glass = true,
     Outline = true
 })
@@ -168,416 +352,650 @@ local SettingsTab = Window:MakeTab({
 })
 
 --==================================================
--- MOB DATABASE
+-- UTILITY FUNCTIONS
 --==================================================
-local MobDatabase = {}
 
-local function buildMobDatabase()
-    table.clear(MobDatabase)
-
-    local npcLevelMap = {}
-    if questcheck and questcheck.RepeatableQuests then
-        for _, questData in pairs(questcheck.RepeatableQuests) do
-            local reqLevel = tonumber(questData.recommendedLevel) or 0
-            if questData.requirements then
-                for _, req in ipairs(questData.requirements) do
-                    if req.npcType then
-                        if not npcLevelMap[req.npcType] or reqLevel > npcLevelMap[req.npcType] then
-                            npcLevelMap[req.npcType] = reqLevel
-                        end
-                    end
-                end
-            end
+local function GetHum(e)
+    if not e then return nil end
+    local cached = state.HumCache[e]
+    if cached then
+        local ok, alive = pcall(function() return cached.Parent ~= nil end)
+        if ok and alive then return cached end
+        state.HumCache[e] = nil
+    end
+    local h = e:FindFirstChildOfClass("Humanoid")
+    if not h then
+        for _, d in ipairs(e:GetDescendants()) do
+            if d:IsA("Humanoid") then h = d break end
         end
     end
-
-    local seenTypes = {}
-    local npcFolder = workspace:FindFirstChild("NPCs")
-    if npcFolder then
-        for _, npc in ipairs(npcFolder:GetChildren()) do
-            if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
-                local npcName = npc.Name
-                if not seenTypes[npcName] then
-                    seenTypes[npcName] = true
-                    local level = 0
-                    for npcType, lvl in pairs(npcLevelMap) do
-                        if string.find(npcName, npcType) then
-                            level = lvl
-                            break
-                        end
-                    end
-
-                    local island = "Unknown"
-                    if checkmap and checkmap.GetZoneAt then
-                        pcall(function()
-                            local zoneId, _ = checkmap.GetZoneAt(npc.HumanoidRootPart.Position)
-                            if zoneId then island = zoneId end
-                        end)
-                    end
-
-                    table.insert(MobDatabase, {
-                        name   = npcName,
-                        level  = level,
-                        island = island,
-                    })
-                end
-            end
-        end
-    end
-
-    table.sort(MobDatabase, function(a, b)
-        if a.level == b.level then return a.name < b.name end
-        return a.level < b.level
-    end)
+    if h then state.HumCache[e] = h end
+    return h
 end
 
---==================================================
--- BOSS LIST
---==================================================
-local BossList = {}
-
-local function buildBossList()
-    table.clear(BossList)
-    for _, folder in ipairs({"Bosses", "Boss", "WorldBoss", "NPCs"}) do
-        local f = workspace:FindFirstChild(folder)
-        if f then
-            for _, npc in ipairs(f:GetChildren()) do
-                if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
-                    local h = npc:FindFirstChildOfClass("Humanoid")
-                    if h and h.MaxHealth >= 5000 then
-                        local seen = false
-                        for _, b in ipairs(BossList) do
-                            if b == npc.Name then seen = true break end
-                        end
-                        if not seen then
-                            table.insert(BossList, npc.Name)
-                        end
-                    end
-                end
-            end
+local function GetRoot(e)
+    if not e then return nil end
+    local h = GetHum(e)
+    if h then
+        local rp = h.RootPart
+        if rp and rp:IsA("BasePart") then return rp end
+    end
+    for _, n in ipairs({"HumanoidRootPart", "Torso", "UpperTorso"}) do
+        local r = e:FindFirstChild(n)
+        if r and r:IsA("BasePart") then return r end
+    end
+    for _, d in ipairs(e:GetDescendants()) do
+        if (d.Name == "HumanoidRootPart" or d.Name == "Torso" or d.Name == "UpperTorso") and d:IsA("BasePart") then
+            return d
         end
     end
-    if #BossList == 0 then
-        BossList = {"WorldBoss", "Boss1", "Boss2", "Boss3"}
+    if e:IsA("Model") and e.PrimaryPart then return e.PrimaryPart end
+    for _, d in ipairs(e:GetDescendants()) do
+        if d:IsA("BasePart") then return d end
     end
+    return nil
 end
 
---==================================================
--- DUNGEON TYPES
---==================================================
-local DungeonTypes = {"Shadow", "Rune", "Cid"}
-
---==================================================
--- FIND FUNCTIONS
---==================================================
-local function findMob(targetName)
-    local npcFolder = workspace:FindFirstChild("NPCs")
-    if not npcFolder then return nil end
-
-    local closest = nil
-    local closestDist = math.huge
-    local char = player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
-    local playerPos = char.HumanoidRootPart.Position
-
-    for _, npc in ipairs(npcFolder:GetChildren()) do
-        if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
-            local humanoid = npc:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                local match = false
-                if targetName then
-                    match = (npc.Name == targetName) or string.find(npc.Name, targetName)
-                else
-                    match = true
-                end
-
-                if match then
-                    local dist = (npc.HumanoidRootPart.Position - playerPos).Magnitude
-                    if dist < closestDist then
-                        closestDist = dist
-                        closest = npc
-                    end
-                end
-            end
-        end
-    end
-
-    return closest, closestDist
+local function GetModelPos(e)
+    if not e then return nil end
+    local r = GetRoot(e)
+    if r then return r.Position end
+    local ok, cf = pcall(function() return e:GetPivot() end)
+    if ok and cf then return cf.Position end
+    return nil
 end
 
-local function findBoss(bossName)
-    for _, folder in ipairs({"NPCs", "Bosses", "Boss", "WorldBoss"}) do
-        local f = workspace:FindFirstChild(folder)
-        if f then
-            for _, npc in ipairs(f:GetChildren()) do
-                if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
-                    local h = npc:FindFirstChildOfClass("Humanoid")
-                    if h and h.Health > 0 then
-                        if bossName then
-                            if npc.Name == bossName or string.find(npc.Name, bossName) then
-                                return npc
-                            end
-                        else
-                            return npc
-                        end
-                    end
-                end
+local function GetHRP()
+    local c = Player.Character
+    return c and c:FindFirstChild("HumanoidRootPart")
+end
+
+local function DistTo(pos)
+    if not pos then return 99999 end
+    local hrp = GetHRP()
+    if not hrp then return 99999 end
+    return (hrp.Position - pos).Magnitude
+end
+
+local function IsAlive()
+    local c = Player.Character
+    if not c then return false end
+    local h = c:FindFirstChildOfClass("Humanoid")
+    local hrp = c:FindFirstChild("HumanoidRootPart")
+    return hrp ~= nil and h ~= nil and h.Health > 0
+end
+
+local function WaitForChar(timeout)
+    if IsAlive() then return true end
+    local t = tick()
+    timeout = timeout or 20
+    while tick() - t < timeout do
+        if IsAlive() then task.wait(0.5) return true end
+        task.wait(0.15)
+    end
+    return false
+end
+
+local function IsPlayer(m)
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character == m then return true end
+    end
+    return false
+end
+
+local function ShouldIgnore(n)
+    local lo = (n or ""):lower()
+    for _, ig in ipairs(S.IgnoreList) do
+        if lo:find(ig, 1, true) then return true end
+    end
+    if lo:match("boss$") then return true end
+    return false
+end
+
+local function MatchEnemy(name, island)
+    if not island then return false end
+    local lo = (name or ""):lower()
+    local loNorm = lo:gsub("[%s%p_]", "")
+    for _, e in ipairs(island.Enemies) do
+        local el = (e or ""):lower()
+        local elNorm = el:gsub("[%s%p_]", "")
+        if lo:sub(1, #el) == el then return true end
+        if elNorm ~= "" and loNorm:sub(1, #elNorm) == elNorm then return true end
+    end
+    return false
+end
+
+local function GetNPCFolder()
+    local direct = Workspace:FindFirstChild(S.NPC_FOLDER)
+    if direct then return direct end
+    for _, desc in ipairs(Workspace:GetDescendants()) do
+        if desc:IsA("Folder") then
+            local n = (desc.Name or ""):lower()
+            if n == "npcs" or n == "npc" or n:find("npc", 1, true) then
+                return desc
             end
         end
     end
     return nil
 end
 
---==================================================
--- TWEEN FUNCTIONS
---==================================================
-local STEP_SIZE = 50
-local STEP_TIME = 0.08
-local STEP_DELAY = 0.03
-local CLOSE_RANGE = 15
-
-local function microTween(root, targetCF)
-    local tw = TweenService:Create(
-        root,
-        TweenInfo.new(STEP_TIME, Enum.EasingStyle.Linear),
-        { CFrame = targetCF }
-    )
-    tw:Play()
-    tw.Completed:Wait()
-end
-
-local function tweenToMob(mob)
-    local char = player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    if not mob or not mob:FindFirstChild("HumanoidRootPart") then return end
-
-    local root = char.HumanoidRootPart
-    local hum = char:FindFirstChildOfClass("Humanoid")
-
-    local offset = Vector3.new(0, 0, 5)
-    if getgenv().PlankMode then
-        offset = Vector3.new(0, getgenv().FarmHeight, 0)
-    end
-    local targetPos = mob.HumanoidRootPart.Position + offset
-
-    if getgenv().MoveMode == "Teleport" then
-        root.CFrame = CFrame.new(targetPos)
-        return
-    end
-
-    local totalDist = (targetPos - root.Position).Magnitude
-    getgenv().IsTeleporting = true
-
-    if totalDist <= CLOSE_RANGE then
-        microTween(root, CFrame.new(targetPos))
-        getgenv().IsTeleporting = false
-        return
-    end
-
-    local steps = math.ceil(totalDist / STEP_SIZE)
-    local startPos = root.Position
-
-    for i = 1, steps do
-        if not getgenv().IsFarm and not getgenv().IsBossFight and not getgenv().IsAutoDungeon then break end
-        if not mob or not mob.Parent then break end
-
-        if mob:FindFirstChild("HumanoidRootPart") then
-            targetPos = mob.HumanoidRootPart.Position + offset
-        end
-
-        local nextPos
-        if i == steps then
-            nextPos = targetPos
-        else
-            local progress = i / steps
-            nextPos = startPos:Lerp(targetPos, progress)
-        end
-
-        local moveDir = (nextPos - root.Position)
-        if moveDir.Magnitude > 0 then
-            root.Velocity = moveDir.Unit * getgenv().FarmSpeed
-        end
-
-        microTween(root, CFrame.new(nextPos))
-        task.wait(STEP_DELAY)
-    end
-
-    root.Velocity = Vector3.new(0, 0, 0)
-    getgenv().IsTeleporting = false
-end
-
---==================================================
--- WEAPON & ATTACK SYSTEM
---==================================================
-local function equipWeapon()
-    local char = player.Character
-    if not char then return nil end
-    local backpack = player:FindFirstChild("Backpack")
-    if not backpack then return nil end
-
-    local mode = getgenv().WeaponMode
-
-    local function findTool(searchIn)
-        for _, item in ipairs(searchIn:GetChildren()) do
-            if item:IsA("Tool") then
-                if mode == "Melee" then
-                    local n = item.Name:lower()
-                    if n:find("sword") or n:find("blade") or n:find("katana") or n:find("cutlass") or n:find("melee") then
-                        return item
+local function FindEnemies(island)
+    local nf = GetNPCFolder()
+    if not island then return {} end
+    local hrp = GetHRP()
+    local origin = state.FarmOrigin
+    local out = {}
+    local function checkModel(m)
+        if m:IsA("Model") and not IsPlayer(m) then
+            local hm = GetHum(m)
+            if hm and hm.Health > 0 and not ShouldIgnore(m.Name) then
+                if MatchEnemy(m.Name, island) then
+                    local p = GetModelPos(m)
+                    if p then
+                        if hrp and (p - hrp.Position).Magnitude > S.FARM_MAX_DIST_FROM_PLAYER then return end
+                        if origin and (p - origin).Magnitude > S.FARM_MAX_DIST_FROM_ORIGIN then return end
                     end
-                elseif mode == "Fruit" then
-                    local n = item.Name:lower()
-                    if n:find("fruit") or n:find("devil") or n:find("power") or n:find("ability") then
-                        return item
-                    end
+                    table.insert(out, m)
                 end
             end
         end
-        return nil
     end
-
-    local equipped = findTool(char)
-    if equipped then return equipped end
-
-    local tool = findTool(backpack)
-    if tool then
-        tool.Parent = char
-        return tool
-    end
-
-    for _, item in ipairs(backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            item.Parent = char
-            return item
+    if nf then
+        for _, desc in ipairs(nf:GetChildren()) do
+            if desc:IsA("Model") then
+                checkModel(desc)
+            elseif desc:IsA("Folder") then
+                for _, m in ipairs(desc:GetChildren()) do
+                    if m:IsA("Model") then checkModel(m) end
+                end
+            end
         end
     end
-
-    return nil
+    return out
 end
 
-local function autoAttack(mob)
-    if not mob or not mob:FindFirstChild("HumanoidRootPart") then return end
-
-    local tool = equipWeapon()
-    if tool then
-        pcall(function() tool:Activate() end)
+local function NearestFrom(list)
+    local hrp = GetHRP()
+    if not hrp then return nil end
+    local myY = hrp.Position.Y
+    local best, bd = nil, math.huge
+    for _, e in ipairs(list) do
+        local p = GetModelPos(e)
+        if p and math.abs(p.Y - myY) < 150 then
+            local d = (p - hrp.Position).Magnitude
+            if d < bd then
+                bd = d
+                best = e
+            end
+        end
     end
+    return best
+end
 
+local function GetIslandNames()
+    local n = {"Auto"}
+    for _, i in ipairs(S.Islands) do
+        table.insert(n, i.Portal)
+    end
+    return n
+end
+
+local function DisplayToPortal(display)
+    for _, i in ipairs(S.Islands) do
+        if i.Portal == display then return i.Portal end
+    end
+    return display
+end
+
+local function GetLevel()
+    local lv = 0
     pcall(function()
-        local combatRemote = RepStorage:FindFirstChild("CombatSystem") and RepStorage.CombatSystem:FindFirstChild("Remotes") and RepStorage.CombatSystem.Remotes:FindFirstChild("RequestHit")
-        if combatRemote then
-            combatRemote:FireServer()
+        local ls = Player:FindFirstChild("leaderstats")
+        if ls then
+            local v = ls:FindFirstChild("Level") or ls:FindFirstChild("Lvl") or ls:FindFirstChild("LVL")
+            if v then lv = tonumber(v.Value) or 0 end
         end
     end)
-
-    -- Skill spam
-    local skillMap = { Z = 1, X = 2, C = 3, V = 4, F = 5 }
-    for key, slot in pairs(skillMap) do
-        if getgenv().AutoSkills[key] then
-            pcall(function()
-                local abilityRemote = RepStorage:FindFirstChild("AbilitySystem") and RepStorage.AbilitySystem:FindFirstChild("Remotes") and RepStorage.AbilitySystem.Remotes:FindFirstChild("RequestAbility")
-                if abilityRemote then
-                    abilityRemote:FireServer(slot)
+    if lv > 0 then
+        state.ConfLevel = lv
+        state.LastLevelScanTick = tick()
+        return lv
+    end
+    if state.ConfLevel > 0 and tick() - state.LastLevelScanTick < 3 then
+        return state.ConfLevel
+    end
+    state.LastLevelScanTick = tick()
+    pcall(function()
+        for _, c in ipairs(Player:GetDescendants()) do
+            if (c:IsA("IntValue") or c:IsA("NumberValue") or c:IsA("StringValue")) then
+                local n = c.Name:lower()
+                if n == "level" or n == "lvl" or n:find("level", 1, true) or n:find("lvl", 1, true) then
+                    local val = tonumber(c.Value)
+                    if val and val > lv then lv = val end
                 end
-            end)
+            end
+        end
+    end)
+    if lv > 0 then
+        state.ConfLevel = lv
+        return lv
+    end
+    return state.ConfLevel
+end
+
+local function IslandForLevel(lvl)
+    for _, i in ipairs(S.Islands) do
+        if lvl < i.FarmUntil then return i end
+    end
+    return S.Islands[#S.Islands]
+end
+
+local function IslandByName(n)
+    for _, i in ipairs(S.Islands) do
+        if i.Portal == n then return i end
+    end
+    return nil
+end
+
+local function GetFarmIsland()
+    local lvl = GetLevel()
+    if lvl == 0 then
+        task.wait(0.5)
+        lvl = GetLevel()
+        if lvl == 0 then
+            task.wait(1)
+            lvl = GetLevel()
+        end
+        if lvl == 0 then return nil end
+    end
+    if F.SelectedIsland == "Auto" then
+        return IslandForLevel(lvl)
+    end
+    return IslandByName(F.SelectedIsland) or IslandForLevel(lvl)
+end
+
+local function WalkPathWait(base, t, ...)
+    local cur = base
+    for _, seg in ipairs({...}) do
+        if not cur then return nil end
+        cur = cur:WaitForChild(seg, t)
+    end
+    return cur
+end
+
+local function StopTween()
+    if state.ATweenConn then
+        pcall(function() state.ATweenConn:Disconnect() end)
+        state.ATweenConn = nil
+    end
+    if state.ATween then
+        pcall(function() state.ATween:Cancel() end)
+        state.ATween = nil
+    end
+    state.TweenOn = false
+    state.TweenTarget = nil
+end
+
+local function ClearTarget()
+    state.CurTarget = nil
+    state.LockTarget = nil
+    state.SmoothY = nil
+    StopTween()
+end
+
+local function AbandonAllQuests()
+    state.QState = "NONE"
+    if not state.CachedQuestAbandon then
+        pcall(function()
+            local f = ReplicatedStorage:FindFirstChild(R.QuestAbandon[1])
+            if f then state.CachedQuestAbandon = f:FindFirstChild(R.QuestAbandon[2]) end
+        end)
+        if not state.CachedQuestAbandon then
+            pcall(function() state.CachedQuestAbandon = WalkPathWait(ReplicatedStorage, 1, unpack(R.QuestAbandon)) end)
+        end
+    end
+    local ab = state.CachedQuestAbandon
+    if ab then
+        pcall(function() ab:FireServer("repeatable") end)
+        pcall(function() ab:FireServer() end)
+        for _, n in ipairs({"HogyokuUnlock", "HogyokuQuestNPC", "Hogyoku", "HogyokuFragment", "HogyokuQuest", "SoulSocietyUnlock", "SoulSociety"}) do
+            pcall(function() ab:FireServer(n) end)
+        end
+        for _, isl in ipairs(S.Islands) do
+            pcall(function() ab:FireServer(isl.QuestNPC) end)
         end
     end
 end
 
---==================================================
--- SKILL SPAM LOOP
---==================================================
-task.spawn(function()
-    while true do
-        task.wait(getgenv().SkillCooldown)
-        if getgenv().IsFarm or getgenv().IsBossFight or getgenv().IsAutoDungeon or getgenv().IsBossRush then
-            local char = player.Character
-            if char and char:FindFirstChildOfClass("Humanoid") and char:FindFirstChildOfClass("Humanoid").Health > 0 then
-                local skillMap = { Z = 1, X = 2, C = 3, V = 4, F = 5 }
-                for key, slot in pairs(skillMap) do
-                    if getgenv().AutoSkills[key] then
-                        pcall(function()
-                            local abilityRemote = RepStorage:FindFirstChild("AbilitySystem") and RepStorage.AbilitySystem:FindFirstChild("Remotes") and RepStorage.AbilitySystem.Remotes:FindFirstChild("RequestAbility")
-                            if abilityRemote then
-                                abilityRemote:FireServer(slot)
-                            end
-                        end)
-                    end
-                end
-            end
-        end
-    end
-end)
-
---==================================================
--- NOCLIP
---==================================================
-task.spawn(function()
-    RunService.Stepped:Connect(function()
-        if getgenv().IsNoclip then
-            local char = player.Character
-            if char then
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end
+local function FullReset()
+    StopTween()
+    ClearTarget()
+    state.HoverPos = nil
+    state.LockTarget = nil
+    state.CurIsland = nil
+    state.IslandTPd = false
+    state.SpawnDone = false
+    state.FarmOrigin = nil
+    state.LastEnemy = 0
+    state.LastTP = 0
+    state.TPCount = 0
+    state.FarmGenericMode = false
+    AbandonAllQuests()
+    state.LastQuestAccept = 0
+    state.BossTargetName = nil
+    state.BossFight = false
+    state.BossTPDone = false
+    state.LastBossTP = 0
+    state.BossCurrentIsland = nil
+    state.SummonBossFight = false
+    state.SummonBossTarget = nil
+    state.SummonBossTPDone = false
+    state.LastSummonBossTP = 0
+    state.SummonBossCommitted = {}
+    state.SummonBossCurrentIsland = nil
+    state.SummonBossOrder = 0
+    state.SummonBossFailCount = {}
+    state.SummonBossLockedDiff = {}
+    pcall(function()
+        local c = Player.Character
+        if c then
+            local hm = c:FindFirstChildOfClass("Humanoid")
+            if hm then hm.PlatformStand = false end
         end
     end)
-end)
+end
 
---==================================================
--- ANTI AFK
---==================================================
-task.spawn(function()
-    while getgenv()._antiAFK do
-        task.wait(60)
+local function DoTP(portal)
+    if tick() - state.LastTP < 3 then return false end
+    if tick() - state.TPReset > 120 then
+        state.TPCount = 0
+        state.TPReset = tick()
+    end
+    if state.TPCount >= 10 then return false end
+    state.LastTP = tick()
+    state.TPCount = state.TPCount + 1
+    local ok = false
+    pcall(function()
+        WalkPathWait(ReplicatedStorage, 3, unpack(R.TP)):FireServer(portal)
+        ok = true
+    end)
+    return ok
+end
+
+local function ForceTP(portal)
+    state.LastTP = 0
+    state.TPCount = 0
+    state.TPReset = tick()
+    local ok = false
+    pcall(function()
+        WalkPathWait(ReplicatedStorage, 5, unpack(R.TP)):FireServer(portal)
+        ok = true
+    end)
+    if not ok then
+        task.wait(1)
         pcall(function()
-            VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            task.wait(1)
-            VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            WalkPathWait(ReplicatedStorage, 5, unpack(R.TP)):FireServer(portal)
+            ok = true
         end)
     end
-end)
+    state.LastTP = tick()
+    state.TPCount = 1
+    return ok
+end
 
---==================================================
--- AUTO CHEST
---==================================================
-local ChestTypes = {"Wood", "Iron", "Gold", "Diamond", "Legendary"}
+local function QuestAccept(island)
+    if not island or not island.QuestNPC then return end
+    pcall(function() WalkPathWait(ReplicatedStorage, 3, unpack(R.QuestAccept)):FireServer(island.QuestNPC) end)
+    state.LastQuestAccept = tick()
+    state.QState = "ACTIVE"
+end
 
-task.spawn(function()
-    while true do
-        task.wait(5)
-        if getgenv().IsAutoChest then
-            for _, chestType in ipairs(ChestTypes) do
-                pcall(function()
-                    local chestR = RepStorage:FindFirstChild("RemoteEvents") and RepStorage.RemoteEvents:FindFirstChild("Chest") or RepStorage.RemoteEvents:FindFirstChild("OpenChest")
-                    if chestR then
-                        chestR:FireServer("Open", chestType)
-                    end
-                end)
+local function QuestRepeatFire(island)
+    if not island or not island.QuestNPC then return end
+    pcall(function() WalkPathWait(ReplicatedStorage, 3, unpack(R.QuestRepeat)):FireServer(island.QuestNPC) end)
+    state.LastQuestAccept = tick()
+    state.QState = "ACTIVE"
+end
+
+local function QuestCompletionScan()
+    if state.QState ~= "ACTIVE" then return end
+    if tick() - state.LastQuestAccept > 60 then
+        state.QState = "NONE"
+        return
+    end
+    if tick() - state.LastQuestAccept < 8 then return end
+    local pg = Player:FindFirstChild("PlayerGui")
+    if not pg then return end
+    local hasQuestUI = false
+    for _, d in ipairs(pg:GetDescendants()) do
+        if d:IsA("TextLabel") or d:IsA("TextButton") then
+            local t = (d.Text or ""):lower()
+            if t:find("quest complet") or t:find("abandon") then
+                state.QState = "NONE"
+                return
+            end
+            if t:find("%d+%s*/%s*%d+") or t:find("kill") or t:find("collect") or t:find("objective") or t:find("quest") then
+                hasQuestUI = true
             end
         end
     end
-end)
+    if not hasQuestUI and tick() - state.LastQuestAccept > 20 then
+        state.QState = "NONE"
+    end
+end
 
---==================================================
--- AUTO MERCHANT
---==================================================
-task.spawn(function()
-    while true do
-        task.wait(30)
-        if getgenv().IsAutoMerchant and getgenv().MerchantItem then
-            pcall(function()
-                local merchantR = RepStorage:FindFirstChild("RemoteEvents") and RepStorage.RemoteEvents:FindFirstChild("Merchant") or RepStorage.RemoteEvents:FindFirstChild("Shop") or RepStorage.RemoteEvents:FindFirstChild("Buy")
-                if merchantR then
-                    merchantR:FireServer("Buy", getgenv().MerchantItem)
-                end
-            end)
+local function GetGoalForEnemy(enemy)
+    local pos = GetModelPos(enemy)
+    if not pos then return nil, nil end
+    return Vector3.new(pos.X, pos.Y + F.HeightOffset, pos.Z), pos
+end
+
+local function TweenTo(enemy)
+    if not enemy then return end
+    local goal, look = GetGoalForEnemy(enemy)
+    if not goal then return end
+    local hrp = GetHRP()
+    if not hrp then return end
+    local d = (hrp.Position - goal).Magnitude
+    if d > 600 then return end
+    local speed = F.TweenSpeed
+    local inBoss = state.BossFight or state.SummonBossFight
+    if F.MoveMode == "Teleport" and not inBoss and d < 35 and tick() - state.LastSmoothMove > 0.2 then
+        StopTween()
+        hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(goal, look or goal), 0.55)
+        state.LastSmoothMove = tick()
+        state.LockTarget = enemy
+        state.TweenOn = false
+        state.TweenTarget = nil
+        state.HoverPos = goal
+        return
+    end
+    if state.TweenTarget ~= enemy then StopTween() end
+    d = (hrp.Position - goal).Magnitude
+    if d < 25 and F.MoveMode ~= "Tween" then
+        state.LockTarget = enemy
+        state.TweenOn = false
+        state.TweenTarget = nil
+        state.HoverPos = goal
+        return
+    end
+    if state.TweenOn and state.TweenTarget == enemy then return end
+    StopTween()
+    state.TweenOn = true
+    state.TweenTarget = enemy
+    state.LockTarget = nil
+    local stepDist = math.min(d, 80)
+    local dir = (goal - hrp.Position).Unit
+    local stepGoal = hrp.Position + (dir * stepDist)
+    local cf = CFrame.new(stepGoal, look or goal)
+    local dur = math.clamp(stepDist / math.max(speed, 1), 0.06, 3.0)
+    state.ATween = TweenService:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = cf})
+    state.ATweenConn = state.ATween.Completed:Connect(function()
+        state.ATween = nil
+        state.ATweenConn = nil
+        state.TweenOn = false
+        state.TweenTarget = nil
+        if enemy and enemy.Parent then
+            if F.MoveMode == "Tween" then
+                local h2 = GetHRP()
+                state.HoverPos = h2 and h2.Position or goal
+            else
+                state.LockTarget = enemy
+                state.HoverPos = goal
+            end
+        end
+    end)
+    state.ATween:Play()
+end
+
+local function FireAbilities()
+    if tick() - state.LastSkill < F.SkillCooldown then return end
+    if not (F.SkillZ or F.SkillX or F.SkillC or F.SkillV or F.SkillF) then return end
+    if not state.CachedAbilityRemote or not state.CachedAbilityRemote.Parent then
+        state.CachedAbilityRemote = nil
+        pcall(function() state.CachedAbilityRemote = WalkPathWait(ReplicatedStorage, 2, unpack(R.Ability)) end)
+    end
+    local r = state.CachedAbilityRemote
+    if not r then return end
+    state.LastSkill = tick()
+    if F.SkillZ then pcall(function() r:FireServer(1) end) end
+    if F.SkillX then pcall(function() r:FireServer(2) end) end
+    if F.SkillC then pcall(function() r:FireServer(3) end) end
+    if F.SkillV then pcall(function() r:FireServer(4) end) end
+    if F.SkillF then pcall(function() r:FireServer(5) end) end
+end
+
+local function Attack(tgt)
+    pcall(function() WalkPathWait(ReplicatedStorage, 2, unpack(R.Hit)):FireServer(tgt) end)
+    local tools = {}
+    local c = Player.Character
+    if c then
+        for _, ch in ipairs(c:GetChildren()) do
+            if ch:IsA("Tool") then table.insert(tools, ch) end
         end
     end
-end)
+    for _, tool in ipairs(tools) do
+        pcall(function() tool:Activate() end)
+    end
+    FireAbilities()
+end
+
+local function GetAllTools()
+    local c = Player.Character
+    if not c then return {} end
+    local t = {}
+    for _, ch in ipairs(c:GetChildren()) do
+        if ch:IsA("Tool") then table.insert(t, ch) end
+    end
+    return t
+end
+
+local function EquipBothWeapons()
+    local c = Player.Character
+    if not c then return end
+    local hm = c:FindFirstChildOfClass("Humanoid")
+    if not hm then return end
+    local bp = Player:FindFirstChild("Backpack")
+    if not bp then return end
+    local equipped = GetAllTools()
+    local hasMelee, hasSword = false, false
+    for _, t in ipairs(equipped) do
+        if t.Name:lower() == "combat" then
+            hasMelee = true
+        else
+            hasSword = true
+        end
+    end
+    if hasMelee and hasSword then return end
+    local allTools = {}
+    for _, ch in ipairs(bp:GetChildren()) do
+        if ch:IsA("Tool") then table.insert(allTools, ch) end
+    end
+    for _, t in ipairs(equipped) do table.insert(allTools, t) end
+    local melee, sword = nil, nil
+    for _, t in ipairs(allTools) do
+        if t.Name:lower() == "combat" then
+            melee = t
+        elseif not sword then
+            sword = t
+        end
+    end
+    if melee and sword then
+        hm:UnequipTools()
+        task.wait(0.1)
+        pcall(function() melee.Parent = c end)
+        pcall(function() sword.Parent = c end)
+    elseif sword and not melee then
+        pcall(function() sword.Parent = c end)
+    elseif melee and not sword then
+        pcall(function() melee.Parent = c end)
+    end
+end
+
+local function OnCharAdded(char)
+    state.CharHum = nil
+    char:WaitForChild("Humanoid", 10)
+    state.CharHum = char:FindFirstChildOfClass("Humanoid")
+    state.LockTarget = nil
+    state.TweenOn = false
+    state.TweenTarget = nil
+    state.HoverPos = nil
+    if F.AutoEquip then
+        task.spawn(function()
+            task.wait(0.5)
+            for _ = 1, 10 do
+                task.wait(0.3)
+                EquipBothWeapons()
+                local tools = GetAllTools()
+                if #tools >= 2 then break end
+                if #tools >= 1 then
+                    local hasSword = false
+                    for _, t in ipairs(tools) do
+                        if t.Name:lower() ~= "combat" then hasSword = true end
+                    end
+                    if hasSword then break end
+                end
+            end
+        end)
+    end
+end
+
+if Player.Character then
+    task.spawn(function() OnCharAdded(Player.Character) end)
+end
+Player.CharacterAdded:Connect(OnCharAdded)
+
+local function SetupAntiAFK()
+    local function disableIdled()
+        pcall(function()
+            for _, c in ipairs(getconnections(Player.Idled)) do
+                c:Disable()
+            end
+        end)
+    end
+    local function pulse()
+        pcall(function() VirtualUser:CaptureController() VirtualUser:ClickButton2(Vector2.new()) end)
+        pcall(function() VirtualUser:Button2Down(Vector2.new()) task.defer(function() pcall(function() VirtualUser:Button2Up(Vector2.new()) end) end) end)
+    end
+    disableIdled()
+    Player.Idled:Connect(function()
+        if F.AntiAFK then
+            disableIdled()
+            pulse()
+        end
+    end)
+    task.spawn(function()
+        while state.Running do
+            task.wait(math.random(20, 40))
+            if F.AntiAFK then
+                disableIdled()
+                pulse()
+            end
+        end
+    end)
+end
+
+SetupAntiAFK()
 
 --==================================================
 -- FARM TAB
@@ -590,408 +1008,715 @@ local FarmSection = FarmTab:AddSection({
 })
 
 FarmSection:AddToggle({
-    Name = "Auto Farm Quest",
+    Name = "ENABLE AUTO FARM",
     Default = false,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "AutoFarm",
+    Flag = "AutoFarmLevel",
     Save = true,
     Callback = function(Value)
-        getgenv().IsFarm = Value
-        Notify(Value and "Auto Farm ON" or "Auto Farm OFF")
-    end
-})
-
-FarmSection:AddToggle({
-    Name = "🛹 Plank Mode (hover)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "PlankMode",
-    Save = true,
-    Callback = function(Value)
-        getgenv().PlankMode = Value
-    end
-})
-
-FarmSection:AddDropdown({
-    Name = "Move Mode",
-    Default = "Tween",
-    Options = {"Tween", "Teleport"},
-    Multi = false,
-    Search = false,
-    Outline = true,
-    Callback = function(Value)
-        getgenv().MoveMode = Value
-    end
-})
-
-FarmSection:AddSlider({
-    Name = "Farm Height (Plank)",
-    Min = 5,
-    Max = 100,
-    Default = 25,
-    Increment = 1,
-    ValueName = "studs",
-    Outline = true,
-    Callback = function(Value)
-        getgenv().FarmHeight = Value
-    end
-})
-
-FarmSection:AddSlider({
-    Name = "Farm Speed",
-    Min = 10,
-    Max = 200,
-    Default = 50,
-    Increment = 1,
-    ValueName = "speed",
-    Outline = true,
-    Callback = function(Value)
-        getgenv().FarmSpeed = Value
-    end
-})
-
-FarmSection:AddSlider({
-    Name = "Attack Cooldown (ms)",
-    Min = 100,
-    Max = 1000,
-    Default = 300,
-    Increment = 10,
-    ValueName = "ms",
-    Outline = true,
-    Callback = function(Value)
-        getgenv().AttackCooldown = Value / 1000
-    end
-})
-
-local TargetSection = FarmTab:AddSection({
-    Name = "🎯 TARGET",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
--- Build mob database
-buildMobDatabase()
-local mobNames = {"Auto (theo Level)"}
-for _, mob in ipairs(MobDatabase) do
-    table.insert(mobNames, string.format("[Lv.%d] %s", mob.level, mob.name))
-end
-
-TargetSection:AddDropdown({
-    Name = "Pilih Quái",
-    Default = "Auto (theo Level)",
-    Options = mobNames,
-    Multi = false,
-    Search = true,
-    Outline = true,
-    Callback = function(Value)
-        if Value == "Auto (theo Level)" then
-            getgenv().SelectedMob = nil
+        if Value and (F.AutoDungeon or F.AutoBossRush) then
+            task.defer(function() 
+                pcall(function() 
+                    local toggle = FarmSection.Toggles and FarmSection.Toggles["AutoFarmLevel"]
+                    if toggle then toggle:SetValue(false) end
+                end)
+            end)
+            return
+        end
+        F.AutoFarmLevel = Value
+        if Value then
+            if F.AutoDungeon then F.AutoDungeon = false end
+            StopTween()
+            ClearTarget()
+            state.CurIsland = nil
+            state.IslandTPd = false
+            state.SpawnDone = false
+            state.FarmOrigin = nil
+            state.FarmGenericMode = false
+            state.QState = "NONE"
+            state.CurTarget = nil
+            state.LockTarget = nil
+            state.HoverPos = nil
+            state.LastEnemy = 0
+            Notify("Auto Farm Enabled")
         else
-            getgenv().SelectedMob = Value:match("%] (.+)$")
+            FullReset()
+            Notify("Auto Farm Disabled")
         end
     end
 })
 
-TargetSection:AddButton({
-    Name = "🔄 Refresh Mob List",
-    Icon = "refresh-cw",
-    Outline = true,
+FarmSection:AddKeybind({
+    Name = "Farm Keybind",
+    Default = Enum.KeyCode.V,
+    Flag = "FarmKeybind",
     Callback = function()
-        buildMobDatabase()
-        Notify("Mob list refreshed!")
+        if FarmSection.Toggles and FarmSection.Toggles["AutoFarmLevel"] then
+            local current = FarmSection.Toggles["AutoFarmLevel"]:GetValue()
+            FarmSection.Toggles["AutoFarmLevel"]:SetValue(not current)
+        end
     end
 })
 
---==================================================
--- BOSS TAB
---==================================================
-local BossSection = BossTab:AddSection({
-    Name = "🐉 WORLD BOSS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+FarmSection:AddToggle({
+    Name = "AUTO EQUIP SWORD",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoEquip",
+    Save = true,
+    Callback = function(Value) F.AutoEquip = Value end
 })
 
-BossSection:AddToggle({
-    Name = "Auto Boss Fight",
-    Default = false,
-    Color = Color3.fromRGB(255, 0, 0),
+FarmSection:AddToggle({
+    Name = "AUTO QUEST",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "AutoBoss",
+    Flag = "AutoQuest",
+    Save = true,
+    Callback = function(Value) F.AutoQuest = Value end
+})
+
+FarmSection:AddToggle({
+    Name = "SET SPAWN CRYSTAL",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoSpawn",
+    Save = true,
+    Callback = function(Value) 
+        F.AutoSpawn = Value 
+        state.SpawnDone = false
+    end
+})
+
+FarmSection:AddToggle({
+    Name = "ANTI AFK",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AntiAFK",
+    Save = true,
+    Callback = function(Value) F.AntiAFK = Value end
+})
+
+FarmSection:AddDropdown({
+    Name = "ISLAND",
+    Default = "Auto",
+    Values = GetIslandNames(),
+    Flag = "SelectedIsland",
     Save = true,
     Callback = function(Value)
-        getgenv().IsBossFight = Value
-        Notify(Value and "Boss Fight ON" or "Boss Fight OFF")
+        local portal = DisplayToPortal(Value)
+        F.SelectedIsland = portal
+        StopTween()
+        ClearTarget()
+        state.HoverPos = nil
+        state.LockTarget = nil
+        state.CurIsland = nil
+        state.IslandTPd = false
+        state.SpawnDone = false
+        state.FarmOrigin = nil
+        state.FarmGenericMode = false
+        state.LastEnemy = 0
+        state.CurTarget = nil
+        state.LastTP = 0
+        state.TPCount = 0
+        state.TPReset = tick()
+        state.QState = "NONE"
+        AbandonAllQuests()
+        Notify("Island changed to: " .. Value)
     end
 })
 
-buildBossList()
-BossSection:AddDropdown({
-    Name = "Pilih Boss",
-    Default = BossList[1] or "Boss1",
-    Options = BossList,
-    Multi = false,
-    Search = true,
-    Outline = true,
-    Callback = function(Value)
-        getgenv().SelectedBoss = Value
-    end
-})
-
-local SummonSection = BossTab:AddSection({
-    Name = "🔮 SUMMON BOSS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-SummonSection:AddToggle({
-    Name = "Auto Summon Boss",
-    Default = false,
-    Color = Color3.fromRGB(255, 165, 0),
-    Outline = true,
-    Flag = "AutoSummon",
+FarmSection:AddDropdown({
+    Name = "FARM STYLE",
+    Default = "Plank",
+    Values = {"Plank"},
+    Flag = "FarmMode",
     Save = true,
     Callback = function(Value)
-        getgenv().IsSummonBoss = Value
-        Notify(Value and "Summon Boss ON" or "Summon Boss OFF")
+        F.FarmMode = "Plank"
+        ClearTarget()
+        state.HoverPos = nil
     end
 })
 
-SummonSection:AddDropdown({
-    Name = "Difficulty",
-    Default = "Normal",
-    Options = {"Easy", "Normal", "Hard", "Nightmare"},
-    Multi = false,
-    Search = false,
-    Outline = true,
+FarmSection:AddDropdown({
+    Name = "MOVE MODE",
+    Default = "Tween",
+    Values = {"Tween", "Teleport"},
+    Flag = "MoveMode",
+    Save = true,
     Callback = function(Value)
-        getgenv().SummonDifficulty = Value
+        F.MoveMode = Value
+        ClearTarget()
+        state.HoverPos = nil
     end
 })
 
-SummonSection:AddButton({
-    Name = "🔄 Refresh Boss List",
-    Icon = "refresh-cw",
-    Outline = true,
-    Callback = function()
-        buildBossList()
-        Notify("Boss list refreshed!")
+FarmSection:AddSlider({
+    Name = "HEIGHT (PLANK)",
+    Min = 5,
+    Max = 40,
+    Default = 15,
+    Increment = 1,
+    ValueName = "studs",
+    Flag = "HeightOffset",
+    Save = true,
+    Callback = function(Value) F.HeightOffset = Value end
+})
+
+FarmSection:AddSlider({
+    Name = "OFFSET DISTANCE",
+    Min = 2,
+    Max = 15,
+    Default = 5,
+    Increment = 1,
+    ValueName = "studs",
+    Flag = "OffsetDist",
+    Save = true,
+    Callback = function(Value) F.OffsetDist = Value end
+})
+
+FarmSection:AddSlider({
+    Name = "TWEEN SPEED",
+    Min = 15,
+    Max = 200,
+    Default = 100,
+    Increment = 1,
+    ValueName = "speed",
+    Flag = "TweenSpeed",
+    Save = true,
+    Callback = function(Value) 
+        F.TweenSpeed = Value 
+        StopTween()
     end
 })
 
 --==================================================
--- MODES TAB
+-- GAMEMODES TAB
 --==================================================
-local DungeonSection = ModeTab:AddSection({
-    Name = "🏰 DUNGEONS",
+local DungeonSection = GameModesTab:AddSection({
+    Name = "🏰 DUNGEON",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
+-- Rune Dungeon
 DungeonSection:AddToggle({
-    Name = "Auto Dungeon",
+    Name = "ENABLE RUNE DUNGEON",
     Default = false,
-    Color = Color3.fromRGB(75, 0, 130),
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Flag = "AutoDungeon",
+    Flag = "AutoRuneDungeon",
     Save = true,
     Callback = function(Value)
-        getgenv().IsAutoDungeon = Value
-        Notify(Value and "Auto Dungeon ON" or "Auto Dungeon OFF")
+        if Value then
+            F.DungeonType = "Rune"
+            F.AutoDungeon = true
+            F.AutoFarmLevel = false
+            F.AutoBossRush = false
+            F.BossEnabled = false
+            if state.BossFight then state.BossFight = false end
+            if state.SummonBossFight then 
+                state.SummonBossFight = false 
+                state.SummonBossTarget = nil
+            end
+            ClearTarget()
+            Notify("Rune Dungeon Enabled")
+        else
+            F.AutoDungeon = false
+        end
     end
 })
 
 DungeonSection:AddDropdown({
-    Name = "Dungeon Type",
-    Default = "Shadow",
-    Options = DungeonTypes,
-    Multi = false,
-    Search = false,
-    Outline = true,
-    Callback = function(Value)
-        getgenv().DungeonType = Value
+    Name = "Rune Difficulty",
+    Default = "Normal",
+    Values = S.DungeonDifficulties,
+    Flag = "RuneDiff",
+    Save = true,
+    Callback = function(Value) F.RuneDiff = Value end
+})
+
+DungeonSection:AddDropdown({
+    Name = "Rune Move Mode",
+    Default = "Teleport",
+    Values = {"Tween", "Teleport"},
+    Flag = "RuneMove",
+    Save = true,
+    Callback = function(Value) 
+        F.RuneMove = Value 
+        ClearTarget()
     end
 })
 
-local RushSection = ModeTab:AddSection({
-    Name = "⚡ BOSS RUSH",
+DungeonSection:AddSlider({
+    Name = "Rune Height",
+    Min = 5,
+    Max = 40,
+    Default = 10,
+    Increment = 1,
+    ValueName = "studs",
+    Flag = "RuneHeight",
+    Save = true,
+    Callback = function(Value) F.RuneHeight = Value end
+})
+
+DungeonSection:AddSlider({
+    Name = "Rune Speed",
+    Min = 20,
+    Max = 250,
+    Default = 50,
+    Increment = 1,
+    ValueName = "speed",
+    Flag = "RuneSpeed",
+    Save = true,
+    Callback = function(Value) F.RuneSpeed = Value end
+})
+
+-- Cid Dungeon
+DungeonSection:AddToggle({
+    Name = "ENABLE CID DUNGEON",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoCidDungeon",
+    Save = true,
+    Callback = function(Value)
+        if Value then
+            F.DungeonType = "Cid"
+            F.AutoDungeon = true
+            F.AutoFarmLevel = false
+            F.AutoBossRush = false
+            F.BossEnabled = false
+            if state.BossFight then state.BossFight = false end
+            if state.SummonBossFight then 
+                state.SummonBossFight = false 
+                state.SummonBossTarget = nil
+            end
+            ClearTarget()
+            Notify("Cid Dungeon Enabled")
+        else
+            F.AutoDungeon = false
+        end
+    end
+})
+
+DungeonSection:AddDropdown({
+    Name = "Cid Difficulty",
+    Default = "Normal",
+    Values = S.DungeonDifficulties,
+    Flag = "CidDiff",
+    Save = true,
+    Callback = function(Value) F.CidDiff = Value end
+})
+
+DungeonSection:AddDropdown({
+    Name = "Cid Move Mode",
+    Default = "Teleport",
+    Values = {"Tween", "Teleport"},
+    Flag = "CidMove",
+    Save = true,
+    Callback = function(Value) 
+        F.CidMove = Value 
+        ClearTarget()
+    end
+})
+
+DungeonSection:AddSlider({
+    Name = "Cid Height",
+    Min = 5,
+    Max = 40,
+    Default = 10,
+    Increment = 1,
+    ValueName = "studs",
+    Flag = "CidHeight",
+    Save = true,
+    Callback = function(Value) F.CidHeight = Value end
+})
+
+DungeonSection:AddSlider({
+    Name = "Cid Speed",
+    Min = 20,
+    Max = 250,
+    Default = 50,
+    Increment = 1,
+    ValueName = "speed",
+    Flag = "CidSpeed",
+    Save = true,
+    Callback = function(Value) F.CidSpeed = Value end
+})
+
+-- Double Dungeon
+DungeonSection:AddToggle({
+    Name = "ENABLE DOUBLE DUNGEON",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoDoubleDungeon",
+    Save = true,
+    Callback = function(Value)
+        if Value then
+            F.DungeonType = "Double"
+            F.AutoDungeon = true
+            F.AutoFarmLevel = false
+            F.AutoBossRush = false
+            F.BossEnabled = false
+            if state.BossFight then state.BossFight = false end
+            if state.SummonBossFight then 
+                state.SummonBossFight = false 
+                state.SummonBossTarget = nil
+            end
+            ClearTarget()
+            Notify("Double Dungeon Enabled")
+        else
+            F.AutoDungeon = false
+        end
+    end
+})
+
+DungeonSection:AddDropdown({
+    Name = "Double Difficulty",
+    Default = "Normal",
+    Values = S.DungeonDifficulties,
+    Flag = "DoubleDiff",
+    Save = true,
+    Callback = function(Value) F.DoubleDiff = Value end
+})
+
+DungeonSection:AddDropdown({
+    Name = "Double Move Mode",
+    Default = "Teleport",
+    Values = {"Tween", "Teleport"},
+    Flag = "DoubleMove",
+    Save = true,
+    Callback = function(Value) 
+        F.DoubleMove = Value 
+        ClearTarget()
+    end
+})
+
+DungeonSection:AddSlider({
+    Name = "Double Height",
+    Min = 5,
+    Max = 40,
+    Default = 10,
+    Increment = 1,
+    ValueName = "studs",
+    Flag = "DoubleHeight",
+    Save = true,
+    Callback = function(Value) F.DoubleHeight = Value end
+})
+
+DungeonSection:AddSlider({
+    Name = "Double Speed",
+    Min = 20,
+    Max = 250,
+    Default = 50,
+    Increment = 1,
+    ValueName = "speed",
+    Flag = "DoubleSpeed",
+    Save = true,
+    Callback = function(Value) F.DoubleSpeed = Value end
+})
+
+-- Boss Rush Section
+local BossRushSection = GameModesTab:AddSection({
+    Name = "👑 BOSS RUSH",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-RushSection:AddToggle({
-    Name = "Auto Boss Rush",
+BossRushSection:AddToggle({
+    Name = "ENABLE BOSS RUSH",
     Default = false,
-    Color = Color3.fromRGB(255, 215, 0),
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "AutoBossRush",
     Save = true,
     Callback = function(Value)
-        getgenv().IsBossRush = Value
-        Notify(Value and "Boss Rush ON" or "Boss Rush OFF")
+        F.AutoBossRush = Value
+        if Value then
+            F.AutoFarmLevel = false
+            F.AutoDungeon = false
+            F.BossEnabled = false
+            if state.BossFight then state.BossFight = false end
+            if state.SummonBossFight then 
+                state.SummonBossFight = false 
+                state.SummonBossTarget = nil
+            end
+            ClearTarget()
+            Notify("Boss Rush Enabled")
+        else
+            ClearTarget()
+        end
     end
 })
 
-local QuestSection = ModeTab:AddSection({
-    Name = "🔮 QUEST CHAINS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
+BossRushSection:AddDropdown({
+    Name = "Boss Rush Style",
+    Default = "Plank",
+    Values = {"Plank"},
+    Flag = "BossRushFarmMode",
+    Save = true,
+    Callback = function()
+        F.BossRushFarmMode = "Plank"
+        ClearTarget()
+    end
 })
 
-QuestSection:AddToggle({
-    Name = "Dungeon Quest (6 pieces)",
-    Default = false,
-    Color = Color3.fromRGB(0, 100, 0),
-    Outline = true,
-    Flag = "DungeonQuest",
+BossRushSection:AddDropdown({
+    Name = "Boss Rush Move Mode",
+    Default = "Teleport",
+    Values = {"Tween", "Teleport"},
+    Flag = "BossRushMoveMode",
     Save = true,
     Callback = function(Value)
-        getgenv().IsDungeonQuest = Value
-        Notify(Value and "Dungeon Quest ON" or "Dungeon Quest OFF")
+        F.BossRushMoveMode = Value
+        ClearTarget()
     end
 })
 
-QuestSection:AddToggle({
-    Name = "Hogyoku Quest (5 fragments)",
-    Default = false,
-    Color = Color3.fromRGB(148, 0, 211),
-    Outline = true,
-    Flag = "HogyokuQuest",
+BossRushSection:AddSlider({
+    Name = "Boss Rush Height",
+    Min = 5,
+    Max = 40,
+    Default = 10,
+    Increment = 1,
+    ValueName = "studs",
+    Flag = "BossRushHeightOffset",
     Save = true,
-    Callback = function(Value)
-        getgenv().IsHogyokuQuest = Value
-        Notify(Value and "Hogyoku Quest ON" or "Hogyoku Quest OFF")
-    end
+    Callback = function(Value) F.BossRushHeightOffset = Value end
+})
+
+BossRushSection:AddSlider({
+    Name = "Boss Rush Speed",
+    Min = 20,
+    Max = 250,
+    Default = 50,
+    Increment = 1,
+    ValueName = "speed",
+    Flag = "BossRushTweenSpeed",
+    Save = true,
+    Callback = function(Value) F.BossRushTweenSpeed = Value end
 })
 
 --==================================================
 -- SKILLS TAB
 --==================================================
-local SkillMainSection = SkillTab:AddSection({
-    Name = "🎯 INDIVIDUAL SKILLS",
+local SkillsSection = SkillsTab:AddSection({
+    Name = "🔥 AUTO SKILLS",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-for _, key in ipairs({"Z", "X", "C", "V", "F"}) do
-    local slotNum = ({ Z=1, X=2, C=3, V=4, F=5 })[key]
-    SkillMainSection:AddToggle({
-        Name = string.format("[%s] Skill %d", key, slotNum),
-        Default = false,
-        Color = Color3.fromRGB(65, 105, 225),
-        Outline = true,
-        Flag = "Skill" .. key,
-        Save = true,
-        Callback = function(Value)
-            getgenv().AutoSkills[key] = Value
-        end
-    })
-end
-
-SkillMainSection:AddToggle({
-    Name = "🔥 ALL Skills ON/OFF",
+local AllSkillsToggle = SkillsSection:AddToggle({
+    Name = "ALL SKILLS",
     Default = false,
-    Color = Color3.fromRGB(255, 0, 0),
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "AllSkills",
     Save = true,
     Callback = function(Value)
-        for _, k in ipairs({"Z","X","C","V","F"}) do
-            getgenv().AutoSkills[k] = Value
+        for _, k in ipairs(S.SkillKeys) do
+            local toggle = SkillsSection.Toggles and SkillsSection.Toggles[k]
+            if toggle then
+                pcall(function() toggle:SetValue(Value) end)
+            else
+                F[k] = Value
+            end
         end
     end
 })
 
-SkillMainSection:AddSlider({
-    Name = "Skill Cooldown (ms)",
-    Min = 100,
-    Max = 3000,
-    Default = 500,
-    Increment = 10,
-    ValueName = "ms",
-    Outline = true,
-    Callback = function(Value)
-        getgenv().SkillCooldown = Value / 1000
+AllSkillsToggle:AddKeybind({
+    Name = "All Skills Keybind",
+    Default = Enum.KeyCode.M,
+    Flag = "AllSkillsKeybind",
+    Callback = function()
+        local current = AllSkillsToggle:GetValue()
+        AllSkillsToggle:SetValue(not current)
     end
 })
 
-local HakiSection = SkillTab:AddSection({
-    Name = "⬛ HAKI",
+SkillsSection:AddToggle({
+    Name = "SKILL Z",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillZ",
+    Save = true,
+    Callback = function(Value) F.SkillZ = Value end
+})
+
+SkillsSection:AddToggle({
+    Name = "SKILL X",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillX",
+    Save = true,
+    Callback = function(Value) F.SkillX = Value end
+})
+
+SkillsSection:AddToggle({
+    Name = "SKILL C",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillC",
+    Save = true,
+    Callback = function(Value) F.SkillC = Value end
+})
+
+SkillsSection:AddToggle({
+    Name = "SKILL V",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillV",
+    Save = true,
+    Callback = function(Value) F.SkillV = Value end
+})
+
+SkillsSection:AddToggle({
+    Name = "SKILL F (NUKE)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillF",
+    Save = true,
+    Callback = function(Value) F.SkillF = Value end
+})
+
+SkillsSection:AddSlider({
+    Name = "SKILL COOLDOWN",
+    Min = 0.3,
+    Max = 5,
+    Default = 1.0,
+    Increment = 0.1,
+    ValueName = "sec",
+    Flag = "SkillCooldown",
+    Save = true,
+    Callback = function(Value) F.SkillCooldown = Value end
+})
+
+--==================================================
+-- CHESTS SECTION
+--==================================================
+local ChestsSection = SkillsTab:AddSection({
+    Name = "🎁 AUTO CHESTS",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-HakiSection:AddToggle({
-    Name = "⬛ Auto Haki",
+ChestsSection:AddToggle({
+    Name = "AUTO OPEN CHESTS",
     Default = false,
-    Color = Color3.fromRGB(0, 0, 0),
-    Outline = true,
-    Flag = "AutoHaki",
-    Save = true,
-    Callback = function(Value)
-        if Value then
-            pcall(function()
-                local hakiRemote = RepStorage:FindFirstChild("RemoteEvents") and RepStorage.RemoteEvents:FindFirstChild("HakiRemote")
-                if hakiRemote then
-                    hakiRemote:FireServer("Toggle")
-                end
-            end)
-        end
-    end
-})
-
-HakiSection:AddToggle({
-    Name = "👁️ Observation Haki",
-    Default = false,
-    Color = Color3.fromRGB(255, 255, 0),
-    Outline = true,
-    Flag = "ObsHaki",
-    Save = true,
-    Callback = function(Value)
-        if Value then
-            pcall(function()
-                local obsRemote = RepStorage:FindFirstChild("RemoteEvents") and RepStorage.RemoteEvents:FindFirstChild("ObservationHakiRemote")
-                if obsRemote then
-                    obsRemote:FireServer("Toggle")
-                end
-            end)
-        end
-    end
-})
-
---==================================================
--- ITEMS TAB
---==================================================
-local ChestSection = ItemTab:AddSection({
-    Name = "📦 AUTO CHEST",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-ChestSection:AddToggle({
-    Name = "Auto Open Chests",
-    Default = false,
-    Color = Color3.fromRGB(255, 215, 0),
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "AutoChest",
     Save = true,
+    Callback = function(Value) F.AutoChest = Value end
+})
+
+for _, chest in ipairs(S.ChestNames) do
+    local flag = "Chest_" .. chest:gsub(" ", "_")
+    ChestsSection:AddToggle({
+        Name = chest,
+        Default = true,
+        Color = Color3.fromRGB(65, 105, 225),
+        Outline = true,
+        Flag = flag,
+        Save = true,
+        Callback = function(Value) state.FC[chest] = Value end
+    })
+end
+
+--==================================================
+-- QUESTS TAB
+--==================================================
+local QuestsSection = QuestsTab:AddSection({
+    Name = "📜 UNLOCK QUESTS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+QuestsSection:AddToggle({
+    Name = "LOCATE DUNGEON PIECES",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "DungeonQuest",
+    Save = true,
     Callback = function(Value)
-        getgenv().IsAutoChest = Value
-        Notify(Value and "Auto Chest ON" or "Auto Chest OFF")
+        F.DungeonQuest = Value
+        if Value then
+            if F.HogyokuQuest then
+                F.HogyokuQuest = false
+            end
+            if state.SummonBossFight then state.SummonBossFight = false end
+            if state.BossFight then state.BossFight = false end
+            ClearTarget()
+            Notify("Dungeon Quest Started")
+        else
+            ClearTarget()
+            Notify("Dungeon Quest Disabled")
+        end
     end
 })
 
-local MerchantSection = ItemTab:AddSection({
+QuestsSection:AddParagraph({
+    Title = "Dungeon Info",
+    Desc = "1. Accepts quest remotely\n2. Collects 6 pieces (Starter→Jungle→Desert→Snow→Shibuya→Hueco Mundo)\n3. Returns to Dungeon Master",
+    Image = "info",
+    ImageSize = 38
+})
+
+QuestsSection:AddToggle({
+    Name = "LOCATE HOGYOKU FRAGMENTS",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HogyokuQuest",
+    Save = true,
+    Callback = function(Value)
+        F.HogyokuQuest = Value
+        if Value then
+            if F.DungeonQuest then
+                F.DungeonQuest = false
+            end
+            if state.SummonBossFight then state.SummonBossFight = false end
+            if state.BossFight then state.BossFight = false end
+            ClearTarget()
+            Notify("Hogyoku Quest Started")
+        else
+            ClearTarget()
+            Notify("Hogyoku Quest Disabled")
+        end
+    end
+})
+
+QuestsSection:AddParagraph({
+    Title = "Hogyoku Info",
+    Desc = "1. Accepts quest remotely\n2. Collects 5 fragments (Snow→Shibuya→Hueco Mundo→Slime→Judgement)\n3. Returns to Gin (Hueco Mundo)",
+    Image = "info",
+    ImageSize = 38
+})
+
+--==================================================
+-- MERCHANT TAB
+--==================================================
+local MerchantSection = MerchantTab:AddSection({
     Name = "🛒 AUTO MERCHANT",
     TextSize = 18,
     Glass = true,
@@ -999,196 +1724,120 @@ local MerchantSection = ItemTab:AddSection({
 })
 
 MerchantSection:AddToggle({
-    Name = "Auto Buy from Merchant",
+    Name = "ENABLE AUTO MERCHANT",
     Default = false,
-    Color = Color3.fromRGB(0, 255, 0),
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "AutoMerchant",
     Save = true,
-    Callback = function(Value)
-        getgenv().IsAutoMerchant = Value
-        Notify(Value and "Auto Merchant ON" or "Auto Merchant OFF")
+    Callback = function(Value) 
+        F.AutoMerchant = Value 
+        if Value then state.LastMerchant = 0 end
     end
 })
 
-MerchantSection:AddDropdown({
-    Name = "Item to Buy",
-    Default = "HealthPotion",
-    Options = {"HealthPotion", "StaminaPotion", "BoostScroll", "SummonStone"},
-    Multi = false,
-    Search = true,
+MerchantSection:AddToggle({
+    Name = "MERCHANT NOTIFIER",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Callback = function(Value)
-        getgenv().MerchantItem = Value
-    end
+    Flag = "MerchNotify",
+    Save = true,
+    Callback = function(Value) F.MerchNotify = Value end
 })
+
+for _, item in ipairs(S.MerchantItems) do
+    local flag = "Merchant_" .. item:gsub(" ", "_")
+    MerchantSection:AddToggle({
+        Name = item,
+        Default = false,
+        Color = Color3.fromRGB(65, 105, 225),
+        Outline = true,
+        Flag = flag,
+        Save = true,
+        Callback = function(Value) state.FM[item] = Value end
+    })
+end
+
+--==================================================
+-- TELEPORT TAB
+--==================================================
+local TeleportSection = TeleportTab:AddSection({
+    Name = "📍 TELEPORT TO ISLAND",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+for _, name in ipairs(S.TpIslands) do
+    TeleportSection:AddButton({
+        Name = name,
+        Icon = "map-pin",
+        Outline = true,
+        Callback = function()
+            if F.AutoFarmLevel then
+                Notify("Disable Auto Farm first!", 3)
+                return
+            end
+            ForceTP(name)
+            Notify("Teleported to " .. name)
+        end
+    })
+end
 
 --==================================================
 -- SETTINGS TAB
 --==================================================
-local CombatSection = SettingsTab:AddSection({
-    Name = "🔧 COMBAT",
+local UISection = SettingsTab:AddSection({
+    Name = "🎨 UI SETTINGS",
     TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-CombatSection:AddDropdown({
-    Name = "Weapon Mode",
-    Default = "Melee",
-    Options = {"Melee", "Fruit"},
-    Multi = false,
-    Search = false,
-    Outline = true,
-    Callback = function(Value)
-        getgenv().WeaponMode = Value
-    end
-})
-
-local UtilitySection = SettingsTab:AddSection({
-    Name = "🔧 UTILITY",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-UtilitySection:AddToggle({
-    Name = "👻 Noclip",
-    Default = false,
-    Color = Color3.fromRGB(255, 255, 255),
-    Outline = true,
-    Flag = "Noclip",
-    Save = true,
-    Callback = function(Value)
-        getgenv().IsNoclip = Value
-        Notify(Value and "Noclip ON" or "Noclip OFF")
-    end
-})
-
-UtilitySection:AddToggle({
-    Name = "Anti-AFK",
-    Default = true,
-    Color = Color3.fromRGB(0, 255, 0),
-    Outline = true,
-    Flag = "AntiAFK",
-    Save = true,
-    Callback = function(Value)
-        getgenv()._antiAFK = Value
-    end
-})
-
-UtilitySection:AddToggle({
-    Name = "Make Game Smoother",
-    Default = false,
-    Color = Color3.fromRGB(0, 255, 255),
-    Outline = true,
-    Flag = "Smoother",
-    Save = true,
-    Callback = function(Value)
-        if Value then
-            pcall(function()
-                local settings = UserSettings():GetService("UserGameSettings")
-                settings.SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
-                settings.GraphicsQualityLevel = 1
-                pcall(function() sethiddenproperty(settings, "GraphicsOptimizationMode", 1) end)
-            end)
-        end
-    end
-})
-
-local DebugSection = SettingsTab:AddSection({
-    Name = "🐛 DEBUG",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-DebugSection:AddButton({
-    Name = "🗺️ Print Quest Data",
+UISection:AddButton({
+    Name = "COPY DISCORD LINK",
+    Icon = "link",
     Outline = true,
     Callback = function()
-        print("\n═══ QUEST CONFIG DUMP ═══")
-        if questcheck and questcheck.RepeatableQuests then
-            for npcName, data in pairs(questcheck.RepeatableQuests) do
-                local req = data.requirements and data.requirements[1]
-                local mobType = req and req.npcType or "???"
-                local amount = req and req.amount or "?"
-                print(string.format("  [%s] Lv.%s → Kill %s x%s", npcName, tostring(data.recommendedLevel), mobType, tostring(amount)))
-            end
-        else
-            print("  Quest data not available")
-        end
-        print("═══ END ═══\n")
+        pcall(function() setclipboard(S.DISCORD) end)
+        Notify("Discord link copied!")
     end
 })
 
-DebugSection:AddButton({
-    Name = "👾 Print Mobs in Map",
+UISection:AddButton({
+    Name = "DESTROY GUI",
+    Icon = "x",
     Outline = true,
     Callback = function()
-        local npcFolder = workspace:FindFirstChild("NPCs")
-        if not npcFolder then 
-            Notify("NPCs folder not found!")
-            return 
-        end
-        print("\n═══ MOBS ═══")
-        local seen = {}
-        for _, npc in ipairs(npcFolder:GetChildren()) do
-            if npc:IsA("Model") and not seen[npc.Name] then
-                seen[npc.Name] = true
-                local hum = npc:FindFirstChildOfClass("Humanoid")
-                local hp = hum and string.format("HP: %d/%d", hum.Health, hum.MaxHealth) or "no Humanoid"
-                print(string.format("  %s — %s", npc.Name, hp))
+        state.Running = false
+        F.AutoFarmLevel = false
+        F.AutoDungeon = false
+        F.AutoBossRush = false
+        F.BossEnabled = false
+        F.AutoChest = false
+        F.AutoMerchant = false
+        F.DungeonQuest = false
+        F.HogyokuQuest = false
+        for _, k in ipairs(S.SkillKeys) do F[k] = false end
+        pcall(function()
+            local c = Player.Character
+            if c then
+                local hm = c:FindFirstChildOfClass("Humanoid")
+                if hm then hm.PlatformStand = false end
+                for _, p in ipairs(c:GetDescendants()) do
+                    if p:IsA("BasePart") then p.CanCollide = true end
+                end
             end
-        end
-        print("═══ END ═══\n")
+        end)
+        StopTween()
+        ClearTarget()
+        state.HoverPos = nil
+        state.NoclipActive = false
+        task.wait(0.1)
+        OrionLib:Destroy()
+        _G.SP_Loaded = false
     end
-})
-
---==================================================
--- KEYBINDS
---==================================================
-local KeybindSection = SettingsTab:AddSection({
-    Name = "⌨️ KEYBINDS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
--- Catraz Hub doesn't have built-in keybinds, so we'll use UserInputService
-UIS.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    
-    if input.KeyCode == Enum.KeyCode.F2 then
-        getgenv().IsFarm = not getgenv().IsFarm
-        Notify(getgenv().IsFarm and "Farm ON (F2)" or "Farm OFF (F2)")
-    elseif input.KeyCode == Enum.KeyCode.V then
-        getgenv().IsFarm = not getgenv().IsFarm
-        Notify(getgenv().IsFarm and "Farm ON (V)" or "Farm OFF (V)")
-    elseif input.KeyCode == Enum.KeyCode.B then
-        getgenv().IsBossFight = not getgenv().IsBossFight
-        Notify(getgenv().IsBossFight and "Boss Fight ON (B)" or "Boss Fight OFF (B)")
-    elseif input.KeyCode == Enum.KeyCode.N then
-        getgenv().IsSummonBoss = not getgenv().IsSummonBoss
-        Notify(getgenv().IsSummonBoss and "Summon Boss ON (N)" or "Summon Boss OFF (N)")
-    elseif input.KeyCode == Enum.KeyCode.M then
-        local anyOn = false
-        for _, v in pairs(getgenv().AutoSkills) do
-            if v then anyOn = true break end
-        end
-        local newState = not anyOn
-        for _, k in ipairs({"Z","X","C","V","F"}) do
-            getgenv().AutoSkills[k] = newState
-        end
-        Notify(newState and "All Skills ON (M)" or "Skills OFF (M)")
-    end
-end)
-
-KeybindSection:AddParagraph({
-    Title = "Keybinds",
-    Desc = "F2 / V : Toggle Farm\nB : Toggle Boss Fight\nN : Toggle Summon Boss\nM : Toggle All Skills",
-    Image = "key",
-    ImageSize = 38
 })
 
 --==================================================
@@ -1196,189 +1845,284 @@ KeybindSection:AddParagraph({
 --==================================================
 Window:AddConfigTab({
     Name = "Config",
-    Icon = "settings"
+    Icon = "folder"
 })
 
 --==================================================
 -- MAIN LOOP
 --==================================================
-local function getTargetQuest()
-    if not questcheck or not questcheck.RepeatableQuests then return nil end
-    
-    local level = player.Data and player.Data.Level and player.Data.Level.Value or 0
-    local bestNPC = nil
-    local maxLevelFound = -1
-    local choosenpc = nil
-
-    for npcName, data in pairs(questcheck.RepeatableQuests) do
-        local req = tonumber(data.recommendedLevel) or 0
-        if level >= req and req > maxLevelFound then
-            maxLevelFound = req
-            bestNPC = npcName
-            if data.requirements and data.requirements[1] then
-                choosenpc = data.requirements[1].npcType
-            end
-        end
-    end
-
-    return bestNPC, maxLevelFound, choosenpc
-end
-
-local function doDungeonQuest()
-    Notify("Dungeon Quest feature - check game mechanics")
-    return false
-end
-
-local function doHogyokuQuest()
-    Notify("Hogyoku Quest feature - check game mechanics")
-    return false
-end
-
-local function doAutoDungeon()
-    Notify("Auto Dungeon feature - check game mechanics")
-    return false
-end
-
-local function doBossRush()
-    Notify("Boss Rush feature - check game mechanics")
-    return false
-end
-
-local function doSummonBoss()
-    Notify("Summon Boss feature - check game mechanics")
-    return false
-end
-
-local function doBossFight()
-    local bossName = getgenv().SelectedBoss
-    local boss = findBoss(bossName)
-
-    if not boss then
-        return false
-    end
-
-    local h = boss:FindFirstChildOfClass("Humanoid")
-    if not h or h.Health <= 0 then return false end
-
-    tweenToMob(boss)
-    autoAttack(boss)
-    return true
-end
-
--- Main loop
 task.spawn(function()
-    while true do
-        task.wait(0.1)
-
-        local char = player.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then
-            task.wait(1)
-            continue
-        end
-
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if not humanoid or humanoid.Health <= 0 then
-            task.wait(2)
-            continue
-        end
-
-        -- Priority 1: Dungeon Quest
-        if getgenv().IsDungeonQuest then
-            if doDungeonQuest() then
-                task.wait(getgenv().AttackCooldown)
-                continue
-            end
-        end
-
-        -- Priority 2: Hogyoku Quest
-        if getgenv().IsHogyokuQuest then
-            if doHogyokuQuest() then
-                task.wait(getgenv().AttackCooldown)
-                continue
-            end
-        end
-
-        -- Priority 3: Auto Dungeon
-        if getgenv().IsAutoDungeon then
-            if doAutoDungeon() then
-                task.wait(getgenv().AttackCooldown)
-                continue
-            end
-        end
-
-        -- Priority 4: Boss Rush
-        if getgenv().IsBossRush then
-            if doBossRush() then
-                task.wait(getgenv().AttackCooldown)
-                continue
-            end
-        end
-
-        -- Priority 5: Summon Boss
-        if getgenv().IsSummonBoss then
-            if doSummonBoss() then
-                task.wait(getgenv().AttackCooldown)
-                continue
-            end
-        end
-
-        -- Priority 6: Boss Fight
-        if getgenv().IsBossFight then
-            if doBossFight() then
-                task.wait(getgenv().AttackCooldown)
-                continue
-            end
-        end
-
-        -- Priority 7: Auto Farm
-        if getgenv().IsFarm then
-            local targetMobName = getgenv().SelectedMob
-            local targetNPC, _, choosenpc
-
-            if not targetMobName then
-                targetNPC, _, choosenpc = getTargetQuest()
-                targetMobName = choosenpc
-            end
-
-            if not targetMobName then
-                task.wait(1)
-                continue
-            end
-
-            -- Accept quest
-            if targetNPC then
-                pcall(function()
-                    local questRemote = RepStorage:FindFirstChild("RemoteEvents") and RepStorage.RemoteEvents:FindFirstChild("QuestAccept")
-                    if questRemote then
-                        questRemote:FireServer(targetNPC)
-                    end
-                end)
-            end
-
-            local mob, dist = findMob(targetMobName)
-
-            if mob then
-                local mobH = mob:FindFirstChildOfClass("Humanoid")
-                if mobH and mobH.Health > 0 then
-                    tweenToMob(mob)
-                    task.wait(0.2)
-
-                    while getgenv().IsFarm and mob and mob.Parent and mob:FindFirstChild("HumanoidRootPart") do
-                        local h = mob:FindFirstChildOfClass("Humanoid")
-                        if not h or h.Health <= 0 then break end
-                        tweenToMob(mob)
-                        autoAttack(mob)
-                        task.wait(getgenv().AttackCooldown)
-                    end
-
-                    task.wait(0.3)
+    if not IsAlive() then WaitForChar() task.wait(0.5) end
+    for _ = 1, 10 do
+        if GetLevel() > 0 then break end
+        task.wait(0.5)
+    end
+    
+    while state.Running do
+        repeat
+            local isSummonActive = false
+            for _, b in ipairs(S.SummonBosses) do
+                if state.BSF[b.Name] then
+                    isSummonActive = true
+                    break
                 end
-            else
-                task.wait(1)
             end
-        else
-            task.wait(0.5)
+            
+            if not F.AutoFarmLevel and not F.AutoDungeon and not F.AutoBossRush and not isSummonActive and not F.DungeonQuest and not F.HogyokuQuest then
+                task.wait(0.3)
+                break
+            end
+            
+            if not IsAlive() then
+                ClearTarget()
+                state.HoverPos = nil
+                WaitForChar()
+                task.wait(0.3)
+                if F.AutoEquip then
+                    EquipBothWeapons()
+                    task.wait(0.2)
+                end
+                if not state.BossFight and not state.SummonBossFight then
+                    state.IslandTPd = false
+                    state.SpawnDone = false
+                    state.FarmOrigin = nil
+                end
+                state.LastBossTP = 0
+                state.BossTPDone = false
+                state.LastSummonBossTP = 0
+                state.SummonBossTPDone = false
+            end
+            
+            if not IsAlive() then
+                task.wait(0.3)
+                break
+            end
+            
+            -- FARM LOOP
+            if F.AutoFarmLevel and not F.AutoDungeon and not F.AutoBossRush and not isSummonActive and not F.DungeonQuest and not F.HogyokuQuest then
+                local tgtIsland = GetFarmIsland()
+                if not tgtIsland then
+                    task.wait(1)
+                    break
+                end
+                
+                if not state.CurIsland or state.CurIsland.Portal ~= tgtIsland.Portal then
+                    StopTween()
+                    state.CurIsland = tgtIsland
+                    state.IslandTPd = false
+                    state.SpawnDone = false
+                    state.FarmOrigin = nil
+                    state.QState = "NONE"
+                    state.CurTarget = nil
+                    state.LockTarget = nil
+                    state.HoverPos = nil
+                    state.LastEnemy = 0
+                    state.LastQuestAccept = tick()
+                    AbandonAllQuests()
+                    Notify("Teleporting to " .. tgtIsland.Portal)
+                end
+                
+                if not state.IslandTPd then
+                    if ForceTP(state.CurIsland.Portal) then
+                        task.wait(0.5)
+                        state.IslandTPd = true
+                        state.FarmOrigin = nil
+                        task.wait(1.0)
+                        local hrpNow = GetHRP()
+                        if hrpNow then state.FarmOrigin = hrpNow.Position end
+                        state.LastEnemy = tick()
+                        if F.AutoSpawn and not state.SpawnDone then
+                            state.SpawnDone = true
+                            task.wait(0.2)
+                        end
+                        if F.AutoQuest and state.QState == "NONE" then
+                            task.wait(0.1)
+                            QuestAccept(state.CurIsland)
+                        end
+                    else
+                        task.wait(1)
+                    end
+                    break
+                end
+                
+                if F.AutoQuest and state.QState == "NONE" then
+                    if tick() - state.LastQuestAccept > 5 then
+                        QuestRepeatFire(state.CurIsland)
+                    end
+                end
+                
+                local enemies = FindEnemies(state.CurIsland)
+                state.FarmGenericMode = false
+                
+                if #enemies > 0 then
+                    state.LastEnemy = tick()
+                    if state.CurTarget then
+                        local hm = GetHum(state.CurTarget)
+                        if not hm or hm.Health <= 0 or not state.CurTarget.Parent then
+                            if hm and hm.Health <= 0 then
+                                state.Kills = state.Kills + 1
+                            end
+                            state.CurTarget = nil
+                            state.LockTarget = nil
+                        elseif not MatchEnemy(state.CurTarget.Name, state.CurIsland) then
+                            state.CurTarget = nil
+                            state.LockTarget = nil
+                        else
+                            local cp = GetModelPos(state.CurTarget)
+                            if cp and DistTo(cp) > 400 then
+                                state.CurTarget = nil
+                                state.LockTarget = nil
+                            end
+                        end
+                    end
+                    if not state.CurTarget then
+                        state.CurTarget = NearestFrom(enemies)
+                    end
+                    if state.CurTarget then
+                        TweenTo(state.CurTarget)
+                        Attack(state.CurTarget)
+                    end
+                else
+                    state.FarmGenericMode = false
+                    state.CurTarget = nil
+                    state.LockTarget = nil
+                    if tick() - state.LastEnemy > 20 then
+                        state.IslandTPd = false
+                        state.SpawnDone = false
+                        state.FarmOrigin = nil
+                        state.LastEnemy = 0
+                        state.HoverPos = nil
+                    end
+                    task.wait(0.15)
+                end
+                
+                if F.AutoEquip and tick() - state.LastEquip > 3 then
+                    state.LastEquip = tick()
+                    EquipBothWeapons()
+                end
+                
+                task.wait(0.1)
+                break
+            end
+            
+            task.wait(0.1)
+        until true
+    end
+end)
+
+--==================================================
+-- RENDER LOOP (NOCLIP, HOVER)
+--==================================================
+RunService.RenderStepped:Connect(function()
+    local anyActive = F.AutoFarmLevel or F.AutoDungeon or F.AutoBossRush or state.BossFight or state.SummonBossFight or F.DungeonQuest or F.HogyokuQuest
+    
+    if not anyActive then
+        if state.NoclipActive then
+            state.NoclipActive = false
+            pcall(function()
+                local c = Player.Character
+                if not c then return end
+                for _, p in ipairs(c:GetDescendants()) do
+                    if p:IsA("BasePart") then p.CanCollide = true end
+                end
+                local hm = c:FindFirstChildOfClass("Humanoid")
+                if hm then hm.PlatformStand = false end
+            end)
         end
+        state.SmoothY = nil
+        return
+    end
+    
+    state.NoclipActive = true
+    local c = Player.Character
+    if not c then return end
+    local hrp = c:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    if tick() - state.LastCanCollide > 0.2 then
+        state.LastCanCollide = tick()
+        for _, p in ipairs(c:GetDescendants()) do
+            if p:IsA("BasePart") then
+                p.CanCollide = false
+            end
+        end
+    end
+    
+    -- Platform stand for Plank mode
+    if F.FarmMode == "Plank" or F.BossRushFarmMode == "Plank" then
+        local hm = c:FindFirstChildOfClass("Humanoid")
+        if hm then hm.PlatformStand = true end
+    end
+    
+    if state.TweenOn then
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+        return
+    end
+    
+    -- Ground detection
+    local hit = Workspace:Raycast(hrp.Position + Vector3.new(0, 3, 0), Vector3.new(0, -50, 0), state.RayParams)
+    if hit and hrp.Position.Y < hit.Position.Y + 1 then
+        local corrected = CFrame.new(hrp.Position.X, hit.Position.Y + 3, hrp.Position.Z) * (hrp.CFrame - hrp.CFrame.Position)
+        hrp.CFrame = hrp.CFrame:Lerp(corrected, 0.4)
+    end
+    
+    -- Lock target hover
+    if state.LockTarget then
+        local hm = GetHum(state.LockTarget)
+        if not hm or hm.Health <= 0 or not state.LockTarget.Parent then
+            state.LockTarget = nil
+        end
+        
+        if state.LockTarget then
+            local tp = GetModelPos(state.LockTarget)
+            if tp then
+                if tp.Y < -30 then
+                    state.LockTarget = nil
+                end
+                if state.LockTarget and hrp and (tp - hrp.Position).Magnitude > 600 then
+                    state.LockTarget = nil
+                end
+            end
+        end
+        
+        if state.LockTarget then
+            local goal, look = GetGoalForEnemy(state.LockTarget)
+            if goal then
+                if goal.Y < -30 then
+                    state.LockTarget = nil
+                else
+                    if not state.SmoothY then
+                        state.SmoothY = goal.Y
+                    else
+                        state.SmoothY = state.SmoothY + (goal.Y - state.SmoothY) * 0.03
+                    end
+                    goal = Vector3.new(goal.X, state.SmoothY, goal.Z)
+                    local targetCF = CFrame.new(goal, look or (goal + S.LOOK_DOWN))
+                    local dist = (hrp.Position - goal).Magnitude
+                    if dist < 5 then
+                        hrp.CFrame = targetCF
+                    else
+                        local alpha = math.clamp(0.18 + (dist / 220), 0.18, 0.45)
+                        hrp.CFrame = hrp.CFrame:Lerp(targetCF, alpha)
+                    end
+                    state.HoverPos = goal
+                    state.LastSmoothMove = tick()
+                end
+            end
+        elseif state.HoverPos then
+            local hoverCF = CFrame.new(state.HoverPos, state.HoverPos + S.LOOK_DOWN)
+            hrp.CFrame = hoverCF
+        end
+    elseif state.HoverPos then
+        local hoverCF = CFrame.new(state.HoverPos, state.HoverPos + S.LOOK_DOWN)
+        hrp.CFrame = hoverCF
+    end
+    
+    -- Zero velocity in plank mode
+    if F.FarmMode == "Plank" or F.BossRushFarmMode == "Plank" then
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
     end
 end)
 
@@ -1389,14 +2133,14 @@ OrionLib:Init()
 
 Notify("Press F4 or click floating button to toggle menu")
 print("═══════════════════════════════════════════════════════")
-print("🔥 SAILOR PIECE HUB - CATRAZ EDITION v4.0 🔥")
+print("🔥 SAILOR PIECE - CATRAZ EDITION 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ Farm - Auto Quest dengan target mob")
-print("✅ Boss - Auto Fight & Summon")
-print("✅ Modes - Dungeon, Boss Rush, Quest Chains")
-print("✅ Skills - Individual skill toggles")
-print("✅ Items - Auto Chest & Merchant")
-print("✅ Settings - Noclip, Anti-AFK, Keybinds")
-print("═══════════════════════════════════════════════════════")
-print("Keybinds: F2/V=Farm | B=Boss | N=Summon | M=Skills")
+print("✅ Auto Farm Level")
+print("✅ Auto Dungeon (Rune/Cid/Double)")
+print("✅ Auto Boss Rush")
+print("✅ Auto Skills")
+print("✅ Auto Chests")
+print("✅ Auto Merchant")
+print("✅ Dungeon & Hogyoku Quests")
+print("✅ Teleport to Islands")
 print("═══════════════════════════════════════════════════════")
