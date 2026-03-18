@@ -1,6 +1,6 @@
 -- ==================== SAILOR PIECE - CATRAZ ULTIMATE ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 2.0 COMPLETE with Enemy Dropdown & Height Offset
+-- Version: 2.1 FIXED - Equip Weapon & Removed Keybinds
 
 if _G.SP_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -64,6 +64,7 @@ local dungeonVoteRemote = Remotes:WaitForChild("DungeonWaveVote")
 local dungeonPortalRemote = Remotes:WaitForChild("RequestDungeonPortal")
 local slimeCraftRemote = Remotes:WaitForChild("RequestSlimeCraft")
 local grailCraftRemote = Remotes:WaitForChild("RequestGrailCraft")
+local equipWeaponRemote = Remotes:WaitForChild("EquipWeapon")
 
 --==================================================
 -- CONSTANTS & CONFIGURATION
@@ -750,67 +751,171 @@ local function Attack()
     FireAbilities()
 end
 
-local function EquipSword()
-    local c = Player.Character
-    if not c then return end
-    local hum = c:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    local bp = Player:FindFirstChild("Backpack")
-    if not bp then return end
+--==================================================
+-- FIXED EQUIP WEAPON FUNCTIONS (BISA GANTI PEDANG/COMBAT/BUAH)
+--==================================================
+local function GetAllTools()
+    local tools = {}
+    local char = Player.Character
+    local backpack = Player:FindFirstChild("Backpack")
     
-    for _, t in ipairs(bp:GetChildren()) do
-        if t:IsA("Tool") and t.Name:lower() ~= "combat" then
-            hum:EquipTool(t)
-            return
+    if char then
+        for _, tool in ipairs(char:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(tools, tool)
+            end
         end
+    end
+    
+    if backpack then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(tools, tool)
+            end
+        end
+    end
+    
+    return tools
+end
+
+local function GetCurrentWeapon()
+    local char = Player.Character
+    if not char then return nil end
+    
+    for _, tool in ipairs(char:GetChildren()) do
+        if tool:IsA("Tool") then
+            return tool
+        end
+    end
+    return nil
+end
+
+local function EquipWeapon(weaponName)
+    if not weaponName or weaponName == "None" then return false end
+    
+    local char = Player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    
+    -- Cek apakah weapon sudah di tangan
+    if char:FindFirstChild(weaponName) then
+        return true -- Sudah equip
+    end
+    
+    -- Coba cari di backpack
+    local backpack = Player:FindFirstChild("Backpack")
+    if not backpack then return false end
+    
+    local tool = backpack:FindFirstChild(weaponName)
+    if not tool or not tool:IsA("Tool") then return false end
+    
+    -- Unequip semua weapon dulu
+    hum:UnequipTools()
+    task.wait(0.1)
+    
+    -- Equip weapon baru
+    hum:EquipTool(tool)
+    task.wait(0.2)
+    
+    -- Verifikasi
+    return char:FindFirstChild(weaponName) ~= nil
+end
+
+local function EquipWeaponByType(type)
+    -- type: "Melee" (Combat), "Sword" (pedang), "Fruit" (buah)
+    local backpack = Player:FindFirstChild("Backpack")
+    if not backpack then return false end
+    
+    local char = Player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    
+    local targetTool = nil
+    
+    if type == "Melee" then
+        -- Cari Combat
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and (tool.Name == "Combat" or tool.Name:lower() == "combat") then
+                targetTool = tool
+                break
+            end
+        end
+    elseif type == "Sword" then
+        -- Cari pedang (semua tool yang bukan Combat dan bukan Fruit)
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and tool.Name ~= "Combat" and not tool:FindFirstChild("FruitData") then
+                targetTool = tool
+                break
+            end
+        end
+    elseif type == "Fruit" then
+        -- Cari buah (tool dengan FruitData)
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and tool:FindFirstChild("FruitData") then
+                targetTool = tool
+                break
+            end
+        end
+    end
+    
+    if not targetTool then return false end
+    
+    hum:UnequipTools()
+    task.wait(0.1)
+    hum:EquipTool(targetTool)
+    task.wait(0.2)
+    
+    return char:FindFirstChild(targetTool.Name) ~= nil
+end
+
+local function AutoEquipLogic()
+    if not Config.AutoFarm.AutoEquip or not IsAlive() then return end
+    
+    local currentWeapon = GetCurrentWeapon()
+    local targetWeapon = Config.AutoFarm.SelectedWeapon
+    
+    -- Jika target "None", biarkan apa adanya
+    if targetWeapon == "None" then return end
+    
+    -- Jika sudah equip weapon yang diinginkan, tidak perlu action
+    if currentWeapon and currentWeapon.Name == targetWeapon then return end
+    
+    -- Coba equip weapon yang dipilih di dropdown
+    if targetWeapon ~= "None" then
+        EquipWeapon(targetWeapon)
     end
 end
 
-local function EquipBothWeapons()
-    local c = Player.Character
-    if not c then return end
-    local hum = c:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    local bp = Player:FindFirstChild("Backpack")
-    if not bp then return end
+-- Fungsi untuk refresh weapon list
+local function RefreshWeaponList()
+    local weapons = {"None"}
+    local backpack = Player:FindFirstChild("Backpack")
+    local char = Player.Character
     
-    -- Equip melee first
-    for _, t in ipairs(bp:GetChildren()) do
-        if t:IsA("Tool") and t.Name:lower() == "combat" then
-            hum:EquipTool(t)
-            break
+    -- Add all tools from backpack
+    if backpack then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(weapons, tool.Name)
+            end
         end
     end
     
-    -- Then equip sword
-    task.wait(0.1)
-    for _, t in ipairs(bp:GetChildren()) do
-        if t:IsA("Tool") and t.Name:lower() ~= "combat" then
-            hum:EquipTool(t)
-            break
+    -- Add all tools from character (if not already in list)
+    if char then
+        for _, tool in ipairs(char:GetChildren()) do
+            if tool:IsA("Tool") and not table.find(weapons, tool.Name) then
+                table.insert(weapons, tool.Name)
+            end
         end
     end
+    
+    table.sort(weapons)
+    return weapons
 end
 
 local function GetWeaponList()
-    local weapons = {"None", "Combat"}
-    local bp = Player:FindFirstChild("Backpack")
-    if bp then
-        for _, t in ipairs(bp:GetChildren()) do
-            if t:IsA("Tool") and t.Name ~= "Combat" then
-                table.insert(weapons, t.Name)
-            end
-        end
-    end
-    local char = Player.Character
-    if char then
-        for _, t in ipairs(char:GetChildren()) do
-            if t:IsA("Tool") and t.Name ~= "Combat" and not table.find(weapons, t.Name) then
-                table.insert(weapons, t.Name)
-            end
-        end
-    end
-    return weapons
+    return RefreshWeaponList()
 end
 
 --==================================================
@@ -831,7 +936,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Sailor Piece",
     Subtext = "Catraz Ultimate Edition",
-    Version = "v2.0",
+    Version = "v2.1",
     VersionIcon = "ship",
     HidePremium = false,
     SaveConfig = true,
@@ -1023,15 +1128,8 @@ FarmMainSection:AddToggle({
     end
 })
 
-FarmMainSection:AddKeybind({
-    Name = "Farm Keybind",
-    Default = Enum.KeyCode.V,
-    Flag = "FarmKeybind",
-    Save = true,
-    Callback = function(Value)
-        -- Keybind handled globally
-    end
-})
+-- HAPUS KEYBIND - TIDAK MENGGUNAKAN KEYBIND LAGI
+-- FarmMainSection:AddKeybind({ ... }) - dihapus
 
 FarmMainSection:AddDropdown({
     Name = "FARM ISLAND",
@@ -1191,13 +1289,16 @@ FarmMainSection:AddToggle({
 })
 
 FarmMainSection:AddToggle({
-    Name = "AUTO EQUIP WEAPON",
+    Name = "AUTO EQUIP WEAPON (FIXED)",
     Default = true,
     Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "AutoEquip",
     Save = true,
-    Callback = function(Value) Config.AutoFarm.AutoEquip = Value end
+    Callback = function(Value)
+        Config.AutoFarm.AutoEquip = Value
+        Notify(Value and "Auto Equip ON - Weapon will auto-switch" or "Auto Equip OFF")
+    end
 })
 
 FarmMainSection:AddToggle({
@@ -1250,6 +1351,7 @@ FarmMainSection:AddToggle({
     Callback = function(Value) Config.Farm.AutoChest = Value end
 })
 
+-- DROPDOWN UNTUK MEMILIH WEAPON (FIXED)
 FarmMainSection:AddDropdown({
     Name = "SELECT WEAPON",
     Default = "None",
@@ -1261,6 +1363,13 @@ FarmMainSection:AddDropdown({
     Save = true,
     Callback = function(Value)
         Config.AutoFarm.SelectedWeapon = Value
+        if Value ~= "None" then
+            Notify("Selected: " .. Value)
+            -- Langsung equip jika auto equip aktif
+            if Config.AutoFarm.AutoEquip then
+                EquipWeapon(Value)
+            end
+        end
     end
 })
 
@@ -1272,6 +1381,78 @@ FarmMainSection:AddButton({
         local weapons = GetWeaponList()
         OrionLib.Flags["WeaponSelect"]:SetOptions(weapons)
         Notify("Weapon list refreshed")
+    end
+})
+
+-- Tombol manual untuk equip weapon
+FarmMainSection:AddButton({
+    Name = "⚔️ EQUIP SELECTED WEAPON NOW",
+    Icon = "sword",
+    Outline = true,
+    Callback = function()
+        if Config.AutoFarm.SelectedWeapon ~= "None" then
+            if EquipWeapon(Config.AutoFarm.SelectedWeapon) then
+                Notify("Equipped: " .. Config.AutoFarm.SelectedWeapon)
+            else
+                Notify("Failed to equip: " .. Config.AutoFarm.SelectedWeapon)
+            end
+        else
+            Notify("Select a weapon first!")
+        end
+    end
+})
+
+-- Tombol untuk equip combat
+FarmMainSection:AddButton({
+    Name = "👊 EQUIP COMBAT",
+    Icon = "fist",
+    Outline = true,
+    Callback = function()
+        if EquipWeaponByType("Melee") then
+            Notify("Equipped Combat")
+            Config.AutoFarm.SelectedWeapon = "Combat"
+            OrionLib.Flags["WeaponSelect"]:SetValue("Combat")
+        else
+            Notify("Combat not found")
+        end
+    end
+})
+
+-- Tombol untuk equip pedang (non-combat, non-fruit)
+FarmMainSection:AddButton({
+    Name = "⚔️ EQUIP SWORD",
+    Icon = "sword",
+    Outline = true,
+    Callback = function()
+        if EquipWeaponByType("Sword") then
+            local current = GetCurrentWeapon()
+            if current then
+                Notify("Equipped: " .. current.Name)
+                Config.AutoFarm.SelectedWeapon = current.Name
+                OrionLib.Flags["WeaponSelect"]:SetValue(current.Name)
+            end
+        else
+            Notify("No sword found")
+        end
+    end
+})
+
+-- Tombol untuk equip buah
+FarmMainSection:AddButton({
+    Name = "🍎 EQUIP FRUIT",
+    Icon = "apple",
+    Outline = true,
+    Callback = function()
+        if EquipWeaponByType("Fruit") then
+            local current = GetCurrentWeapon()
+            if current then
+                Notify("Equipped: " .. current.Name)
+                Config.AutoFarm.SelectedWeapon = current.Name
+                OrionLib.Flags["WeaponSelect"]:SetValue(current.Name)
+            end
+        else
+            Notify("No fruit found")
+        end
     end
 })
 
@@ -1350,31 +1531,8 @@ SkillSection:AddSlider({
     end
 })
 
-SkillSection:AddKeybind({
-    Name = "Toggle All Skills",
-    Default = Enum.KeyCode.M,
-    Flag = "AllSkillsKeybind",
-    Save = true,
-    Callback = function()
-        -- Toggle all skills
-        local anyOn = Config.AutoFarm.SkillZ or Config.AutoFarm.SkillX or Config.AutoFarm.SkillC or Config.AutoFarm.SkillV or Config.AutoFarm.SkillF
-        local newVal = not anyOn
-        Config.AutoFarm.SkillZ = newVal
-        Config.AutoFarm.SkillX = newVal
-        Config.AutoFarm.SkillC = newVal
-        Config.AutoFarm.SkillV = newVal
-        Config.AutoFarm.SkillF = newVal
-        
-        -- Update UI flags
-        if OrionLib.Flags["SkillZ"] then OrionLib.Flags["SkillZ"]:SetValue(newVal) end
-        if OrionLib.Flags["SkillX"] then OrionLib.Flags["SkillX"]:SetValue(newVal) end
-        if OrionLib.Flags["SkillC"] then OrionLib.Flags["SkillC"]:SetValue(newVal) end
-        if OrionLib.Flags["SkillV"] then OrionLib.Flags["SkillV"]:SetValue(newVal) end
-        if OrionLib.Flags["SkillF"] then OrionLib.Flags["SkillF"]:SetValue(newVal) end
-        
-        Notify(newVal and "All Skills ON" or "All Skills OFF")
-    end
-})
+-- HAPUS KEYBIND - TIDAK MENGGUNAKAN KEYBIND LAGI
+-- SkillSection:AddKeybind({ ... }) - dihapus
 
 --==================================================
 -- DUNGEON TAB
@@ -1534,18 +1692,8 @@ BossMainSection:AddToggle({
     end
 })
 
-BossMainSection:AddKeybind({
-    Name = "Boss Keybind",
-    Default = Enum.KeyCode.B,
-    Flag = "BossKeybind",
-    Save = true,
-    Callback = function()
-        -- Toggle boss mode
-        if OrionLib.Flags["BossEnabled"] then
-            OrionLib.Flags["BossEnabled"]:SetValue(not Config.Bosses.Enabled)
-        end
-    end
-})
+-- HAPUS KEYBIND - TIDAK MENGGUNAKAN KEYBIND LAGI
+-- BossMainSection:AddKeybind({ ... }) - dihapus
 
 BossMainSection:AddToggle({
     Name = "BOSS NOTIFICATIONS",
@@ -1966,9 +2114,11 @@ local function DoFarmTick()
         if State.CurTarget then
             TweenTo(State.CurTarget)
             Attack()
-            if Config.AutoFarm.AutoEquip and tick() - State.LastEquip > 3 then
+            
+            -- AUTO EQUIP LOGIC (FIXED)
+            if Config.AutoFarm.AutoEquip and tick() - State.LastEquip > 2 then
                 State.LastEquip = tick()
-                EquipBothWeapons()
+                AutoEquipLogic()
             end
         end
     else
@@ -1994,7 +2144,6 @@ task.spawn(function()
         -- Priority: Quests first
         if Config.Quests.DungeonEnabled then
             -- Dungeon quest logic (simplified)
-            -- In full version, would have full implementation
             task.wait(0.2)
         elseif Config.Quests.HogyokuEnabled then
             -- Hogyoku quest logic (simplified)
@@ -2099,49 +2248,20 @@ end)
 Player.CharacterAdded:Connect(function(char)
     task.wait(1)
     ClearTarget()
-    if Config.AutoFarm.AutoEquip then
+    if Config.AutoFarm.AutoEquip and Config.AutoFarm.SelectedWeapon ~= "None" then
         task.spawn(function()
             task.wait(1.5)
-            EquipBothWeapons()
+            EquipWeapon(Config.AutoFarm.SelectedWeapon)
         end)
     end
 end)
 
 --==================================================
--- KEYBINDS
+-- HAPUS SEMUA KEYBINDS (V, B, M, F4) - HANYA F4 UNTUK TOGGLE UI
+-- Catraz Hub sudah punya F4 default untuk toggle UI
 --==================================================
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    
-    -- Farm toggle (V)
-    if input.KeyCode == Enum.KeyCode.V and OrionLib.Flags["AutoFarm"] then
-        OrionLib.Flags["AutoFarm"]:SetValue(not Config.AutoFarm.Enabled)
-    end
-    
-    -- Boss toggle (B)
-    if input.KeyCode == Enum.KeyCode.B and OrionLib.Flags["BossEnabled"] then
-        OrionLib.Flags["BossEnabled"]:SetValue(not Config.Bosses.Enabled)
-    end
-    
-    -- All skills toggle (M)
-    if input.KeyCode == Enum.KeyCode.M then
-        local anyOn = Config.AutoFarm.SkillZ or Config.AutoFarm.SkillX or Config.AutoFarm.SkillC or Config.AutoFarm.SkillV or Config.AutoFarm.SkillF
-        local newVal = not anyOn
-        Config.AutoFarm.SkillZ = newVal
-        Config.AutoFarm.SkillX = newVal
-        Config.AutoFarm.SkillC = newVal
-        Config.AutoFarm.SkillV = newVal
-        Config.AutoFarm.SkillF = newVal
-        
-        if OrionLib.Flags["SkillZ"] then OrionLib.Flags["SkillZ"]:SetValue(newVal) end
-        if OrionLib.Flags["SkillX"] then OrionLib.Flags["SkillX"]:SetValue(newVal) end
-        if OrionLib.Flags["SkillC"] then OrionLib.Flags["SkillC"]:SetValue(newVal) end
-        if OrionLib.Flags["SkillV"] then OrionLib.Flags["SkillV"]:SetValue(newVal) end
-        if OrionLib.Flags["SkillF"] then OrionLib.Flags["SkillF"]:SetValue(newVal) end
-        
-        Notify(newVal and "All Skills ON" or "All Skills OFF")
-    end
-end)
+-- Tidak perlu menambahkan keybind handler apapun
+-- Catraz Hub sudah handle F4 secara otomatis
 
 --==================================================
 -- HEARTBEAT MOVEMENT
@@ -2176,10 +2296,13 @@ end)
 --==================================================
 OrionLib:Init()
 
-Notify("Press F4 or click floating button to toggle menu")
+Notify("Press F4 to toggle UI")
 print("═══════════════════════════════════════════════════════")
-print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v2.0 🔥")
+print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v2.1 🔥")
 print("═══════════════════════════════════════════════════════")
+print("✅ FIXED: Equip Weapon (bisa ganti pedang/combat/buah)")
+print("✅ HAPUS: Semua keybind (V, B, M)")
+print("✅ Hanya F4 untuk toggle UI")
 print("✅ Auto Farm with Enemy Dropdown")
 print("✅ Height Offset Slider (5-50 studs)")
 print("✅ Multiple Combat Styles (Dodge/Static/Orbit/Strafe)")
@@ -2187,5 +2310,4 @@ print("✅ Dungeon Auto Mode")
 print("✅ Boss Systems (World + Summon)")
 print("✅ Auto Merchant")
 print("✅ Quest Systems")
-print("✅ Keybinds: V=Farm | B=Boss | M=All Skills")
 print("═══════════════════════════════════════════════════════")
