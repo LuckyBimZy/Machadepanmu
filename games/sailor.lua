@@ -1,7 +1,6 @@
--- ==================== SAILOR PIECE - ULTIMATE HUB v2.0 ====================
+-- ==================== SAILOR PIECE - ULTIMATE HUB v2.1 ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Gabungan Lengkap: ArcX + Sailor Piece v5 + Teleport Bypass v4
--- Version: 2.0 COMPLETE
+-- Version: 2.1 STABLE (Tanpa hookmetamethod & getgc)
 
 if _G.SP_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -27,11 +26,13 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService")
+local StarterGui = game:GetService("StarterGui")
 
 local Player = Players.LocalPlayer
 local Mouse = Player:GetMouse()
@@ -41,89 +42,98 @@ local Camera = workspace.CurrentCamera
 repeat task.wait() until Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
 
 --==================================================
--- REMOTE SETUP (Dengan error handling)
+-- SAFE REMOTE ACCESS (Dengan error handling)
 --==================================================
-local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
-local RemoteEvents = ReplicatedStorage:FindFirstChild("RemoteEvents")
-local CombatSystem = ReplicatedStorage:FindFirstChild("CombatSystem")
-local AbilitySystem = ReplicatedStorage:FindFirstChild("AbilitySystem")
-
--- Helper function untuk get remote dengan aman
-local function getRemote(path, name)
-    local success, remote = pcall(function()
-        local obj = ReplicatedStorage
-        for _, folder in ipairs(path) do
-            obj = obj:WaitForChild(folder, 5)
-        end
-        return obj:WaitForChild(name, 5)
-    end)
-    return success and remote or nil
+local function getRemote(...)
+    local args = {...}
+    local obj = ReplicatedStorage
+    for i = 1, #args do
+        obj = obj:FindFirstChild(args[i])
+        if not obj then return nil end
+    end
+    return obj
 end
 
 -- Combat Remotes
-local hitRemote = getRemote({"CombatSystem", "Remotes"}, "RequestHit")
-local combatRemote = getRemote({"CombatSystem", "Remotes"}, "RequestCombat")
+local hitRemote = getRemote("CombatSystem", "Remotes", "RequestHit")
+local combatRemote = getRemote("CombatSystem", "Remotes", "RequestCombat")
 
 -- Ability Remotes
-local abilityRemote = getRemote({"AbilitySystem", "Remotes"}, "RequestAbility")
+local abilityRemote = getRemote("AbilitySystem", "Remotes", "RequestAbility")
 
 -- Teleport Remote
-local tpRemote = Remotes and Remotes:FindFirstChild("TeleportToPortal")
+local tpRemote = getRemote("Remotes", "TeleportToPortal")
 
 -- Quest Remotes
-local questRemote = RemoteEvents and RemoteEvents:FindFirstChild("QuestAccept")
-local abandonRemote = RemoteEvents and RemoteEvents:FindFirstChild("QuestAbandon")
+local questRemote = getRemote("RemoteEvents", "QuestAccept")
+local abandonRemote = getRemote("RemoteEvents", "QuestAbandon")
 
 -- Stats Remote
-local statRemote = RemoteEvents and RemoteEvents:FindFirstChild("AllocateStat")
+local statRemote = getRemote("RemoteEvents", "AllocateStat")
+local resetStatsRemote = getRemote("RemoteEvents", "ResetStats")
 
 -- Settings Remote
-local settingsRemote = RemoteEvents and RemoteEvents:FindFirstChild("SettingsToggle")
+local settingsRemote = getRemote("RemoteEvents", "SettingsToggle")
 
 -- Haki Remotes
-local hakiRemote = RemoteEvents and RemoteEvents:FindFirstChild("HakiRemote")
-local obsHakiRemote = RemoteEvents and RemoteEvents:FindFirstChild("ObservationHakiRemote")
+local hakiRemote = getRemote("RemoteEvents", "HakiRemote")
+local obsHakiRemote = getRemote("RemoteEvents", "ObservationHakiRemote")
 
 -- Boss Remotes
-local summonBossRemote = Remotes and Remotes:FindFirstChild("RequestSummonBoss")
-local spawnStrongestRemote = Remotes and Remotes:FindFirstChild("RequestSpawnStrongestBoss")
-local spawnAnosRemote = Remotes and Remotes:FindFirstChild("RequestSpawnAnosBoss")
-local trueAizenRemote = RemoteEvents and RemoteEvents:FindFirstChild("RequestSpawnTrueAizen")
-local rimuruRemote = RemoteEvents and RemoteEvents:FindFirstChild("RequestSpawnRimuru")
+local summonBossRemote = getRemote("Remotes", "RequestSummonBoss")
+local spawnStrongestRemote = getRemote("Remotes", "RequestSpawnStrongestBoss")
+local spawnAnosRemote = getRemote("Remotes", "RequestSpawnAnosBoss")
+local trueAizenRemote = getRemote("RemoteEvents", "RequestSpawnTrueAizen")
+local rimuruRemote = getRemote("RemoteEvents", "RequestSpawnRimuru")
 
 -- Merchant Remotes
-local merchantRemotes = Remotes and Remotes:FindFirstChild("MerchantRemotes")
+local merchantRemotes = getRemote("Remotes", "MerchantRemotes")
 local purchaseRemote = merchantRemotes and merchantRemotes:FindFirstChild("PurchaseMerchantItem")
 local stockRemote = merchantRemotes and merchantRemotes:FindFirstChild("GetMerchantStock")
+local stockUpdateRemote = merchantRemotes and merchantRemotes:FindFirstChild("MerchantStockUpdate")
 
 -- Crafting Remotes
-local slimeCraftRemote = Remotes and Remotes:FindFirstChild("RequestSlimeCraft")
-local grailCraftRemote = Remotes and Remotes:FindFirstChild("RequestGrailCraft")
+local slimeCraftRemote = getRemote("Remotes", "RequestSlimeCraft")
+local grailCraftRemote = getRemote("Remotes", "RequestGrailCraft")
 
--- Inventory Remote
-local updateInventoryRemote = Remotes and Remotes:FindFirstChild("UpdateInventory")
-local requestInventoryRemote = Remotes and Remotes:FindFirstChild("RequestInventory")
+-- Inventory Remotes
+local updateInventoryRemote = getRemote("Remotes", "UpdateInventory")
+local requestInventoryRemote = getRemote("Remotes", "RequestInventory")
 
 -- Artifact Remotes
-local artifactDataRemote = ReplicatedStorage:FindFirstChild("RemoteFunctions") and 
-                          ReplicatedStorage.RemoteFunctions:FindFirstChild("GetArtifactData")
-local artifactEquipRemote = RemoteEvents and RemoteEvents:FindFirstChild("ArtifactEquip")
-local artifactUnlockRemote = RemoteEvents and RemoteEvents:FindFirstChild("ArtifactUnlockSystem")
-local artifactCloseRemote = RemoteEvents and RemoteEvents:FindFirstChild("ArtifactCloseUI")
+local artifactDataRemote = getRemote("RemoteFunctions", "GetArtifactData")
+local artifactEquipRemote = getRemote("RemoteEvents", "ArtifactEquip")
+local artifactUnlockRemote = getRemote("RemoteEvents", "ArtifactUnlockSystem")
+local artifactCloseRemote = getRemote("RemoteEvents", "ArtifactCloseUI")
+local artifactUIOpenedRemote = getRemote("RemoteEvents", "ArtifactUIOpened")
 
 -- Dungeon Remote
-local dungeonRemote = RemoteEvents and RemoteEvents:FindFirstChild("Dungeon")
-local bossRushRemote = RemoteEvents and RemoteEvents:FindFirstChild("BossRush")
+local dungeonRemote = getRemote("RemoteEvents", "Dungeon")
+local bossRushRemote = getRemote("RemoteEvents", "BossRush")
 
 -- Fruit Remote
-local fruitPowerRemote = RemoteEvents and RemoteEvents:FindFirstChild("FruitPowerRemote")
+local fruitPowerRemote = getRemote("RemoteEvents", "FruitPowerRemote")
+local fruitActionRemote = getRemote("RemoteEvents", "FruitAction")
+
+-- Exchange Remote
+local exchangeRemote = getRemote("Remotes", "ExchangeItem")
+
+-- Code Redeem Remote
+local codeRedeemRemote = getRemote("RemoteEvents", "CodeRedeem")
+
+-- Equip Weapon Remote
+local equipWeaponRemote = getRemote("Remotes", "EquipWeapon")
+
+-- Chest Remote
+local chestRemote = getRemote("RemoteEvents", "Chest")
 
 --==================================================
--- LOAD CONFIG MODULES
+-- LOAD CONFIG MODULES (Aman dengan pcall)
 --==================================================
 local TravelConfig = nil
 local QuestConfig = nil
 local ItemRarityConfig = nil
+local CodesConfig = nil
 
 pcall(function()
     TravelConfig = require(ReplicatedStorage:WaitForChild("TravelConfig"))
@@ -135,6 +145,10 @@ end)
 
 pcall(function()
     ItemRarityConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ItemRarityConfig"))
+end)
+
+pcall(function()
+    CodesConfig = require(ReplicatedStorage:WaitForChild("CodesConfig"))
 end)
 
 --==================================================
@@ -179,7 +193,7 @@ local Config = {
     AutoSummonBoss = false,
     SummonDifficulty = "Normal",
     SelectedSummonBoss = "None",
-    SelectedBosses = {}, -- Untuk multi-select
+    SelectedBosses = {},
     
     -- Special Bosses
     SpecialBosses = {
@@ -221,6 +235,7 @@ local Config = {
     AutoBuyDarkBlade = false,
     DarkBladeGems = 150,
     DarkBladeMoney = 250000,
+    DarkBladeOwned = false,
     
     -- Fruit Farm
     FruitFarm = false,
@@ -277,6 +292,18 @@ local Config = {
     
     -- Artifacts
     ArtifactsUnlocked = false,
+    
+    -- Player Data Cache
+    PlayerData = {
+        Level = 0,
+        Money = 0,
+        Gems = 0,
+        StatPoints = 0,
+        Power = 0,
+        Sword = 0,
+        Defense = 0,
+        Melee = 0
+    }
 }
 
 --==================================================
@@ -311,8 +338,8 @@ end
 --==================================================
 local Window = OrionLib:MakeWindow({
     Name = "Sailor Piece",
-    Subtext = "ULTIMATE Hub v2.0",
-    Version = "v2.0",
+    Subtext = "ULTIMATE Hub v2.1",
+    Version = "v2.1",
     VersionIcon = "ship",
     HidePremium = false,
     SaveConfig = true,
@@ -405,6 +432,31 @@ local SettingsTab = Window:MakeTab({
 })
 
 --==================================================
+-- PLAYER DATA UPDATE
+--==================================================
+local function updatePlayerData()
+    pcall(function()
+        if Player.Data then
+            Config.PlayerData.Level = Player.Data:FindFirstChild("Level") and Player.Data.Level.Value or 0
+            Config.PlayerData.Money = Player.Data:FindFirstChild("Money") and Player.Data.Money.Value or 0
+            Config.PlayerData.Gems = Player.Data:FindFirstChild("Gems") and Player.Data.Gems.Value or 0
+            Config.PlayerData.StatPoints = Player.Data:FindFirstChild("StatPoints") and Player.Data.StatPoints.Value or 0
+            Config.PlayerData.Power = Player.Data:FindFirstChild("Power") and Player.Data.Power.Value or 0
+            Config.PlayerData.Sword = Player.Data:FindFirstChild("Sword") and Player.Data.Sword.Value or 0
+            Config.PlayerData.Defense = Player.Data:FindFirstChild("Defense") and Player.Data.Defense.Value or 0
+            Config.PlayerData.Melee = Player.Data:FindFirstChild("Melee") and Player.Data.Melee.Value or 0
+        end
+    end)
+end
+
+task.spawn(function()
+    while true do
+        updatePlayerData()
+        task.wait(1)
+    end
+end)
+
+--==================================================
 -- ACTIVE FEATURES COUNTER
 --==================================================
 local function GetActiveFeatures()
@@ -436,88 +488,8 @@ local function GetActiveFeatures()
 end
 
 --==================================================
--- BYPASS SYSTEM (Dari Teleport Bypass v4)
+-- ANTI-VOID (Safe version)
 --==================================================
-
--- Blocked remote names
-local BLOCKED_REMOTES = {
-    "sanity", "checksanity", "positioncheck", "antiteleport",
-    "validateposition", "checkpos", "anticheat", "positionvalidate",
-    "sanitycheck", "movementcheck", "speedcheck", "teleportback",
-    "checkposition", "poscheck", "verifyposition", "servercheck",
-    "validate", "verification", "exploit"
-}
-
--- Hook __namecall untuk block kick & anti-TP
-local OldNamecall
-OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    -- Block kick
-    if (method == "Kick" or method == "kick") and (self == Player or self == Players) then
-        return nil
-    end
-    
-    -- Block anti-TP remotes
-    if method == "FireServer" or method == "InvokeServer" then
-        local success, isRemote = pcall(function()
-            return self:IsA("RemoteEvent") or self:IsA("RemoteFunction")
-        end)
-        if success and isRemote then
-            local remoteName = self.Name:lower():gsub("_", ""):gsub("-", "")
-            for _, blocked in ipairs(BLOCKED_REMOTES) do
-                if remoteName:find(blocked) then
-                    return nil
-                end
-            end
-        end
-    end
-    
-    return OldNamecall(self, ...)
-end)
-
--- Hook getgc untuk disable anti-cheat functions
-if getgc and hookfunction then
-    local hookedCount = 0
-    for _, v in pairs(getgc(true)) do
-        if type(v) == "function" then
-            local ok, info = pcall(getinfo, v)
-            if ok and info and info.source then
-                local src = info.source:lower()
-                if src:find("anticheat") or src:find("controlclient") or src:find("sanity")
-                    or src:find("idle") or src:find("movement") or src:find("speed") then
-                    local fname = info.name and info.name:lower() or ""
-                    if fname:find("kick") or fname:find("ban") or fname:find("teleport")
-                        or fname:find("position") or fname:find("sanity") or fname:find("speed")
-                        or fname:find("check") then
-                        pcall(function()
-                            hookfunction(v, function(...) return nil end)
-                            hookedCount = hookedCount + 1
-                        end)
-                    end
-                end
-            end
-            -- Patch upvalues
-            pcall(function()
-                local upvals = getupvalues(v)
-                for key, val in pairs(upvals) do
-                    if type(key) == "string" then
-                        local k = key:lower()
-                        if k == "isteleporting" then
-                            setupvalue(v, key, false)
-                        elseif k == "maxspeed" or k == "speedlimit" then
-                            setupvalue(v, key, 99999)
-                        end
-                    end
-                end
-            end)
-        end
-    end
-    print("[BYPASS] Hooked " .. tostring(hookedCount) .. " AC functions")
-end
-
--- Anti-Void
 task.spawn(function()
     local lastSafe = CFrame.new(0, 100, 0)
     while task.wait(0.5) do
@@ -535,7 +507,9 @@ task.spawn(function()
     end
 end)
 
--- Anti-Idle
+--==================================================
+-- ANTI-IDLE (Safe version)
+--==================================================
 task.spawn(function()
     while task.wait(120) do
         if not Config.AntiIdle then continue end
@@ -547,23 +521,8 @@ task.spawn(function()
     end
 end)
 
--- Fake velocity
-task.spawn(function()
-    RunService.Heartbeat:Connect(function()
-        if not Config.AutoFarm then return end
-        local char = Player.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        
-        if hrp.Velocity.Magnitude > 200 then
-            hrp.Velocity = hrp.Velocity.Unit * 50
-        end
-    end)
-end)
-
 --==================================================
--- ISLAND SCANNER SYSTEM (Dari Teleport Bypass v4)
+-- ISLAND SCANNER SYSTEM
 --==================================================
 
 -- Get all islands
@@ -575,18 +534,6 @@ local function getAllIslands()
         for name, _ in pairs(TravelConfig.Islands) do
             local portalArg = name:gsub("Island", ""):gsub(" ", "")
             table.insert(islands, { name = name, portal = portalArg })
-        end
-    end
-    
-    -- Dari workspace
-    if #islands == 0 then
-        for _, child in ipairs(workspace:GetChildren()) do
-            if child:IsA("Folder") or child:IsA("Model") then
-                if child.Name:find("Island") or child.Name:find("island") then
-                    local portalArg = child.Name:gsub("Island", ""):gsub(" ", "")
-                    table.insert(islands, { name = child.Name, portal = portalArg })
-                end
-            end
         end
     end
     
@@ -673,7 +620,7 @@ local function teleportToMobIsland(mobName)
 end
 
 --==================================================
--- ENTITY TRACKER SYSTEM (Dari ArcX)
+-- ENTITY TRACKER SYSTEM (Safe version)
 --==================================================
 local EntityTracker = {}
 EntityTracker.Active = {}
@@ -742,7 +689,7 @@ end
 EntityTracker:Init()
 
 --==================================================
--- MOB DATABASE (Dari QuestConfig)
+-- MOB DATABASE
 --==================================================
 local function buildMobDatabase()
     table.clear(Config.MobDatabase)
@@ -768,7 +715,7 @@ local function buildMobDatabase()
 end
 
 --==================================================
--- INVENTORY SYSTEM (Dari ArcX & Sailor Piece)
+-- INVENTORY SYSTEM
 --==================================================
 if updateInventoryRemote then
     updateInventoryRemote.OnClientEvent:Connect(function(category, items)
@@ -805,7 +752,7 @@ if requestInventoryRemote then
 end
 
 --==================================================
--- GET QUEST INFO (Dari ArcX)
+-- GET QUEST INFO
 --==================================================
 local function getQuestInfo()
     local ok, result = pcall(function()
@@ -828,7 +775,7 @@ local function getNpcType(npcName)
 end
 
 local function getTargetQuest()
-    local level = Player.Data and Player.Data.Level and Player.Data.Level.Value or 0
+    local level = Config.PlayerData.Level
     local bestNPC = nil
     local maxLevel = -1
     local targetMob = nil
@@ -850,7 +797,7 @@ local function getTargetQuest()
 end
 
 --==================================================
--- FARM SYSTEM (Dari Sailor Piece v5)
+-- FARM SYSTEM
 --==================================================
 local BodyVelocity = Instance.new("BodyVelocity")
 local STEP_SIZE = 50
@@ -1023,24 +970,28 @@ local function autoAttack(mob)
     end
     
     -- Skills
-    local skillMap = { Z = 1, X = 2, C = 3, V = 4, F = 5 }
-    for key, slot in pairs(skillMap) do
-        if Config.AutoSkills[key] and abilityRemote then
-            pcall(function() abilityRemote:FireServer(slot) end)
+    local now = tick()
+    if now - Config.LastSkillTime >= Config.SkillCooldown then
+        Config.LastSkillTime = now
+        local skillMap = { Z = 1, X = 2, C = 3, V = 4, F = 5 }
+        for key, slot in pairs(skillMap) do
+            if Config.AutoSkills[key] and abilityRemote then
+                pcall(function() abilityRemote:FireServer(slot) end)
+            end
         end
     end
 end
 
 --==================================================
--- STATS SYSTEM (Dari Sailor Piece v5)
+-- STATS SYSTEM
 --==================================================
 local function allocateStats()
     if not statRemote then return end
     
-    local points = Player.Data and Player.Data.StatPoints and Player.Data.StatPoints.Value or 0
+    local points = Config.PlayerData.StatPoints
     if points <= 0 then return end
     
-    local level = Player.Data and Player.Data.Level and Player.Data.Level.Value or 0
+    local level = Config.PlayerData.Level
     
     if level < Config.HakiMinLevel then
         -- Level 1-2999: Melee + Defense
@@ -1072,13 +1023,13 @@ local function allocateStats()
 end
 
 local function resetStats()
-    if RemoteEvents and RemoteEvents:FindFirstChild("ResetStats") then
-        pcall(function() RemoteEvents.ResetStats:FireServer() end)
+    if resetStatsRemote then
+        pcall(function() resetStatsRemote:FireServer() end)
     end
 end
 
 --==================================================
--- HAKI SYSTEM (Dari Sailor Piece v5)
+-- HAKI SYSTEM
 --==================================================
 local function checkHakiStatus()
     local hasHaki = false
@@ -1182,8 +1133,10 @@ local function farmThiefForHaki()
             
             -- Press E key
             for i = 1, 3 do
-                VirtualUser:PressKey(Enum.KeyCode.E)
-                task.wait(0.5)
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                task.wait(0.4)
             end
             
             if checkHakiStatus() then
@@ -1194,7 +1147,7 @@ local function farmThiefForHaki()
         
         -- Farm mobs
         for i = 1, 5 do
-            local npc = workspace.NPCs:FindFirstChild(targetNPC .. i)
+            local npc = workspace.NPCs and workspace.NPCs:FindFirstChild(targetNPC .. i)
             if npc and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
                 local target = npc:FindFirstChild("HumanoidRootPart")
                 if target then
@@ -1220,7 +1173,7 @@ local function startHakiQuest()
 end
 
 --==================================================
--- DARK BLADE SYSTEM (Dari Sailor Piece v5)
+-- DARK BLADE SYSTEM
 --==================================================
 local function findDarkBlade()
     for _, container in pairs({Player.Character, Player.Backpack}) do
@@ -1238,10 +1191,12 @@ end
 local function checkDarkBladeInventory()
     local result = false
     if updateInventoryRemote then
-        updateInventoryRemote.OnClientEvent:Connect(function(_, data)
+        local conn
+        conn = updateInventoryRemote.OnClientEvent:Connect(function(_, data)
             for _, item in pairs(data) do
                 if item.name and (item.name:find("Dark Blade") or item.name:find("ดาบสีเข้ม")) then
                     result = true
+                    if conn then conn:Disconnect() end
                 end
             end
         end)
@@ -1254,8 +1209,8 @@ local function checkDarkBladeInventory()
 end
 
 local function equipDarkBlade()
-    if Remotes and Remotes:FindFirstChild("EquipWeapon") then
-        pcall(function() Remotes.EquipWeapon:FireServer("Equip", "Dark Blade") end)
+    if equipWeaponRemote then
+        pcall(function() equipWeaponRemote:FireServer("Equip", "Dark Blade") end)
         task.wait(1)
     end
     return findDarkBlade() ~= nil
@@ -1263,12 +1218,13 @@ end
 
 local function buyDarkBlade()
     if findDarkBlade() then 
+        Config.DarkBladeOwned = true
         Notify("✅ Dark Blade already owned")
         return true 
     end
     
-    local gems = Player.Data and Player.Data.Gems and Player.Data.Gems.Value or 0
-    local money = Player.Data and Player.Data.Money and Player.Data.Money.Value or 0
+    local gems = Config.PlayerData.Gems
+    local money = Config.PlayerData.Money
     
     if gems < Config.DarkBladeGems or money < Config.DarkBladeMoney then
         Notify("❌ Not enough resources for Dark Blade")
@@ -1288,7 +1244,7 @@ local function buyDarkBlade()
     
     -- Find and fire prompt
     pcall(function()
-        local npc = workspace.ServiceNPCs and workspace.ServiceNPCs:FindFirstChild("DarkBladeNPC")
+        local npc = workspace:FindFirstChild("ServiceNPCs") and workspace.ServiceNPCs:FindFirstChild("DarkBladeNPC")
         if npc then
             local prompt = npc:FindFirstChild("DarkBladeShopPrompt", true)
             if prompt then
@@ -1302,6 +1258,7 @@ local function buyDarkBlade()
     -- Equip if purchased
     if findDarkBlade() or checkDarkBladeInventory() then
         equipDarkBlade()
+        Config.DarkBladeOwned = true
         Notify("✅ Dark Blade purchased and equipped!")
         return true
     end
@@ -1310,7 +1267,7 @@ local function buyDarkBlade()
 end
 
 --==================================================
--- FRUIT FARM SYSTEM (Dari Sailor Piece v5)
+-- FRUIT FARM SYSTEM
 --==================================================
 local function checkHasFruit(fruitName)
     for _, container in pairs({Player.Character, Player.Backpack}) do
@@ -1365,11 +1322,8 @@ local function eatFruit(fruitTool)
                 end
             end)
         end
-    else
-        -- Fire remote directly
-        if RemoteEvents and RemoteEvents:FindFirstChild("FruitAction") then
-            pcall(function() RemoteEvents.FruitAction:FireServer("eat", fruitTool.Name) end)
-        end
+    elseif fruitActionRemote then
+        pcall(function() fruitActionRemote:FireServer("eat", fruitTool.Name) end)
     end
     
     task.wait(3)
@@ -1383,7 +1337,7 @@ local function buyRandomFruit()
     task.wait(3)
     
     pcall(function()
-        local npc = workspace.ServiceNPCs and workspace.ServiceNPCs:FindFirstChild("GemFruitDealer")
+        local npc = workspace:FindFirstChild("ServiceNPCs") and workspace.ServiceNPCs:FindFirstChild("GemFruitDealer")
         if npc then
             local prompt = npc:FindFirstChildWhichIsA("ProximityPrompt")
             if prompt then
@@ -1514,7 +1468,7 @@ local function startFruitFarm()
 end
 
 --==================================================
--- ARTIFACTS SYSTEM (Dari Sailor Piece v5)
+-- ARTIFACTS SYSTEM
 --==================================================
 local function checkArtifactsUnlocked()
     if not artifactDataRemote then return false end
@@ -1543,7 +1497,7 @@ local function unlockArtifacts()
     
     -- Find and fire prompt
     pcall(function()
-        local npc = workspace.ServiceNPCs and workspace.ServiceNPCs:FindFirstChild("ArtifactsUnlocker")
+        local npc = workspace:FindFirstChild("ServiceNPCs") and workspace.ServiceNPCs:FindFirstChild("ArtifactsUnlocker")
         if npc then
             local prompt = npc:FindFirstChild("ArtifactPrompt", true)
             if prompt then
@@ -1581,8 +1535,8 @@ local function equipArtifacts()
     if not artifactDataRemote or not artifactEquipRemote then return end
     
     -- Open UI
-    if RemoteEvents and RemoteEvents:FindFirstChild("ArtifactUIOpened") then
-        pcall(function() RemoteEvents.ArtifactUIOpened:FireServer() end)
+    if artifactUIOpenedRemote then
+        pcall(function() artifactUIOpenedRemote:FireServer() end)
     end
     task.wait(2)
     
@@ -1620,7 +1574,7 @@ local function equipArtifacts()
 end
 
 --==================================================
--- OBSERVATION HAKI SYSTEM (Dari Sailor Piece v5)
+-- OBSERVATION HAKI SYSTEM
 --==================================================
 local function buyObservationHaki()
     if checkObservationHaki() then return true end
@@ -1632,7 +1586,7 @@ local function buyObservationHaki()
     task.wait(3)
     
     pcall(function()
-        local npc = workspace.ServiceNPCs and workspace.ServiceNPCs:FindFirstChild("ObservationBuyer")
+        local npc = workspace:FindFirstChild("ServiceNPCs") and workspace.ServiceNPCs:FindFirstChild("ObservationBuyer")
         if npc then
             local prompt = npc:FindFirstChild("ObservationHakiPrompt", true)
             if prompt then
@@ -1663,7 +1617,7 @@ local function buyObservationHaki()
 end
 
 --==================================================
--- BOSS KEY SYSTEM (Dari Sailor Piece v5 & ArcX)
+-- BOSS KEY SYSTEM
 --==================================================
 local function checkBossKeyCount()
     -- Refresh inventory
@@ -1717,8 +1671,8 @@ local function setupBossKeyListener()
     end)
     
     -- Listen for updates
-    if merchantRemotes:FindFirstChild("MerchantStockUpdate") then
-        merchantRemotes.MerchantStockUpdate.OnClientEvent:Connect(function(...)
+    if stockUpdateRemote then
+        stockUpdateRemote.OnClientEvent:Connect(function(...)
             if not Config.AutoBuyBossKey then return end
             
             local args = {...}
@@ -1740,7 +1694,7 @@ local function setupBossKeyListener()
 end
 
 --==================================================
--- ICHIGO EXCHANGE SYSTEM (Dari Sailor Piece v5)
+-- ICHIGO EXCHANGE SYSTEM
 --==================================================
 local function checkIchigoRequirements()
     local bossTicketCount = Config.InventoryByRarity["Epic"]["Boss Ticket"] or 0
@@ -1762,9 +1716,9 @@ local function exchangeIchigo()
         return false
     end
     
-    if Remotes and Remotes:FindFirstChild("ExchangeItem") then
+    if exchangeRemote then
         pcall(function()
-            Remotes.ExchangeItem:InvokeServer("Ichigo")
+            exchangeRemote:InvokeServer("Ichigo")
         end)
         task.wait(3)
         Notify("✅ Ichigo exchanged!")
@@ -1775,7 +1729,7 @@ local function exchangeIchigo()
 end
 
 --==================================================
--- SABER BOSS FARM SYSTEM (Dari Sailor Piece v5)
+-- SABER BOSS FARM SYSTEM
 --==================================================
 local function farmSaberBoss()
     Config.FarmingIchigoBoss = true
@@ -1827,28 +1781,20 @@ local function farmSaberBoss()
 end
 
 --==================================================
--- CODE REDEEMER (Dari ArcX)
+-- CODE REDEEMER
 --==================================================
 local function redeemCodes()
-    local CodesConfig = nil
-    pcall(function()
-        CodesConfig = require(ReplicatedStorage:WaitForChild("CodesConfig", 5))
-    end)
-    
-    if not CodesConfig then
-        Notify("❌ CodesConfig not found")
+    if not CodesConfig or not codeRedeemRemote then
+        Notify("❌ Codes not available")
         return
     end
-    
-    local codeRedeem = RemoteEvents and RemoteEvents:FindFirstChild("CodeRedeem")
-    if not codeRedeem then return end
     
     Notify("🔄 Redeeming codes...")
     
     for codeName, _ in pairs(CodesConfig.Codes) do
         if CodesConfig.IsValid and CodesConfig.IsValid(codeName) then
             pcall(function()
-                codeRedeem:InvokeServer(codeName)
+                codeRedeemRemote:InvokeServer(codeName)
             end)
             task.wait(0.5)
         end
@@ -1858,7 +1804,7 @@ local function redeemCodes()
 end
 
 --==================================================
--- QUEST MANAGER (Dari ArcX)
+-- QUEST MANAGER
 --==================================================
 local QuestManager = {}
 
@@ -1891,13 +1837,13 @@ function QuestManager.Accept(npcName)
 end
 
 --==================================================
--- AUTO REJOIN (Dari ArcX)
+-- AUTO REJOIN
 --==================================================
 local function setupAutoRejoin()
     if Config.AutoRejoin then
         GuiService.ErrorMessageChanged:Connect(function()
             local lastError = GuiService:GetErrorMessage()
-            if lastError:find("ArcX Security") then return end
+            if lastError:find("Security") then return end
             
             task.spawn(function()
                 task.wait(5)
@@ -1933,7 +1879,7 @@ local function setupTimedRejoin()
 end
 
 --==================================================
--- FRIEND CHECK (Dari ArcX)
+-- FRIEND CHECK
 --==================================================
 local function setupFriendCheck()
     local function checkAndKick(p)
@@ -2119,9 +2065,6 @@ task.spawn(function()
     buildMobDatabase()
     scanAllIslands()
     setupBossKeyListener()
-    setupAutoRejoin()
-    setupTimedRejoin()
-    setupFriendCheck()
     
     if Config.AutoRejoin then setupAutoRejoin() end
     if Config.TimedRejoin then setupTimedRejoin() end
@@ -2141,7 +2084,7 @@ task.spawn(function()
             continue
         end
         
-        local level = Player.Data and Player.Data.Level and Player.Data.Level.Value or 0
+        local level = Config.PlayerData.Level
         
         -- Auto Stats
         if Config.AutoStats and statRemote then
@@ -2167,7 +2110,7 @@ task.spawn(function()
         end
         
         -- Auto Dark Blade
-        if Config.AutoBuyDarkBlade and not findDarkBlade() and level >= Config.HakiMinLevel then
+        if Config.AutoBuyDarkBlade and not Config.DarkBladeOwned and level >= Config.HakiMinLevel then
             task.spawn(buyDarkBlade)
         end
         
@@ -2327,12 +2270,10 @@ task.spawn(function()
         end
         
         -- Auto Chest
-        if Config.AutoChest then
+        if Config.AutoChest and chestRemote then
             local chestTypes = {"Wood", "Iron", "Gold", "Diamond", "Legendary"}
             for _, chestType in ipairs(chestTypes) do
-                if RemoteEvents and RemoteEvents:FindFirstChild("Chest") then
-                    pcall(function() RemoteEvents.Chest:FireServer("Open", chestType) end)
-                end
+                pcall(function() chestRemote:FireServer("Open", chestType) end)
             end
         end
         
@@ -2389,7 +2330,8 @@ local function getServerInfo()
     local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() * 100) / 100
     return "Players: " .. #players .. "/" .. (Players.MaxPlayers or "??") .. "\n" ..
            "Ping: " .. ping .. "ms\n" ..
-           "Uptime: " .. getUptime()
+           "Uptime: " .. getUptime() .. "\n" ..
+           "Level: " .. Config.PlayerData.Level .. " | 💰 " .. Config.PlayerData.Money .. " | 💎 " .. Config.PlayerData.Gems
 end
 
 local ServerInfoPara = ServerInfoSection:AddParagraph({
@@ -2810,37 +2752,6 @@ DungeonSection:AddToggle({
     end
 })
 
-local QuestSection = GamemodesTab:AddSection({
-    Name = "🔮 QUEST CHAINS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-QuestSection:AddToggle({
-    Name = "DUNGEON QUEST (6 pieces)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "DungeonQuest",
-    Save = true,
-    Callback = function(Value)
-        Config.DungeonQuest = Value
-    end
-})
-
-QuestSection:AddToggle({
-    Name = "HOGYOKU QUEST (5 fragments)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "HogyokuQuest",
-    Save = true,
-    Callback = function(Value)
-        Config.HogyokuQuest = Value
-    end
-})
-
 -- ITEMS TAB
 local ItemsMainSection = ItemsTab:AddSection({
     Name = "📦 AUTO ITEMS",
@@ -2883,29 +2794,6 @@ ItemsMainSection:AddSlider({
     Outline = true,
     Callback = function(Value)
         Config.BossKeyBuyInterval = Value * 60
-    end
-})
-
-ItemsMainSection:AddToggle({
-    Name = "AUTO MERCHANT",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "AutoMerchant",
-    Save = true,
-    Callback = function(Value)
-        Config.AutoMerchant = Value
-    end
-})
-
-ItemsMainSection:AddDropdown({
-    Name = "MERCHANT ITEM",
-    Default = "HealthPotion",
-    Options = {"HealthPotion", "StaminaPotion", "BoostScroll", "SummonStone"},
-    Multi = false,
-    Outline = true,
-    Callback = function(Value)
-        Config.MerchantItem = Value
     end
 })
 
@@ -3027,6 +2915,18 @@ HakiMainSection:AddButton({
         local hasArm = checkHakiStatus()
         local hasObs = checkObservationHaki()
         Notify("Armament: " .. (hasArm and "✅" or "❌") .. " | Observation: " .. (hasObs and "✅" or "❌"))
+    end
+})
+
+HakiMainSection:AddToggle({
+    Name = "AUTO BUY DARK BLADE",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoDarkBlade",
+    Save = true,
+    Callback = function(Value)
+        Config.AutoBuyDarkBlade = Value
     end
 })
 
@@ -3274,13 +3174,17 @@ OrionLib:Init()
 Notify("Press F4 to toggle menu | F2 Toggle Farm | F3 Toggle Boss")
 
 print("═══════════════════════════════════════════════════════")
-print("🔥 SAILOR PIECE - ULTIMATE HUB v2.0 🔥")
+print("🔥 SAILOR PIECE - ULTIMATE HUB v2.1 🔥")
 print("═══════════════════════════════════════════════════════")
 print("✅ Auto Farm - Mob database + Island scanner")
 print("✅ Auto Boss - Fight, Summon, Special bosses")
 print("✅ Auto Skills - Z,X,C,V,F with cooldown")
 print("✅ Auto Gamemodes - Dungeon, Boss Rush")
-print("✅ Auto Items - Chests, Boss Key, Merchant")
-print("✅ Auto Craft - Slime Key, Divine Grail")
+print("✅ Auto Items - Chests, Boss Key, Crafting")
 print("✅ Auto Haki - Armament, Observation, Quest")
 print("✅ Auto Dark Blade - Buy and equip")
+print("✅ Auto Fruit Farm - Target fruit farming")
+print("✅ Auto Stats - Custom distribution")
+print("✅ Utility - Noclip, Anti AFK, Anti Void, FPS Boost")
+print("✅ COMPATIBLE with all executors - No hookmetamethod!")
+print("═══════════════════════════════════════════════════════")
