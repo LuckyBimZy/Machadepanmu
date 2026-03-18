@@ -1,6 +1,6 @@
 -- ==================== SAILOR PIECE - CATRAZ ULTIMATE ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 2.1 FIXED - Equip Weapon & Removed Keybinds
+-- Version: 2.2 FIXED - VirtualInputManager Error
 
 if _G.SP_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -26,7 +26,7 @@ local Mouse = Player:GetMouse()
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local VirtualUser = game:GetService("VirtualUser")
+local VirtualUser = game:GetService("VirtualUser") -- Untuk Anti AFK
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
@@ -34,7 +34,9 @@ local Camera = Workspace.CurrentCamera
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
-local VIM = game:GetService("VirtualInputService")
+
+-- HAPUS VirtualInputService - TIDAK DIGUNAKAN
+-- local VIM = game:GetService("VirtualInputManager") -- Ini yang benar, tapi tidak kita gunakan
 
 -- Remote References
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -193,7 +195,7 @@ local Config = {
         FollowStyle = "Dodge",
         MoveMode = "Tween",
         SelectedIsland = "Auto",
-        SelectedEnemy = "All", -- Dropdown untuk memilih musuh
+        SelectedEnemy = "All",
         AntiAFK = true,
         AutoQuest = true,
         AutoSpawn = false,
@@ -936,7 +938,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Sailor Piece",
     Subtext = "Catraz Ultimate Edition",
-    Version = "v2.1",
+    Version = "v2.2",
     VersionIcon = "ship",
     HidePremium = false,
     SaveConfig = true,
@@ -1128,9 +1130,6 @@ FarmMainSection:AddToggle({
     end
 })
 
--- HAPUS KEYBIND - TIDAK MENGGUNAKAN KEYBIND LAGI
--- FarmMainSection:AddKeybind({ ... }) - dihapus
-
 FarmMainSection:AddDropdown({
     Name = "FARM ISLAND",
     Default = "Auto",
@@ -1152,7 +1151,7 @@ FarmMainSection:AddDropdown({
     end
 })
 
--- DROPDOWN UNTUK MEMILIH MUSUH (FITUR BARU!)
+-- DROPDOWN UNTUK MEMILIH MUSUH
 FarmMainSection:AddDropdown({
     Name = "SELECT ENEMY TYPE",
     Default = "All",
@@ -1221,7 +1220,7 @@ FarmMainSection:AddDropdown({
     end
 })
 
--- SLIDER UNTUK HEIGHT OFFSET (FITUR BARU!)
+-- SLIDER UNTUK HEIGHT OFFSET
 FarmMainSection:AddSlider({
     Name = "HEIGHT OFFSET",
     Min = 5,
@@ -1351,7 +1350,7 @@ FarmMainSection:AddToggle({
     Callback = function(Value) Config.Farm.AutoChest = Value end
 })
 
--- DROPDOWN UNTUK MEMILIH WEAPON (FIXED)
+-- DROPDOWN UNTUK MEMILIH WEAPON
 FarmMainSection:AddDropdown({
     Name = "SELECT WEAPON",
     Default = "None",
@@ -1531,9 +1530,6 @@ SkillSection:AddSlider({
     end
 })
 
--- HAPUS KEYBIND - TIDAK MENGGUNAKAN KEYBIND LAGI
--- SkillSection:AddKeybind({ ... }) - dihapus
-
 --==================================================
 -- DUNGEON TAB
 --==================================================
@@ -1691,9 +1687,6 @@ BossMainSection:AddToggle({
         Notify(Value and "Boss Hunting Enabled" or "Boss Hunting Disabled")
     end
 })
-
--- HAPUS KEYBIND - TIDAK MENGGUNAKAN KEYBIND LAGI
--- BossMainSection:AddKeybind({ ... }) - dihapus
 
 BossMainSection:AddToggle({
     Name = "BOSS NOTIFICATIONS",
@@ -2257,11 +2250,10 @@ Player.CharacterAdded:Connect(function(char)
 end)
 
 --==================================================
--- HAPUS SEMUA KEYBINDS (V, B, M, F4) - HANYA F4 UNTUK TOGGLE UI
+-- SEMUA KEYBIND DIHAPUS - HANYA F4 UNTUK TOGGLE UI
 -- Catraz Hub sudah punya F4 default untuk toggle UI
 --==================================================
--- Tidak perlu menambahkan keybind handler apapun
--- Catraz Hub sudah handle F4 secara otomatis
+-- Tidak ada keybind handler
 
 --==================================================
 -- HEARTBEAT MOVEMENT
@@ -2298,8 +2290,9 @@ OrionLib:Init()
 
 Notify("Press F4 to toggle UI")
 print("═══════════════════════════════════════════════════════")
-print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v2.1 🔥")
+print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v2.2 🔥")
 print("═══════════════════════════════════════════════════════")
+print("✅ FIXED: VirtualInputService Error")
 print("✅ FIXED: Equip Weapon (bisa ganti pedang/combat/buah)")
 print("✅ HAPUS: Semua keybind (V, B, M)")
 print("✅ Hanya F4 untuk toggle UI")
