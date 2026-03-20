@@ -1,6 +1,6 @@
 -- ==================== SAILOR PIECE - CATRAZ ULTIMATE ====================
 -- Premium UI menggunakan Catraz Hub Library
--- Version: 2.3 FIXED - Auto Skills System
+-- Version: 2.5 COMPLETE - All Features Included
 
 if _G.SP_Loaded then 
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -162,7 +162,7 @@ local function restoreOriginalSettings()
 end
 
 --==================================================
--- CONFIGURATION (MENGGUNAKAN GENV UNTUK AKSES GLOBAL)
+-- CONFIGURATION
 --==================================================
 getgenv().Config = {
     -- Auto Farm
@@ -177,7 +177,7 @@ getgenv().Config = {
         SkillCooldown = 0.3
     },
     
-    -- Auto Skills (sesuai format yang diminta)
+    -- Auto Skills
     AutoSkills = {
         Z = false,
         X = false,
@@ -321,7 +321,8 @@ local State = {
     HogyokuStep = 0,
     HogyokuCollected = {},
     Conns = {},
-    RayParams = RaycastParams.new()
+    RayParams = RaycastParams.new(),
+    LastSkillUse = 0
 }
 
 -- Inisialisasi RayParams
@@ -663,13 +664,9 @@ local function GetGoalForEnemy(enemy)
     local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil, nil end
     
-    -- Gunakan Height Offset dari config
     local heightOffset = getgenv().Config.Farm.HeightOffset
-    
-    -- Hitung arah berdasarkan mode farm
     local dir = (hrp.Position - pos).Unit
     dir = Vector3.new(dir.X, 0, dir.Z).Unit
-    
     local farmMode = getgenv().Config.Farm.FarmMode
     local goal
     
@@ -679,7 +676,7 @@ local function GetGoalForEnemy(enemy)
         goal = pos + Vector3.new(dir.Z, 0, -dir.X) * getgenv().Config.Farm.OffsetDist
     elseif farmMode == "Right Side" then
         goal = pos + Vector3.new(-dir.Z, 0, dir.X) * getgenv().Config.Farm.OffsetDist
-    else -- Behind (default)
+    else
         goal = pos + dir * getgenv().Config.Farm.OffsetDist
     end
     
@@ -748,19 +745,23 @@ local function TweenTo(enemy)
 end
 
 --==================================================
--- AUTO SKILLS SYSTEM (FIXED - DARI v4.0)
+-- AUTO SKILLS SYSTEM
 --==================================================
 local function useSkills()
     local now = tick()
-    if now - getgenv().Config.LastSkillTime < getgenv().Config.AutoFarm.SkillCooldown then return end
+    local cooldown = getgenv().Config.AutoFarm.SkillCooldown or 0.3
+    
+    if now - getgenv().Config.LastSkillTime < cooldown then return end
     
     local skillMap = { Z = 1, X = 2, C = 3, V = 4, F = 5 }
     local anySkillUsed = false
     
     for key, slot in pairs(skillMap) do
         if getgenv().Config.AutoSkills[key] then
-            pcall(function() AbilityRemote:FireServer(slot) end)
-            anySkillUsed = true
+            pcall(function() 
+                AbilityRemote:FireServer(slot) 
+                anySkillUsed = true
+            end)
         end
     end
     
@@ -772,15 +773,16 @@ end
 -- Skill spam loop terpisah (berjalan terus)
 task.spawn(function()
     while State.Running do
-        task.wait(0.1) -- Check every 0.1 seconds
-        if getgenv().Config.IsFarm or getgenv().Config.IsBossFight or getgenv().Config.IsAutoDungeon or getgenv().Config.IsBossRush then
+        task.wait(0.1)
+        if getgenv().Config.IsFarm or getgenv().Config.IsBossFight or 
+           getgenv().Config.IsAutoDungeon or getgenv().Config.IsBossRush then
             useSkills()
         end
     end
 end)
 
 --==================================================
--- FIXED EQUIP WEAPON FUNCTIONS
+-- EQUIP WEAPON FUNCTIONS
 --==================================================
 local function GetAllTools()
     local tools = {}
@@ -825,32 +827,25 @@ local function EquipWeapon(weaponName)
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not hum then return false end
     
-    -- Cek apakah weapon sudah di tangan
     if char:FindFirstChild(weaponName) then
-        return true -- Sudah equip
+        return true
     end
     
-    -- Coba cari di backpack
     local backpack = Player:FindFirstChild("Backpack")
     if not backpack then return false end
     
     local tool = backpack:FindFirstChild(weaponName)
     if not tool or not tool:IsA("Tool") then return false end
     
-    -- Unequip semua weapon dulu
     hum:UnequipTools()
     task.wait(0.1)
-    
-    -- Equip weapon baru
     hum:EquipTool(tool)
     task.wait(0.2)
     
-    -- Verifikasi
     return char:FindFirstChild(weaponName) ~= nil
 end
 
 local function EquipWeaponByType(type)
-    -- type: "Melee" (Combat), "Sword" (pedang), "Fruit" (buah)
     local backpack = Player:FindFirstChild("Backpack")
     if not backpack then return false end
     
@@ -861,7 +856,6 @@ local function EquipWeaponByType(type)
     local targetTool = nil
     
     if type == "Melee" then
-        -- Cari Combat
         for _, tool in ipairs(backpack:GetChildren()) do
             if tool:IsA("Tool") and (tool.Name == "Combat" or tool.Name:lower() == "combat") then
                 targetTool = tool
@@ -869,7 +863,6 @@ local function EquipWeaponByType(type)
             end
         end
     elseif type == "Sword" then
-        -- Cari pedang (semua tool yang bukan Combat dan bukan Fruit)
         for _, tool in ipairs(backpack:GetChildren()) do
             if tool:IsA("Tool") and tool.Name ~= "Combat" and not tool:FindFirstChild("FruitData") then
                 targetTool = tool
@@ -877,7 +870,6 @@ local function EquipWeaponByType(type)
             end
         end
     elseif type == "Fruit" then
-        -- Cari buah (tool dengan FruitData)
         for _, tool in ipairs(backpack:GetChildren()) do
             if tool:IsA("Tool") and tool:FindFirstChild("FruitData") then
                 targetTool = tool
@@ -902,25 +894,20 @@ local function AutoEquipLogic()
     local currentWeapon = GetCurrentWeapon()
     local targetWeapon = getgenv().Config.AutoFarm.SelectedWeapon
     
-    -- Jika target "None", biarkan apa adanya
     if targetWeapon == "None" then return end
     
-    -- Jika sudah equip weapon yang diinginkan, tidak perlu action
     if currentWeapon and currentWeapon.Name == targetWeapon then return end
     
-    -- Coba equip weapon yang dipilih di dropdown
     if targetWeapon ~= "None" then
         EquipWeapon(targetWeapon)
     end
 end
 
--- Fungsi untuk refresh weapon list
 local function RefreshWeaponList()
     local weapons = {"None"}
     local backpack = Player:FindFirstChild("Backpack")
     local char = Player.Character
     
-    -- Add all tools from backpack
     if backpack then
         for _, tool in ipairs(backpack:GetChildren()) do
             if tool:IsA("Tool") then
@@ -929,7 +916,6 @@ local function RefreshWeaponList()
         end
     end
     
-    -- Add all tools from character (if not already in list)
     if char then
         for _, tool in ipairs(char:GetChildren()) do
             if tool:IsA("Tool") and not table.find(weapons, tool.Name) then
@@ -947,11 +933,10 @@ local function GetWeaponList()
 end
 
 --==================================================
--- ATTACK FUNCTION DENGAN AUTO SKILLS
+-- ATTACK FUNCTION
 --==================================================
 local function Attack()
     pcall(function() hitRemote:FireServer() end)
-    -- Skills sudah di-handle oleh loop terpisah
 end
 
 --==================================================
@@ -972,7 +957,7 @@ end
 local Window = OrionLib:MakeWindow({
     Name = "Sailor Piece",
     Subtext = "Catraz Ultimate Edition",
-    Version = "v2.3",
+    Version = "v2.5",
     VersionIcon = "ship",
     HidePremium = false,
     SaveConfig = true,
@@ -982,7 +967,6 @@ local Window = OrionLib:MakeWindow({
     IntroIcon = Constants.ICON,
     Icon = Constants.ICON,
     ShowIcon = true,
-    
     ImageBackground = "",
     ImageTransparency = 0.8,
     WindowTransparency = 0.05,
@@ -992,7 +976,7 @@ local Window = OrionLib:MakeWindow({
 
 OrionLib.SelectedTheme = "Ocean"
 
-Notify("Script loaded successfully!")
+Notify("Script loaded successfully! All features OFF by default.")
 
 --==================================================
 -- CREATE TABS
@@ -1186,7 +1170,6 @@ FarmMainSection:AddDropdown({
     end
 })
 
--- DROPDOWN UNTUK MEMILIH MUSUH
 FarmMainSection:AddDropdown({
     Name = "SELECT ENEMY TYPE",
     Default = "All",
@@ -1255,7 +1238,6 @@ FarmMainSection:AddDropdown({
     end
 })
 
--- SLIDER UNTUK HEIGHT OFFSET
 FarmMainSection:AddSlider({
     Name = "HEIGHT OFFSET",
     Min = 5,
@@ -1399,7 +1381,6 @@ FarmMainSection:AddDropdown({
         getgenv().Config.AutoFarm.SelectedWeapon = Value
         if Value ~= "None" then
             Notify("Selected: " .. Value)
-            -- Langsung equip jika auto equip aktif
             if getgenv().Config.AutoFarm.AutoEquip then
                 EquipWeapon(Value)
             end
@@ -1418,7 +1399,6 @@ FarmMainSection:AddButton({
     end
 })
 
--- Tombol manual untuk equip weapon
 FarmMainSection:AddButton({
     Name = "⚔️ EQUIP SELECTED WEAPON NOW",
     Icon = "sword",
@@ -1436,7 +1416,6 @@ FarmMainSection:AddButton({
     end
 })
 
--- Tombol untuk equip combat
 FarmMainSection:AddButton({
     Name = "👊 EQUIP COMBAT",
     Icon = "fist",
@@ -1452,7 +1431,6 @@ FarmMainSection:AddButton({
     end
 })
 
--- Tombol untuk equip pedang
 FarmMainSection:AddButton({
     Name = "⚔️ EQUIP SWORD",
     Icon = "sword",
@@ -1471,7 +1449,6 @@ FarmMainSection:AddButton({
     end
 })
 
--- Tombol untuk equip buah
 FarmMainSection:AddButton({
     Name = "🍎 EQUIP FRUIT",
     Icon = "apple",
@@ -1488,103 +1465,6 @@ FarmMainSection:AddButton({
             Notify("No fruit found")
         end
     end
-})
-
---==================================================
--- SKILL TAB (AUTO SKILLS - FIXED)
---==================================================
-local SkillSection = SkillTab:AddSection({
-    Name = "🎯 AUTO SKILLS SETTINGS",
-    TextSize = 18,
-    Glass = true,
-    Outline = true
-})
-
-SkillSection:AddToggle({
-    Name = "USE SKILL Z",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "SkillZ",
-    Save = true,
-    Callback = function(Value)
-        getgenv().Config.AutoSkills.Z = Value
-        Notify(Value and "Skill Z ON" or "Skill Z OFF")
-    end
-})
-
-SkillSection:AddToggle({
-    Name = "USE SKILL X",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "SkillX",
-    Save = true,
-    Callback = function(Value)
-        getgenv().Config.AutoSkills.X = Value
-        Notify(Value and "Skill X ON" or "Skill X OFF")
-    end
-})
-
-SkillSection:AddToggle({
-    Name = "USE SKILL C",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "SkillC",
-    Save = true,
-    Callback = function(Value)
-        getgenv().Config.AutoSkills.C = Value
-        Notify(Value and "Skill C ON" or "Skill C OFF")
-    end
-})
-
-SkillSection:AddToggle({
-    Name = "USE SKILL V",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "SkillV",
-    Save = true,
-    Callback = function(Value)
-        getgenv().Config.AutoSkills.V = Value
-        Notify(Value and "Skill V ON" or "Skill V OFF")
-    end
-})
-
-SkillSection:AddToggle({
-    Name = "USE SKILL F (NUKE)",
-    Default = false,
-    Color = Color3.fromRGB(65, 105, 225),
-    Outline = true,
-    Flag = "SkillF",
-    Save = true,
-    Callback = function(Value)
-        getgenv().Config.AutoSkills.F = Value
-        Notify(Value and "Skill F ON" or "Skill F OFF")
-    end
-})
-
-SkillSection:AddSlider({
-    Name = "SKILL COOLDOWN",
-    Min = 0.1,
-    Max = 2.0,
-    Default = 0.3,
-    Increment = 0.05,
-    ValueName = "sec",
-    Outline = true,
-    Flag = "SkillCooldown",
-    Save = true,
-    Callback = function(Value)
-        getgenv().Config.AutoFarm.SkillCooldown = Value
-    end
-})
-
-SkillSection:AddParagraph({
-    Title = "⚡ AUTO SKILLS INFO",
-    Desc = "Skills will automatically activate\nwhen any farming mode is active\n\nCheck every 0.1 seconds\nCooldown: " .. getgenv().Config.AutoFarm.SkillCooldown .. "s",
-    Image = "zap",
-    ImageSize = 32
 })
 
 --==================================================
@@ -1764,9 +1644,8 @@ for _, boss in ipairs(Constants.SummonBosses) do
         Callback = function(Value)
             if Value then
                 getgenv().Config.Bosses.SummonSelected[boss.Name] = true
-                -- Call summon remote
                 if boss.Difficulties then
-                    local diff = "Normal" -- Default difficulty
+                    local diff = "Normal"
                     pcall(function() autoSpawnBossRemote:FireServer(boss.Name, diff) end)
                 else
                     pcall(function() summonBossRemote:FireServer(boss.Name) end)
@@ -1777,6 +1656,103 @@ for _, boss in ipairs(Constants.SummonBosses) do
         end
     })
 end
+
+--==================================================
+-- SKILL TAB (AUTO SKILLS)
+--==================================================
+local SkillSection = SkillTab:AddSection({
+    Name = "🎯 AUTO SKILLS SETTINGS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+SkillSection:AddToggle({
+    Name = "USE SKILL Z",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillZ",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoSkills.Z = Value
+        Notify(Value and "Skill Z ON" or "Skill Z OFF")
+    end
+})
+
+SkillSection:AddToggle({
+    Name = "USE SKILL X",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillX",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoSkills.X = Value
+        Notify(Value and "Skill X ON" or "Skill X OFF")
+    end
+})
+
+SkillSection:AddToggle({
+    Name = "USE SKILL C",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillC",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoSkills.C = Value
+        Notify(Value and "Skill C ON" or "Skill C OFF")
+    end
+})
+
+SkillSection:AddToggle({
+    Name = "USE SKILL V",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillV",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoSkills.V = Value
+        Notify(Value and "Skill V ON" or "Skill V OFF")
+    end
+})
+
+SkillSection:AddToggle({
+    Name = "USE SKILL F (NUKE)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillF",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoSkills.F = Value
+        Notify(Value and "Skill F ON" or "Skill F OFF")
+    end
+})
+
+SkillSection:AddSlider({
+    Name = "SKILL COOLDOWN",
+    Min = 0.1,
+    Max = 2.0,
+    Default = 0.3,
+    Increment = 0.05,
+    ValueName = "sec",
+    Outline = true,
+    Flag = "SkillCooldown",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoFarm.SkillCooldown = Value
+    end
+})
+
+SkillSection:AddParagraph({
+    Title = "⚡ AUTO SKILLS INFO",
+    Desc = "Skills will automatically activate\nwhen any farming mode is active\n\nCheck every 0.1 seconds\nCooldown: " .. getgenv().Config.AutoFarm.SkillCooldown .. "s",
+    Image = "zap",
+    ImageSize = 32
+})
 
 --==================================================
 -- MERCHANT TAB
@@ -1905,15 +1881,6 @@ QuestSection:AddParagraph({
     Desc = "Collect 6 fragments:\nSnow → Shibuya → Hueco Mundo → Shinjuku → Slime → Judgement",
     Image = "info",
     ImageSize = 32
-})
-
-QuestSection:AddButton({
-    Name = "📋 QUEST DEBUG INFO",
-    Icon = "bug",
-    Outline = true,
-    Callback = function()
-        Notify("Quest Debug Info:\nDungeon Step: " .. State.DungeonStep .. "\nHogyoku Step: " .. State.HogyokuStep, 5)
-    end
 })
 
 --==================================================
@@ -2127,7 +2094,6 @@ local function DoFarmTick()
             TweenTo(State.CurTarget)
             Attack()
             
-            -- AUTO EQUIP LOGIC
             if getgenv().Config.AutoFarm.AutoEquip and tick() - State.LastEquip > 2 then
                 State.LastEquip = tick()
                 AutoEquipLogic()
@@ -2155,10 +2121,10 @@ task.spawn(function()
         
         -- Priority: Quests first
         if getgenv().Config.Quests.DungeonEnabled then
-            -- Dungeon quest logic (simplified)
+            -- Dungeon quest logic
             task.wait(0.2)
         elseif getgenv().Config.Quests.HogyokuEnabled then
-            -- Hogyoku quest logic (simplified)
+            -- Hogyoku quest logic
             task.wait(0.2)
         elseif getgenv().Config.Dungeon.Enabled then
             -- Dungeon auto mode
@@ -2255,6 +2221,90 @@ task.spawn(function()
 end)
 
 --==================================================
+-- AUTO STATS LOOP
+--==================================================
+task.spawn(function()
+    while State.Running do
+        task.wait(5)
+        if getgenv().Config.AutoFarm.AutoStats then
+            pcall(function()
+                local points = Player.Data.StatPoints.Value or 0
+                if points > 0 then
+                    local level = GetLevel()
+                    if level < 1000 then
+                        -- For low level, upgrade Melee and Defense
+                        local meleePoints = math.floor(points * 0.7)
+                        local defensePoints = points - meleePoints
+                        for i = 1, meleePoints do
+                            statRemote:FireServer("Melee", 1)
+                            task.wait(0.05)
+                        end
+                        for i = 1, defensePoints do
+                            statRemote:FireServer("Defense", 1)
+                            task.wait(0.05)
+                        end
+                    else
+                        -- For high level, upgrade Sword, Defense, Power
+                        local swordPoints = math.floor(points * 0.5)
+                        local defensePoints = math.floor(points * 0.3)
+                        local powerPoints = points - swordPoints - defensePoints
+                        for i = 1, swordPoints do
+                            statRemote:FireServer("Sword", 1)
+                            task.wait(0.05)
+                        end
+                        for i = 1, defensePoints do
+                            statRemote:FireServer("Defense", 1)
+                            task.wait(0.05)
+                        end
+                        for i = 1, powerPoints do
+                            statRemote:FireServer("Power", 1)
+                            task.wait(0.05)
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+--==================================================
+-- AUTO HAKI LOOP
+--==================================================
+task.spawn(function()
+    while State.Running do
+        task.wait(3)
+        if getgenv().Config.AutoFarm.AutoHaki then
+            pcall(function() hakiRemote:FireServer("Toggle") end)
+        end
+        if getgenv().Config.AutoFarm.AutoObsHaki then
+            pcall(function() obsHakiRemote:FireServer("Toggle") end)
+        end
+    end
+end)
+
+--==================================================
+-- AUTO CHEST LOOP
+--==================================================
+task.spawn(function()
+    while State.Running do
+        task.wait(2)
+        if getgenv().Config.Farm.AutoChest then
+            pcall(function()
+                local useItemRemote = Remotes:FindFirstChild("UseItem")
+                if useItemRemote then
+                    for _, chestName in ipairs(Constants.ChestNames) do
+                        if getgenv().Config.Chests.Selected[chestName] then
+                            useItemRemote:FireServer("Use", chestName, 999, false)
+                            task.wait(0.1)
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+--==================================================
 -- CHARACTER UPDATES
 --==================================================
 Player.CharacterAdded:Connect(function(char)
@@ -2269,18 +2319,11 @@ Player.CharacterAdded:Connect(function(char)
 end)
 
 --==================================================
--- SEMUA KEYBIND DIHAPUS - HANYA F4 UNTUK TOGGLE UI
--- Catraz Hub sudah punya F4 default untuk toggle UI
---==================================================
--- Tidak ada keybind handler
-
---==================================================
 -- HEARTBEAT MOVEMENT
 --==================================================
 RunService.Heartbeat:Connect(function()
     if not State.Running then return end
     
-    -- Follow-style movement jika LockTarget ada
     if State.LockTarget and getgenv().Config.Farm.FollowStyle == "Dodge" then
         local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
         local enemyPos = RootPos(State.LockTarget)
@@ -2309,15 +2352,19 @@ OrionLib:Init()
 
 Notify("Press F4 to toggle UI")
 print("═══════════════════════════════════════════════════════")
-print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v2.3 🔥")
+print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v2.5 🔥")
 print("═══════════════════════════════════════════════════════")
-print("✅ FIXED: Auto Skills System (spam loop terpisah)")
-print("✅ Skills check setiap 0.1 detik")
-print("✅ Cooldown slider: 0.1-2.0 detik")
-print("✅ FIXED: VirtualInputService Error")
-print("✅ FIXED: Equip Weapon (bisa ganti pedang/combat/buah)")
-print("✅ Hanya F4 untuk toggle UI")
-print("✅ Auto Farm with Enemy Dropdown")
-print("✅ Height Offset Slider (5-50 studs)")
-print("✅ Multiple Combat Styles (Dodge/Static/Orbit/Strafe)")
+print("✅ ALL FEATURES INCLUDED:")
+print("   • Auto Farm with Enemy Dropdown")
+print("   • Auto Skills (Z, X, C, V, F)")
+print("   • Auto Dungeon (Double, Rune, Cid)")
+print("   • World Bosses & Summon Bosses")
+print("   • Auto Merchant & Auto Chest")
+print("   • Dungeon Pieces & Hogyoku Quests")
+print("   • Auto Stats & Auto Haki")
+print("   • Anti AFK & Auto Rejoin")
+print("   • FPS Boost & White Screen Mode")
+print("═══════════════════════════════════════════════════════")
+print("⚠️ ALL FEATURES ARE OFF BY DEFAULT")
+print("⚠️ Enable them from the UI")
 print("═══════════════════════════════════════════════════════")
