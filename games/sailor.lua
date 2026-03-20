@@ -1,225 +1,341 @@
--- ═══════════════════════════════════════════════════════════════
--- Sailor Piece v5 - Catraz Hub UI Edition (No Node Links)
--- ═══════════════════════════════════════════════════════════════
-repeat task.wait(2) until game:IsLoaded()
+-- ==================== SAILOR PIECE - CATRAZ ULTIMATE ====================
+-- Premium UI menggunakan Catraz Hub Library
+-- Version: 2.3 FIXED - Auto Skills System
 
--- ═══════════════════════════════════════════════════════════════
--- [0] LOAD CATRAZ HUB UI LIBRARY
--- ═══════════════════════════════════════════════════════════════
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
-
--- ═══════════════════════════════════════════════════════════════
--- [1] CONFIG - ALL FEATURES DEFAULT OFF
--- ═══════════════════════════════════════════════════════════════
-_G.Config = {
-    -- ระบบหลัก (เปิด/ปิดแต่ละระบบ) - DEFAULT ALL OFF
-    AutoFarm        = false,    -- ฟาร์มอัตโนมัติ (OFF by default)
-    AutoHit         = false,    -- ตีอัตโนมัติ + สกิล Z (OFF by default)
-    AutoStats       = false,    -- อัพสเตตัสอัตโนมัติ (OFF by default)
-    FpsBoost        = false,    -- BlackScreen ลดแลค (OFF by default)
-    HorstDisplay    = true,     -- แสดงข้อมูลผ่าน Horst
-
-    -- Haki Quest
-    HakiQuest       = false,    -- ทำภารกิจ Haki อัตโนมัติ (OFF by default)
-    HakiMinLevel    = 3000,     -- Level ขั้นต่ำที่จะเริ่มทำ Haki
-    HakiTimeout     = 3600,     -- Timeout (วินาที) = 60 นาที
-
-    -- Dark Blade
-    BuyDarkBlade    = false,    -- ซื้อ Dark Blade หลังได้ Haki (OFF by default)
-    DarkBladeGems   = 150,      -- Gems ที่ต้องใช้
-    DarkBladeMoney  = 250000,   -- Money ที่ต้องใช้
-
-    -- Fruit Farm (ฟาร์มหาผลปีศาจ)
-    FruitFarm       = false,     -- เปิด/ปิดการฟาร์มผล (OFF by default)
-    FruitMinLevel   = 11500,    -- Level ขั้นต่ำที่จะเริ่มฟาร์มผล
-    TargetFruit     = "Quake",  -- ผลที่ต้องการ
-    FruitFarmIsland = "Shinjuku", -- เกาะที่จะฟาร์ม
-    FruitFarmPos    = CFrame.new(321.706757, -1.539090, -1756.500977) * CFrame.Angles(0, -0.113749, 0),
-
-    -- Boss Key Auto Buy
-    AutoBuyBossKey  = false,    -- (OFF by default)
-    BossKeyBuyInterval = 1800,
-    
-    -- Ichigo Exchange
-    ExchangeIchigo  = false,    -- (OFF by default)
-    IchigoMinLevel  = 11500,
-    IchigoRequirements = { BossTicket = 500 },
-    
-    -- Saber Boss Farm
-    FarmSaberBoss   = false,    -- (OFF by default)
-    SaberBossSummonItems = { BossKey = 1, Money = 100000, Gems = 175 },
-
-    -- Stats Distribution
-    StatSword       = 50,
-    StatDefense     = 30,
-    StatPower       = 20,
-
-    -- Performance Settings
-    GameSettings = {
-        "DisablePvP", "DisableVFX", "DisableOtherVFX",
-        "RemoveTexture", "AutoSkillC", "RemoveShadows",
-    },
-
-    -- Log Filter
-    LogTags = {
-        "[SYSTEM]", "[FARM]", "[HAKI", "[WEAPON",
-        "[HORST]", "[STATS]", "[QUEST]", "[INVENTORY]",
-        "[FRUIT]", "[DEBUG]",
-    },
-}
-
--- ═══════════════════════════════════════════════════════════════
--- [2] SERVICES & VARIABLES
--- ═══════════════════════════════════════════════════════════════
-local Players       = game:GetService("Players")
-local RS            = game:GetService("ReplicatedStorage")
-local RunService    = game:GetService("RunService")
-local VIM           = game:GetService("VirtualInputManager")
-local HttpService   = game:GetService("HttpService")
-local UIS           = game:GetService("UserInputService")
-local Lighting      = game.Lighting
-local BodyVelocity  = Instance.new("BodyVelocity")
-
-local player        = Players.LocalPlayer
-local Remotes       = RS:WaitForChild("Remotes")
-local RemoteEvents  = RS:WaitForChild("RemoteEvents")
-local CombatRemotes = RS:WaitForChild("CombatSystem"):WaitForChild("Remotes")
-
--- Remote References
-local hitRemote     = CombatRemotes:WaitForChild("RequestHit")
-local questRemote   = RemoteEvents:WaitForChild("QuestAccept")
-local abandonRemote = RemoteEvents:WaitForChild("QuestAbandon")
-local statRemote    = RemoteEvents:WaitForChild("AllocateStat")
-local tpRemote      = Remotes:WaitForChild("TeleportToPortal")
-local settingsToggle = RemoteEvents:WaitForChild("SettingsToggle")
-
--- State
-local inventoryByRarity = {
-    Secret = {}, Mythical = {}, Legendary = {},
-    Epic = {}, Rare = {}, Uncommon = {}, Common = {}
-}
-local cratesAndBoxes = {}
-local isHakiQuestActive = false
-local isBuyingDarkBlade = false
-local isFruitFarming = false
-local isFarmingIchigoBoss = false
-
--- ═══════════════════════════════════════════════════════════════
--- [3] ERROR SUPPRESSION
--- ═══════════════════════════════════════════════════════════════
-local oldPrint = print
-local oldWarn = warn
-
-error = function() end
-warn = function() end
-
-pcall(function() game:GetService("ScriptContext").Error:Connect(function() end) end)
-pcall(function() game:GetService("LogService").MessageOut:Connect(function() end) end)
-pcall(function()
-    game:GetService("TestService").Error:Connect(function() end)
-    game:GetService("TestService").ServerOutput:Connect(function() end)
-end)
-
-print = function(...)
-    local args = {...}
-    if not args[1] then return end
-    local text = tostring(args[1])
-
-    local blocked = {
-        "Error","error","ERROR","Stack","stack","attempt to",
-        "CrossExperience","CorePackages","nil value",
-        "ServerScriptService",
-    }
-    for _, kw in ipairs(blocked) do
-        if text:find(kw, 1, true) then return end
-    end
-
-    for _, tag in ipairs(_G.Config.LogTags) do
-        if text:find(tag, 1, true) then
-            oldPrint(...)
-            return
-        end
-    end
+if _G.SP_Loaded then 
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Sailor Piece",
+        Text = "Script already loaded!",
+        Duration = 2
+    })
+    return 
 end
 
--- ═══════════════════════════════════════════════════════════════
--- [4] UTILITY FUNCTIONS
--- ═══════════════════════════════════════════════════════════════
+_G.SP_Loaded = true
+
+--==================================================
+-- LOAD CATRAZ HUB LIBRARY
+--==================================================
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
+
+--==================================================
+-- VARIABLES & SERVICES
+--==================================================
+local Player = game.Players.LocalPlayer
+local Mouse = Player:GetMouse()
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local VirtualUser = game:GetService("VirtualUser")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local Camera = Workspace.CurrentCamera
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+
+-- Remote References
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local RemoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
+local CombatRemotes = ReplicatedStorage:WaitForChild("CombatSystem"):WaitForChild("Remotes")
+local AbilityRemote = ReplicatedStorage:WaitForChild("AbilitySystem"):WaitForChild("Remotes"):WaitForChild("RequestAbility")
+
+local hitRemote = CombatRemotes:WaitForChild("RequestHit")
+local questRemote = RemoteEvents:WaitForChild("QuestAccept")
+local abandonRemote = RemoteEvents:WaitForChild("QuestAbandon")
+local statRemote = RemoteEvents:WaitForChild("AllocateStat")
+local tpRemote = Remotes:WaitForChild("TeleportToPortal")
+local settingsToggle = RemoteEvents:WaitForChild("SettingsToggle")
+local hakiRemote = RemoteEvents:WaitForChild("HakiRemote")
+local obsHakiRemote = RemoteEvents:WaitForChild("ObservationHakiRemote")
+local summonBossRemote = Remotes:WaitForChild("RequestSummonBoss")
+local spawnStrongestRemote = Remotes:WaitForChild("RequestSpawnStrongestBoss")
+local anosRemote = Remotes:WaitForChild("RequestSpawnAnosBoss")
+local trueAizenRemote = RemoteEvents:WaitForChild("RequestSpawnTrueAizen")
+local rimuruRemote = RemoteEvents:WaitForChild("RequestSpawnRimuru")
+local autoSpawnBossRemote = Remotes:WaitForChild("RequestAutoSpawn")
+local autoSpawnAnosRemote = Remotes:WaitForChild("RequestAutoSpawnAnos")
+local autoSpawnStrongestRemote = Remotes:WaitForChild("RequestAutoSpawnStrongest")
+local autoSpawnRimuruRemote = RemoteEvents:WaitForChild("RequestAutoSpawnRimuru")
+local autoSpawnTrueAizenRemote = RemoteEvents:WaitForChild("RequestAutoSpawnTrueAizen")
+local dungeonVoteRemote = Remotes:WaitForChild("DungeonWaveVote")
+local dungeonPortalRemote = Remotes:WaitForChild("RequestDungeonPortal")
+local slimeCraftRemote = Remotes:WaitForChild("RequestSlimeCraft")
+local grailCraftRemote = Remotes:WaitForChild("RequestGrailCraft")
+
+--==================================================
+-- CONSTANTS & CONFIGURATION
+--==================================================
+local Constants = {
+    ICON = "rbxassetid://105921924721005",
+    DISCORD = "https://discord.gg/B3PurfCy",
+    NPC_FOLDER = "NPCs",
+    BOSS_ISLAND_PORTAL = "Boss",
+    ANOS_ISLAND = "Academy",
+    FARM_MAX_DIST_FROM_PLAYER = 900,
+    FARM_MAX_DIST_FROM_ORIGIN = 1200,
+    GENERIC_HOSTILE_MAX_DIST = 900,
+    
+    Islands = {
+        {Portal = "Starter", FarmUntil = 250, Enemies = {"Thief"}, QuestNPC = "QuestNPC1"},
+        {Portal = "Jungle", FarmUntil = 750, Enemies = {"Monkey"}, QuestNPC = "QuestNPC3"},
+        {Portal = "Desert", FarmUntil = 1500, Enemies = {"DesertBandit"}, QuestNPC = "QuestNPC5"},
+        {Portal = "Snow", FarmUntil = 3000, Enemies = {"Swordsman", "FrostRogue"}, QuestNPC = "QuestNPC7"},
+        {Portal = "Shibuya", FarmUntil = 5000, Enemies = {"Sorcerer", "Curse"}, QuestNPC = "QuestNPC9"},
+        {Portal = "HuecoMundo", FarmUntil = 6250, Enemies = {"Hollow", "Quincy"}, QuestNPC = "QuestNPC11"},
+        {Portal = "Shinjuku", FarmUntil = 8000, Enemies = {"StrongSorcerer"}, QuestNPC = "QuestNPC12"},
+        {Portal = "Slime", FarmUntil = 9000, Enemies = {"Slime"}, QuestNPC = "QuestNPC14"},
+        {Portal = "Academy", FarmUntil = 10000, Enemies = {"AcademyTeacher"}, QuestNPC = "QuestNPC15"},
+        {Portal = "Judgement", FarmUntil = 10750, Enemies = {"Swordsman"}, QuestNPC = "QuestNPC16"},
+        {Portal = "SoulSociety", FarmUntil = 999999, Enemies = {"Quincy1", "Quincy2", "Quincy3", "Quincy4", "Quincy5"}, QuestNPC = "QuestNPC17"},
+    },
+    
+    TpIslands = {"Starter","Jungle","Desert","Snow","Sailor","Shibuya","HuecoMundo","Boss","Dungeon","Shinjuku","Slime","Academy","Judgement","SoulSociety"},
+    
+    Bosses = {
+        {Name = "AizenBoss", Display = "Aizen", Island = "HuecoMundo"},
+        {Name = "AlucardBoss", Display = "Alucard", Island = "Sailor"},
+        {Name = "GojoBoss", Display = "Gojo", Island = "Shibuya", RenderNear = "YujiBoss"},
+        {Name = "JinwooBoss", Display = "Jinwoo", Island = "Sailor"},
+        {Name = "SukunaBoss", Display = "Sukuna", Island = "Shibuya"},
+        {Name = "YamatoBoss", Display = "Yamato", Island = "Judgement"},
+        {Name = "YujiBoss", Display = "Yuji", Island = "Shibuya"},
+    },
+    
+    SummonBosses = {
+        {Name = "IchigoBoss", Display = "Ichigo"},
+        {Name = "QinShiBoss", Display = "Qin Shi"},
+        {Name = "SaberBoss", Display = "Saber"},
+        {Name = "AnosBoss", Display = "Anos", Island = "Academy", Difficulties = {"Normal","Medium","Hard","Extreme"}},
+        {Name = "BlessedMaidenBoss", Display = "Blessed Maiden", Difficulties = {"Normal","Medium","Hard","Extreme"}},
+        {Name = "GilgameshBoss", Display = "Gilgamesh", Difficulties = {"Normal","Medium","Hard","Extreme"}},
+        {Name = "RimuruBoss", Display = "Rimuru", Island = "Slime", Difficulties = {"Normal","Medium","Hard","Extreme"}},
+        {Name = "SaberAlterBoss", Display = "Saber Alter", Difficulties = {"Normal","Medium","Hard","Extreme"}},
+        {Name = "StrongestHistoryBoss", Display = "Strongest in History", Island = "Shinjuku", Difficulties = {"Normal","Medium","Hard","Extreme"}},
+        {Name = "StrongestTodayBoss", Display = "Strongest Today", Island = "Shinjuku", Difficulties = {"Normal","Medium","Hard","Extreme"}},
+        {Name = "TrueAizenBoss", Display = "True Aizen", Island = "SoulSociety", Difficulties = {"Normal","Medium","Hard","Extreme"}},
+    },
+    
+    DungeonEnemyNames = {"DungeonNPC1","DungeonNPC2","DungeonNPC3","DungeonNPC4","DungeonNPC5"},
+    DungeonTypes = {"Double","Rune","Cid"},
+    DungeonDifficulties = {"Easy","Normal","Hard","Extreme"},
+    DungeonPortalNames = {Double = "DoubleDungeon", Rune = "RuneDungeon", Cid = "CidDungeon"},
+    
+    IgnoreList = {"groupreward","katana","buyer","madoka","training","dummy","merchant","shop","vendor","shadow questline","shadowmonarch","obshakilsinhead","buff","questnpc"},
+    
+    ChestNames = {"Common Chest","Rare Chest","Epic Chest","Legendary Chest","Mythical Chest"},
+    MerchantItems = {"Boss Key","Clan Reroll","Dungeon Key","Haki Color Reroll","Race Reroll","Rush Key","Trait Reroll"},
+}
+
+--==================================================
+-- SAVE ORIGINAL SETTINGS
+--==================================================
+local originalLighting = {
+    Brightness = Lighting.Brightness,
+    ClockTime = Lighting.ClockTime,
+    FogEnd = Lighting.FogEnd,
+    FogStart = Lighting.FogStart,
+    GlobalShadows = Lighting.GlobalShadows,
+    OutdoorAmbient = Lighting.OutdoorAmbient,
+    Ambient = Lighting.Ambient
+}
+
+local originalCamera = {
+    FieldOfView = Camera.FieldOfView
+}
+
+local originalQuality = settings().Rendering.QualityLevel
+
+--==================================================
+-- RESTORE ORIGINAL SETTINGS
+--==================================================
+local function restoreOriginalSettings()
+    Lighting.Brightness = originalLighting.Brightness
+    Lighting.ClockTime = originalLighting.ClockTime
+    Lighting.FogEnd = originalLighting.FogEnd
+    Lighting.FogStart = originalLighting.FogStart
+    Lighting.GlobalShadows = originalLighting.GlobalShadows
+    Lighting.OutdoorAmbient = originalLighting.OutdoorAmbient
+    Lighting.Ambient = originalLighting.Ambient
+    settings().Rendering.QualityLevel = originalQuality
+end
+
+--==================================================
+-- CONFIGURATION (MENGGUNAKAN GENV UNTUK AKSES GLOBAL)
+--==================================================
+getgenv().Config = {
+    -- Auto Farm
+    AutoFarm = {
+        Enabled = false,
+        AutoHit = true,
+        AutoStats = true,
+        AutoHaki = false,
+        AutoObsHaki = false,
+        AutoEquip = true,
+        SelectedWeapon = "None",
+        SkillCooldown = 0.3
+    },
+    
+    -- Auto Skills (sesuai format yang diminta)
+    AutoSkills = {
+        Z = false,
+        X = false,
+        C = false,
+        V = false,
+        F = false
+    },
+    
+    -- State untuk skill system
+    LastSkillTime = 0,
+    
+    -- Mode flags untuk skill system
+    IsFarm = false,
+    IsBossFight = false,
+    IsAutoDungeon = false,
+    IsBossRush = false,
+    
+    -- Farm Settings
+    Farm = {
+        HeightOffset = 15,
+        TweenSpeed = 100,
+        OffsetDist = 15,
+        FarmMode = "Behind",
+        FollowStyle = "Dodge",
+        MoveMode = "Tween",
+        SelectedIsland = "Auto",
+        SelectedEnemy = "All",
+        AntiAFK = true,
+        AutoQuest = true,
+        AutoSpawn = false,
+        AutoChest = false
+    },
+    
+    -- Dungeon Settings
+    Dungeon = {
+        Enabled = false,
+        Type = "Double",
+        Difficulty = "Normal",
+        HeightOffset = 10,
+        TweenSpeed = 50,
+        MoveMode = "Teleport",
+        FarmMode = "Behind",
+        FollowStyle = "Dodge",
+        OffsetDist = 15
+    },
+    
+    -- Boss Rush
+    BossRush = {
+        Enabled = false,
+        HeightOffset = 10,
+        TweenSpeed = 50,
+        MoveMode = "Teleport",
+        FarmMode = "Behind",
+        FollowStyle = "Dodge",
+        OffsetDist = 15
+    },
+    
+    -- Boss Systems
+    Bosses = {
+        Enabled = false,
+        Notify = true,
+        Selected = {},
+        SummonSelected = {}
+    },
+    
+    -- Quest Systems
+    Quests = {
+        DungeonEnabled = false,
+        HogyokuEnabled = false
+    },
+    
+    -- Merchant
+    Merchant = {
+        Enabled = false,
+        Notify = true,
+        Selected = {}
+    },
+    
+    -- Chests
+    Chests = {
+        Enabled = false,
+        Selected = {}
+    },
+    
+    -- Misc
+    Misc = {
+        AntiAFK = true,
+        FpsBoost = false,
+        WhiteScreen = false,
+        AutoRejoin = false,
+        TimedRejoin = false,
+        RejoinDelay = 10
+    }
+}
+
+--==================================================
+-- STATE VARIABLES
+--==================================================
+local State = {
+    Running = true,
+    Kills = 0,
+    BossKills = 0,
+    KillCount = 0,
+    CurIsland = nil,
+    CurTarget = nil,
+    LockTarget = nil,
+    HoverPos = nil,
+    TweenOn = false,
+    TweenTarget = nil,
+    ATween = nil,
+    ATweenConn = nil,
+    LastEquip = 0,
+    LastTP = 0,
+    LastEnemy = 0,
+    TPCount = 0,
+    TPRest = tick(),
+    IslandTPd = false,
+    SpawnDone = false,
+    FarmOrigin = nil,
+    FarmGenericMode = false,
+    QState = "NONE",
+    BossTargetName = nil,
+    BossDeathTimes = {},
+    BossTimerCache = {},
+    BossTPDone = false,
+    LastBossTP = 0,
+    BossCurrentIsland = nil,
+    SummonBossTarget = nil,
+    SummonBossTPDone = false,
+    LastSummonBossTP = 0,
+    SummonBossCommitted = {},
+    SummonBossCurrentIsland = nil,
+    SummonBossOrder = 0,
+    SummonBossFailCount = {},
+    SummonBossFireTime = {},
+    AutoSpawnActive = {},
+    DungeonStep = 0,
+    DungeonCollected = {},
+    LastDungeonSwitch = 0,
+    LastBossRushSwitch = 0,
+    HogyokuStep = 0,
+    HogyokuCollected = {},
+    Conns = {},
+    RayParams = RaycastParams.new()
+}
+
+-- Inisialisasi RayParams
+State.RayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+--==================================================
+-- UTILITY FUNCTIONS
+--==================================================
+
 local function getChar()
-    local char = player.Character or player.CharacterAdded:Wait()
+    local char = Player.Character or Player.CharacterAdded:Wait()
     local hrp = char:WaitForChild("HumanoidRootPart")
     local hum = char:WaitForChild("Humanoid")
     return char, hrp, hum
-end
-
-local function buildPortalMap()
-    local map = {}
-    for _, folder in ipairs(workspace:GetChildren()) do
-        if folder:IsA("Folder") then
-            for _, d in ipairs(folder:GetDescendants()) do
-                if d:IsA("BasePart") then
-                    local name = d.Name:match("Portal_(.+)") or d.Name:match("SpawnPointCrystal_(.+)")
-                    if name then map[name] = d.Position end
-                end
-            end
-        end
-    end
-    return map
-end
-
-local function getNearestIsland(targetPos)
-    local nearest, nearestDist = nil, math.huge
-    for name, pos in pairs(buildPortalMap()) do
-        local dist = (pos - targetPos).Magnitude
-        if dist < nearestDist then
-            nearest, nearestDist = name, dist
-        end
-    end
-    return nearest
-end
-
-_G.SmartTP = function(pos)
-    local targetPos = CFrame.new(pos)
-    local island = getNearestIsland(targetPos.Position)
-    if not island then return print("[SmartTP] No portal found!") end
-    tpRemote:FireServer(island)
-    task.wait(0.5)
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then hrp.CFrame = CFrame.new(targetPos.Position) end
-end
-
-local function tweenPos(targetCF, callback)
-    local char = player.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    local humanoid = char:FindFirstChild("Humanoid")
-    if not humanoid then return end
-
-    local distance = (targetCF.Position - root.CFrame.Position).Magnitude
-
-    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-
-    local function lockPhysics()
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.AssemblyLinearVelocity = Vector3.zero
-                v.AssemblyAngularVelocity = Vector3.zero
-            end
-        end
-    end
-
-    if distance <= 250 then
-        lockPhysics()
-        root.CFrame = targetCF
-        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-        if callback then callback() end
-        return
-    else
-        _G.SmartTP(targetCF.Position)
-        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-        if callback then callback() end
-    end
 end
 
 local function formatNumber(n)
@@ -228,1555 +344,1980 @@ local function formatNumber(n)
     return tostring(n)
 end
 
-local function findDarkBladeInHand()
-    for _, container in pairs({player.Character, player.Backpack}) do
-        if container then
-            for _, tool in pairs(container:GetChildren()) do
-                local isDarkBlade = tool:IsA("Tool") and (
-                    tool.Name:find("Dark Blade") or 
-                    tool.Name:find("ดาบสีเข้ม") or 
-                    tool.ToolTip == "Black Blade" or
-                    tool.ToolTip:find("ดาบสีเข้ม")
-                )
-                if isDarkBlade then
-                    return tool, container.Name
-                end
+local function DistTo(pos)
+    if not pos then return 99999 end
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return 99999 end
+    return (hrp.Position - pos).Magnitude
+end
+
+local function GetNPCFolder()
+    local direct = Workspace:FindFirstChild(Constants.NPC_FOLDER)
+    if direct then return direct end
+    for _, desc in ipairs(Workspace:GetDescendants()) do
+        if desc:IsA("Folder") then
+            local n = (desc.Name or ""):lower()
+            if n == "npcs" or n == "npc" or n:find("npc", 1, true) then
+                return desc
             end
         end
     end
     return nil
 end
 
-local function checkOwnerDarkBlade()
-    for _, container in pairs({player.Character, player.Backpack}) do
-        if container then
-            for _, tool in pairs(container:GetChildren()) do
-                local isDarkBlade = tool:IsA("Tool") and (
-                    tool.Name:find("Dark Blade") or 
-                    tool.Name:find("ดาบสีเข้ม") or 
-                    tool.ToolTip == "Black Blade" or
-                    tool.ToolTip:find("ดาบสีเข้ม")
-                )
-                if isDarkBlade then
-                    return true
-                end
+local function GetHum(e)
+    if not e then return nil end
+    local h = e:FindFirstChildOfClass("Humanoid")
+    if not h then
+        for _, d in ipairs(e:GetDescendants()) do
+            if d:IsA("Humanoid") then
+                h = d
+                break
             end
         end
+    end
+    return h
+end
+
+local function RootPos(e)
+    if not e then return nil end
+    local rp = e:FindFirstChild("HumanoidRootPart") or e:FindFirstChild("Torso") or e:FindFirstChild("UpperTorso")
+    if rp and rp:IsA("BasePart") then return rp.Position end
+    if e:IsA("Model") and e.PrimaryPart then return e.PrimaryPart.Position end
+    for _, d in ipairs(e:GetDescendants()) do
+        if d:IsA("BasePart") then return d.Position end
+    end
+    return nil
+end
+
+local function PortalDisplayName(portal)
+    local names = {HuecoMundo = "Hueco Mundo", SoulSociety = "Soul Society"}
+    return names[portal] or portal
+end
+
+local function GetIslandNames()
+    local n = {"Auto"}
+    for _, i in ipairs(Constants.Islands) do
+        table.insert(n, PortalDisplayName(i.Portal))
+    end
+    return n
+end
+
+local function DisplayToPortal(display)
+    for _, i in ipairs(Constants.Islands) do
+        if PortalDisplayName(i.Portal) == display then
+            return i.Portal
+        end
+    end
+    return display
+end
+
+local function GetLevel()
+    local lv = 0
+    pcall(function()
+        local ls = Player:FindFirstChild("leaderstats")
+        if ls then
+            local v = ls:FindFirstChild("Level") or ls:FindFirstChild("Lvl") or ls:FindFirstChild("LVL")
+            if v then lv = tonumber(v.Value) or 0 end
+        end
+    end)
+    return lv
+end
+
+local function IslandForLevel(lvl)
+    for _, i in ipairs(Constants.Islands) do
+        if lvl < i.FarmUntil then return i end
+    end
+    return Constants.Islands[#Constants.Islands]
+end
+
+local function IslandByName(n)
+    for _, i in ipairs(Constants.Islands) do
+        if i.Portal == n then return i end
+    end
+    return nil
+end
+
+local function GetFarmIsland()
+    local lvl = GetLevel()
+    if getgenv().Config.Farm.SelectedIsland == "Auto" then
+        return IslandForLevel(lvl)
+    end
+    return IslandByName(getgenv().Config.Farm.SelectedIsland) or IslandForLevel(lvl)
+end
+
+local function IsAlive()
+    local c = Player.Character
+    if not c then return false end
+    local hrp = c:FindFirstChild("HumanoidRootPart")
+    local hum = c:FindFirstChildOfClass("Humanoid")
+    return hrp ~= nil and hum ~= nil and hum.Health > 0
+end
+
+local function ShouldIgnore(name)
+    local lo = name:lower()
+    for _, ig in ipairs(Constants.IgnoreList) do
+        if lo:find(ig, 1, true) then return true end
+    end
+    if lo:match("boss$") then return true end
+    return false
+end
+
+local function MatchEnemy(name, island)
+    if not island then return false end
+    local lo = (name or ""):lower()
+    for _, e in ipairs(island.Enemies) do
+        local el = (e or ""):lower()
+        if lo:sub(1, #el) == el then return true end
     end
     return false
 end
 
-local function checkDarkBlade(targetName)
-    local result = false
-    pcall(function()
-        RS.Remotes.UpdateInventory.OnClientEvent:Connect(function(tab, data)
-            for _, item in pairs(data) do
-                if item.name == targetName or item.name == "ดาบสีเข้ม" or item.name:find("Dark Blade") then
-                    result = true
-                end
-            end
-        end)
-        RS.Remotes.RequestInventory:FireServer()
-    end)
-    task.wait(0.5)
-    return result
+local function AbandonAllQuests()
+    State.QState = "NONE"
+    pcall(function() abandonRemote:FireServer("repeatable") end)
+    for _, n in ipairs({"HogyokuUnlock","HogyokuQuestNPC","Hogyoku","HogyokuFragment","HogyokuQuest","SoulSocietyUnlock","SoulSociety"}) do
+        pcall(function() abandonRemote:FireServer(n) end)
+    end
+    for _, isl in ipairs(Constants.Islands) do
+        pcall(function() abandonRemote:FireServer(isl.QuestNPC) end)
+    end
 end
 
-local function equipDarkBladeFromInventory()
-    pcall(function()
-        Remotes:WaitForChild("EquipWeapon"):FireServer(unpack({"Equip", "Dark Blade"}))
-    end)
-    task.wait(1)
+local function FullReset()
+    AbandonAllQuests()
+    State.CurIsland = nil
+    State.IslandTPd = false
+    State.SpawnDone = false
+    State.FarmOrigin = nil
+    State.LastEnemy = 0
+    State.LastTP = 0
+    State.TPCount = 0
+    State.TPRest = tick()
+    State.CurTarget = nil
+    State.LockTarget = nil
+    State.HoverPos = nil
+    State.FarmGenericMode = false
+    State.QState = "NONE"
+    State.BossTargetName = nil
+    State.BossTPDone = false
+    State.LastBossTP = 0
+    State.BossCurrentIsland = nil
+    State.SummonBossTarget = nil
+    State.SummonBossTPDone = false
+    State.LastSummonBossTP = 0
+    State.SummonBossCommitted = {}
+    State.SummonBossCurrentIsland = nil
+    State.SummonBossOrder = 0
+    State.HogyokuStep = 0
+    State.HogyokuCollected = {}
+    State.DungeonStep = 0
+    State.DungeonCollected = {}
     
-    if not findDarkBladeInHand() then
-        pcall(function()
-            Remotes:WaitForChild("EquipWeapon"):FireServer(unpack({"Equip", "ดาบสีเข้ม"}))
-        end)
+    -- Reset mode flags
+    getgenv().Config.IsFarm = false
+    getgenv().Config.IsBossFight = false
+    getgenv().Config.IsAutoDungeon = false
+    getgenv().Config.IsBossRush = false
+end
+
+local function DoTP(portal)
+    if tick() - State.LastTP < 3 then return false end
+    if tick() - State.TPRest > 120 then
+        State.TPCount = 0
+        State.TPRest = tick()
+    end
+    if State.TPCount >= 10 then return false end
+    State.LastTP = tick()
+    State.TPCount = State.TPCount + 1
+    local ok = false
+    pcall(function() tpRemote:FireServer(portal) ok = true end)
+    return ok
+end
+
+local function ForceTP(portal)
+    State.LastTP = 0
+    State.TPCount = 0
+    State.TPRest = tick()
+    local ok = false
+    pcall(function() tpRemote:FireServer(portal) ok = true end)
+    if not ok then
         task.wait(1)
+        pcall(function() tpRemote:FireServer(portal) ok = true end)
+    end
+    State.LastTP = tick()
+    State.TPCount = 1
+    return ok
+end
+
+local function StopTween()
+    if State.ATweenConn then
+        pcall(function() State.ATweenConn:Disconnect() end)
+        State.ATweenConn = nil
+    end
+    if State.ATween then
+        pcall(function() State.ATween:Cancel() end)
+        State.ATween = nil
+    end
+    State.TweenOn = false
+    State.TweenTarget = nil
+end
+
+local function ClearTarget()
+    State.CurTarget = nil
+    State.LockTarget = nil
+    StopTween()
+end
+
+local function FindEnemies(island)
+    local nf = GetNPCFolder()
+    if not island then return {} end
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    local origin = State.FarmOrigin
+    local out = {}
+    
+    local function checkModel(m)
+        if m:IsA("Model") and not m:IsDescendantOf(Player.Character) then
+            -- Filter berdasarkan dropdown musuh
+            if getgenv().Config.Farm.SelectedEnemy ~= "All" and m.Name ~= getgenv().Config.Farm.SelectedEnemy then
+                return
+            end
+            local hm = GetHum(m)
+            if hm and hm.Health > 0 and not ShouldIgnore(m.Name) then
+                if MatchEnemy(m.Name, island) then
+                    local p = RootPos(m)
+                    if p then
+                        if hrp and (p - hrp.Position).Magnitude > Constants.FARM_MAX_DIST_FROM_PLAYER then return end
+                        if origin and (p - origin).Magnitude > Constants.FARM_MAX_DIST_FROM_ORIGIN then return end
+                    end
+                    table.insert(out, m)
+                end
+            end
+        end
     end
     
-    return findDarkBladeInHand() ~= nil
-end
-
-local function getQuestInfo()
-    local ok, result = pcall(function()
-        return RemoteEvents.GetQuestArrowTarget:InvokeServer()
-    end)
-    return ok and result or nil
-end
-
-local function getNpcType(npcName)
-    local ok, result = pcall(function()
-        local module = require(RS.Modules.QuestConfig)
-        for questNPC, questData in pairs(module.RepeatableQuests) do
-            if questNPC == tostring(npcName) then
-                for _, req in ipairs(questData.requirements) do
-                    return req.npcType
-                end
-            end
-        end
-    end)
-    return ok and result or nil
-end
-
-local function getBestWeapon()
-    local weapons = {}
-    for _, container in pairs({player.Backpack, player.Character}) do
-        if container then
-            for _, tool in pairs(container:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name ~= "Combat" then
-                    local level = tonumber(tool.Name:match("Lv%.?%s*(%d+)")) or 0
-                    table.insert(weapons, { name = tool.Name, level = level })
+    if nf then
+        for _, desc in ipairs(nf:GetChildren()) do
+            if desc:IsA("Model") then
+                checkModel(desc)
+            elseif desc:IsA("Folder") then
+                for _, m in ipairs(desc:GetChildren()) do
+                    if m:IsA("Model") then checkModel(m) end
                 end
             end
         end
     end
-    table.sort(weapons, function(a, b) return a.level > b.level end)
-    if #weapons > 0 then
-        return weapons[1].name
-    end
-    return "Combat"
+    return out
 end
 
-local function checkHakiStatus()
-    local hasHaki = false
-    local hakiInfo = ""
-    pcall(function()
-        local statsUI = player.PlayerGui:FindFirstChild("StatsPanelUI")
-        if not statsUI then return end
-        for _, desc in pairs(statsUI:GetDescendants()) do
-            if desc.Name == "HakiProgressionFrame" and desc.Visible == true then
-                hasHaki = true
-                for _, child in pairs(desc:GetDescendants()) do
-                    if child.Name == "HakiLevel" and child:IsA("TextLabel") then
-                        hakiInfo = child.Text
-                        break
-                    end
-                end
+local function GetAllEnemyNames()
+    local names = {"All"}
+    local nf = GetNPCFolder()
+    if not nf then return names end
+    
+    local unique = {}
+    local function addName(m)
+        if m:IsA("Model") and not ShouldIgnore(m.Name) then
+            unique[m.Name] = true
+        end
+    end
+    
+    for _, desc in ipairs(nf:GetChildren()) do
+        if desc:IsA("Model") then
+            addName(desc)
+        elseif desc:IsA("Folder") then
+            for _, m in ipairs(desc:GetChildren()) do
+                if m:IsA("Model") then addName(m) end
+            end
+        end
+    end
+    
+    for name in pairs(unique) do
+        table.insert(names, name)
+    end
+    table.sort(names)
+    return names
+end
+
+local function NearestFrom(list)
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    local myY = hrp.Position.Y
+    local best, bd = nil, math.huge
+    for _, e in ipairs(list) do
+        local p = RootPos(e)
+        if p and math.abs(p.Y - myY) < 150 then
+            local d = (p - hrp.Position).Magnitude
+            if d < bd then
+                bd = d
+                best = e
+            end
+        end
+    end
+    return best
+end
+
+local function GetGoalForEnemy(enemy)
+    local pos = RootPos(enemy)
+    if not pos then return nil, nil end
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil, nil end
+    
+    -- Gunakan Height Offset dari config
+    local heightOffset = getgenv().Config.Farm.HeightOffset
+    
+    -- Hitung arah berdasarkan mode farm
+    local dir = (hrp.Position - pos).Unit
+    dir = Vector3.new(dir.X, 0, dir.Z).Unit
+    
+    local farmMode = getgenv().Config.Farm.FarmMode
+    local goal
+    
+    if farmMode == "In Front" then
+        goal = pos - dir * getgenv().Config.Farm.OffsetDist
+    elseif farmMode == "Left Side" then
+        goal = pos + Vector3.new(dir.Z, 0, -dir.X) * getgenv().Config.Farm.OffsetDist
+    elseif farmMode == "Right Side" then
+        goal = pos + Vector3.new(-dir.Z, 0, dir.X) * getgenv().Config.Farm.OffsetDist
+    else -- Behind (default)
+        goal = pos + dir * getgenv().Config.Farm.OffsetDist
+    end
+    
+    goal = Vector3.new(goal.X, pos.Y + heightOffset, goal.Z)
+    return goal, pos
+end
+
+local function TweenTo(enemy)
+    if not enemy then return end
+    if State.LockTarget == enemy and getgenv().Config.Farm.FollowStyle ~= "Dodge" then
+        local ep = RootPos(enemy)
+        local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+        if ep and hrp then
+            local d = (hrp.Position - ep).Magnitude
+            if d <= getgenv().Config.Farm.OffsetDist + 25 then return end
+            State.LockTarget = nil
+        else
+            return
+        end
+    end
+    
+    local goal, look = GetGoalForEnemy(enemy)
+    if not goal then return end
+    
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local d = (hrp.Position - goal).Magnitude
+    if d > 600 then return end
+    
+    if d < getgenv().Config.Farm.OffsetDist + 2 then
+        State.LockTarget = enemy
+        StopTween()
+        return
+    end
+    
+    if getgenv().Config.Farm.MoveMode == "Teleport" then
+        StopTween()
+        hrp.CFrame = CFrame.new(goal, look or goal)
+        State.LockTarget = enemy
+        return
+    end
+    
+    if State.TweenOn and State.TweenTarget == enemy then return end
+    
+    StopTween()
+    State.TweenOn = true
+    State.TweenTarget = enemy
+    State.LockTarget = nil
+    
+    local stepDist = math.min(d, 80)
+    local dir = (goal - hrp.Position).Unit
+    local stepGoal = hrp.Position + (dir * stepDist)
+    local cf = CFrame.new(stepGoal, look or goal)
+    local dur = math.clamp(stepDist / math.max(getgenv().Config.Farm.TweenSpeed, 1), 0.06, 3.0)
+    
+    State.ATween = TweenService:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = cf})
+    State.ATweenConn = State.ATween.Completed:Connect(function()
+        State.ATween = nil
+        State.ATweenConn = nil
+        State.TweenOn = false
+        State.TweenTarget = nil
+        State.LockTarget = enemy
+    end)
+    State.ATween:Play()
+end
+
+--==================================================
+-- AUTO SKILLS SYSTEM (FIXED - DARI v4.0)
+--==================================================
+local function useSkills()
+    local now = tick()
+    if now - getgenv().Config.LastSkillTime < getgenv().Config.AutoFarm.SkillCooldown then return end
+    
+    local skillMap = { Z = 1, X = 2, C = 3, V = 4, F = 5 }
+    local anySkillUsed = false
+    
+    for key, slot in pairs(skillMap) do
+        if getgenv().Config.AutoSkills[key] then
+            pcall(function() AbilityRemote:FireServer(slot) end)
+            anySkillUsed = true
+        end
+    end
+    
+    if anySkillUsed then
+        getgenv().Config.LastSkillTime = now
+    end
+end
+
+-- Skill spam loop terpisah (berjalan terus)
+task.spawn(function()
+    while State.Running do
+        task.wait(0.1) -- Check every 0.1 seconds
+        if getgenv().Config.IsFarm or getgenv().Config.IsBossFight or getgenv().Config.IsAutoDungeon or getgenv().Config.IsBossRush then
+            useSkills()
+        end
+    end
+end)
+
+--==================================================
+-- FIXED EQUIP WEAPON FUNCTIONS
+--==================================================
+local function GetAllTools()
+    local tools = {}
+    local char = Player.Character
+    local backpack = Player:FindFirstChild("Backpack")
+    
+    if char then
+        for _, tool in ipairs(char:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(tools, tool)
+            end
+        end
+    end
+    
+    if backpack then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(tools, tool)
+            end
+        end
+    end
+    
+    return tools
+end
+
+local function GetCurrentWeapon()
+    local char = Player.Character
+    if not char then return nil end
+    
+    for _, tool in ipairs(char:GetChildren()) do
+        if tool:IsA("Tool") then
+            return tool
+        end
+    end
+    return nil
+end
+
+local function EquipWeapon(weaponName)
+    if not weaponName or weaponName == "None" then return false end
+    
+    local char = Player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    
+    -- Cek apakah weapon sudah di tangan
+    if char:FindFirstChild(weaponName) then
+        return true -- Sudah equip
+    end
+    
+    -- Coba cari di backpack
+    local backpack = Player:FindFirstChild("Backpack")
+    if not backpack then return false end
+    
+    local tool = backpack:FindFirstChild(weaponName)
+    if not tool or not tool:IsA("Tool") then return false end
+    
+    -- Unequip semua weapon dulu
+    hum:UnequipTools()
+    task.wait(0.1)
+    
+    -- Equip weapon baru
+    hum:EquipTool(tool)
+    task.wait(0.2)
+    
+    -- Verifikasi
+    return char:FindFirstChild(weaponName) ~= nil
+end
+
+local function EquipWeaponByType(type)
+    -- type: "Melee" (Combat), "Sword" (pedang), "Fruit" (buah)
+    local backpack = Player:FindFirstChild("Backpack")
+    if not backpack then return false end
+    
+    local char = Player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    
+    local targetTool = nil
+    
+    if type == "Melee" then
+        -- Cari Combat
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and (tool.Name == "Combat" or tool.Name:lower() == "combat") then
+                targetTool = tool
                 break
             end
         end
-    end)
-    if hasHaki then
-        print("[HAKI STATUS] ✅ Player HAS Haki!", hakiInfo)
-    end
-    return hasHaki, hakiInfo
-end
-
-local function findNPC(npcType)
-    local closest = nil
-    for _, v in pairs(workspace.NPCs:GetChildren()) do
-        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart")
-            and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-            local subName = v.Humanoid.DisplayName:gsub("%s+",""):gsub("%[Lv%.%s*%d+%]","")
-            if npcType == tostring(subName) or v.Name == npcType then
-                return v
+    elseif type == "Sword" then
+        -- Cari pedang (semua tool yang bukan Combat dan bukan Fruit)
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and tool.Name ~= "Combat" and not tool:FindFirstChild("FruitData") then
+                targetTool = tool
+                break
             end
-            if subName:find(npcType, 1, true) or v.Name:find(npcType, 1, true) then
-                closest = v
+        end
+    elseif type == "Fruit" then
+        -- Cari buah (tool dengan FruitData)
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and tool:FindFirstChild("FruitData") then
+                targetTool = tool
+                break
             end
         end
     end
-    return closest
+    
+    if not targetTool then return false end
+    
+    hum:UnequipTools()
+    task.wait(0.1)
+    hum:EquipTool(targetTool)
+    task.wait(0.2)
+    
+    return char:FindFirstChild(targetTool.Name) ~= nil
 end
 
--- ═══════════════════════════════════════════════════════════════
--- [5] PERFORMANCE - FPS Boost
--- ═══════════════════════════════════════════════════════════════
-for _, setting in ipairs(_G.Config.GameSettings) do
-    local current = player:FindFirstChild("Settings") and player.Settings:FindFirstChild(setting)
-    if not current or current.Value ~= true then
-        settingsToggle:FireServer(setting, true)
+local function AutoEquipLogic()
+    if not getgenv().Config.AutoFarm.AutoEquip or not IsAlive() then return end
+    
+    local currentWeapon = GetCurrentWeapon()
+    local targetWeapon = getgenv().Config.AutoFarm.SelectedWeapon
+    
+    -- Jika target "None", biarkan apa adanya
+    if targetWeapon == "None" then return end
+    
+    -- Jika sudah equip weapon yang diinginkan, tidak perlu action
+    if currentWeapon and currentWeapon.Name == targetWeapon then return end
+    
+    -- Coba equip weapon yang dipilih di dropdown
+    if targetWeapon ~= "None" then
+        EquipWeapon(targetWeapon)
     end
 end
 
-local BlackScreen = _G.Config.FpsBoost
-
-local function setBlack(state)
-    if state then
-        Lighting.Brightness = 0
-        Lighting.GlobalShadows = false
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") then v.LocalTransparencyModifier = 1 end
-        end
-    else
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") then v.LocalTransparencyModifier = 0 end
+-- Fungsi untuk refresh weapon list
+local function RefreshWeaponList()
+    local weapons = {"None"}
+    local backpack = Player:FindFirstChild("Backpack")
+    local char = Player.Character
+    
+    -- Add all tools from backpack
+    if backpack then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(weapons, tool.Name)
+            end
         end
     end
+    
+    -- Add all tools from character (if not already in list)
+    if char then
+        for _, tool in ipairs(char:GetChildren()) do
+            if tool:IsA("Tool") and not table.find(weapons, tool.Name) then
+                table.insert(weapons, tool.Name)
+            end
+        end
+    end
+    
+    table.sort(weapons)
+    return weapons
 end
 
-setBlack(BlackScreen)
+local function GetWeaponList()
+    return RefreshWeaponList()
+end
 
--- ═══════════════════════════════════════════════════════════════
--- [6] CATRAZ HUB UI - MAIN WINDOW
--- ═══════════════════════════════════════════════════════════════
+--==================================================
+-- ATTACK FUNCTION DENGAN AUTO SKILLS
+--==================================================
+local function Attack()
+    pcall(function() hitRemote:FireServer() end)
+    -- Skills sudah di-handle oleh loop terpisah
+end
+
+--==================================================
+-- NOTIFICATION
+--==================================================
+local function Notify(msg, duration)
+    OrionLib:MakeNotification({
+        Name = "Sailor Piece",
+        Content = msg,
+        Image = "info",
+        Time = duration or 2.5
+    })
+end
+
+--==================================================
+-- CREATE MAIN WINDOW
+--==================================================
 local Window = OrionLib:MakeWindow({
-    Name = "Sailor Piece v5",
-    Subtext = "Auto Farm | Auto Haki | Auto Dark Blade",
-    Version = "v5.0",
-    VersionIcon = "shield-check",
+    Name = "Sailor Piece",
+    Subtext = "Catraz Ultimate Edition",
+    Version = "v2.3",
+    VersionIcon = "ship",
     HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "SailorPieceV5",
+    ConfigFolder = "SailorPiece_Catraz",
     IntroEnabled = true,
-    IntroText = "Loading Sailor Piece v5",
-    IntroIcon = "rbxassetid://8834748103",
-    Icon = "rbxassetid://8834748103",
+    IntroText = "Sailor Piece Ultimate",
+    IntroIcon = Constants.ICON,
+    Icon = Constants.ICON,
     ShowIcon = true,
-    WindowTransparency = 0.1,
+    
+    ImageBackground = "",
+    ImageTransparency = 0.8,
+    WindowTransparency = 0.05,
+    ToggleIcon = Constants.ICON,
+    ToggleSize = 50
 })
 
 OrionLib.SelectedTheme = "Ocean"
 
--- ===== MAIN TAB =====
+Notify("Script loaded successfully!")
+
+--==================================================
+-- CREATE TABS
+--==================================================
 local MainTab = Window:MakeTab({
     Name = "Main",
     Icon = "home",
-    PremiumOnly = false,
     Glass = true,
     Outline = true
 })
 
-local StatusSection = MainTab:AddSection({
-    Name = "Status & Information",
-    TextSize = 17,
-    Folded = false,
+local FarmTab = Window:MakeTab({
+    Name = "Auto Farm",
+    Icon = "swords",
     Glass = true,
     Outline = true
 })
 
-local PlayerStatsPara = StatusSection:AddParagraph({
-    Title = "Player Statistics",
-    Desc = "Loading...",
+local DungeonTab = Window:MakeTab({
+    Name = "Dungeon",
+    Icon = "dungeon",
+    Glass = true,
+    Outline = true
+})
+
+local BossTab = Window:MakeTab({
+    Name = "Bosses",
+    Icon = "skull",
+    Glass = true,
+    Outline = true
+})
+
+local SkillTab = Window:MakeTab({
+    Name = "Skills",
+    Icon = "zap",
+    Glass = true,
+    Outline = true
+})
+
+local MerchantTab = Window:MakeTab({
+    Name = "Merchant",
+    Icon = "shopping-cart",
+    Glass = true,
+    Outline = true
+})
+
+local QuestTab = Window:MakeTab({
+    Name = "Quests",
+    Icon = "bookmark",
+    Glass = true,
+    Outline = true
+})
+
+local SettingTab = Window:MakeTab({
+    Name = "Settings",
+    Icon = "settings",
+    Glass = true,
+    Outline = true
+})
+
+--==================================================
+-- MAIN TAB - PLAYER INFO
+--==================================================
+local PlayerInfoSection = MainTab:AddSection({
+    Name = "📊 PLAYER INFORMATION",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+local playerInfoPara = PlayerInfoSection:AddParagraph({
+    Title = "👤 " .. Player.Name,
+    Desc = "Display Name: " .. Player.DisplayName .. "\n" ..
+           "User ID: " .. Player.UserId .. "\n" ..
+           "Account Age: " .. Player.AccountAge .. " days",
     Image = "user",
-    ImageSize = 38,
+    ImageSize = 48
+})
+
+local ServerInfoSection = MainTab:AddSection({
+    Name = "🌐 SERVER INFORMATION",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+local startTime = tick()
+local function getUptime()
+    local uptime = tick() - startTime
+    local hours = math.floor(uptime / 3600)
+    local minutes = math.floor((uptime % 3600) / 60)
+    local seconds = math.floor(uptime % 60)
+    return string.format("%02d:%02d:%02d", hours, minutes, seconds)
+end
+
+local function UpdateServerInfo()
+    local players = Players:GetPlayers()
+    local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() * 100) / 100
+    
+    return "Players: " .. #players .. "/" .. (Players.MaxPlayers or "??") .. "\n" ..
+           "Ping: " .. ping .. "ms\n" ..
+           "Uptime: " .. getUptime() .. "\n" ..
+           "Kills: " .. State.KillCount .. " | Boss Kills: " .. State.BossKills
+end
+
+local ServerInfoPara = ServerInfoSection:AddParagraph({
+    Title = "Server Status",
+    Desc = UpdateServerInfo(),
+    Image = "server",
+    ImageSize = 48,
+    Buttons = {
+        {
+            Title = "🔄 Refresh",
+            Callback = function()
+                ServerInfoPara:SetDesc(UpdateServerInfo())
+            end
+        }
+    }
 })
 
 task.spawn(function()
-    while task.wait(3) do
-        pcall(function()
-            local level = player.Data.Level.Value or 0
-            local money = player.Data.Money.Value or 0
-            local gems = player.Data.Gems.Value or 0
-            local points = player.Data.StatPoints.Value or 0
-            
-            PlayerStatsPara:SetDesc(string.format(
-                "Level: %d\nMoney: %s\nGems: %s\nStat Points: %d",
-                level, formatNumber(money), formatNumber(gems), points
-            ))
+    while true do
+        task.wait(1)
+        ServerInfoPara:SetDesc(UpdateServerInfo())
+        
+        local level = 0
+        local money = 0
+        local gems = 0
+        pcall(function() 
+            level = Player.Data.Level.Value or 0
+            money = Player.Data.Money.Value or 0
+            gems = Player.Data.Gems.Value or 0
         end)
+        
+        playerInfoPara:SetDesc("Display Name: " .. Player.DisplayName .. "\n" ..
+                               "Level: " .. level .. "\n" ..
+                               "Money: " .. formatNumber(money) .. "\n" ..
+                               "Gems: " .. formatNumber(gems) .. "\n" ..
+                               "Kills: " .. State.KillCount .. "\n" ..
+                               "Account Age: " .. Player.AccountAge .. " days")
     end
 end)
 
-local FarmSection = MainTab:AddSection({
-    Name = "Auto Farm",
-    TextSize = 17,
-    Folded = false,
+--==================================================
+-- FARM TAB - AUTO FARM SETTINGS
+--==================================================
+local FarmMainSection = FarmTab:AddSection({
+    Name = "⚡ AUTO FARM SETTINGS",
+    TextSize = 18,
     Glass = true,
     Outline = true
 })
 
-local AutoFarmToggle = FarmSection:AddToggle({
-    Name = "Auto Farm",
-    Default = _G.Config.AutoFarm,
-    Color = Color3.fromRGB(0, 150, 255),
+FarmMainSection:AddToggle({
+    Name = "ENABLE AUTO FARM",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "AutoFarm",
     Save = true,
     Callback = function(Value)
-        _G.Config.AutoFarm = Value
-        print("[UI] Auto Farm:", Value)
+        getgenv().Config.AutoFarm.Enabled = Value
+        getgenv().Config.IsFarm = Value
         if Value then
-            task.spawn(function()
-                if not _G.farmLoopRunning then
-                    _G.farmLoopRunning = true
-                    pcall(farmLoop)
-                end
-            end)
+            FullReset()
+            Notify("Auto Farm Enabled")
+        else
+            Notify("Auto Farm Disabled")
         end
     end
 })
 
-local AutoHitToggle = FarmSection:AddToggle({
-    Name = "Auto Hit + Skill Z",
-    Default = _G.Config.AutoHit,
-    Color = Color3.fromRGB(0, 150, 255),
+FarmMainSection:AddDropdown({
+    Name = "FARM ISLAND",
+    Default = "Auto",
+    Options = GetIslandNames(),
+    Multi = false,
+    Search = true,
+    Outline = true,
+    Flag = "FarmIsland",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Farm.SelectedIsland = DisplayToPortal(Value)
+        ClearTarget()
+        State.CurIsland = nil
+        State.IslandTPd = false
+        State.SpawnDone = false
+        State.FarmOrigin = nil
+        AbandonAllQuests()
+        Notify("Island changed to: " .. Value)
+    end
+})
+
+-- DROPDOWN UNTUK MEMILIH MUSUH
+FarmMainSection:AddDropdown({
+    Name = "SELECT ENEMY TYPE",
+    Default = "All",
+    Options = GetAllEnemyNames(),
+    Multi = false,
+    Search = true,
+    Outline = true,
+    Flag = "SelectedEnemy",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Farm.SelectedEnemy = Value
+        ClearTarget()
+        Notify("Now targeting: " .. Value)
+    end
+})
+
+FarmMainSection:AddButton({
+    Name = "🔄 REFRESH ENEMY LIST",
+    Icon = "refresh-cw",
+    Outline = true,
+    Callback = function()
+        local enemies = GetAllEnemyNames()
+        OrionLib.Flags["SelectedEnemy"]:SetOptions(enemies)
+        Notify("Enemy list refreshed")
+    end
+})
+
+FarmMainSection:AddDropdown({
+    Name = "STAND POSITION",
+    Default = "Behind",
+    Options = {"Behind", "In Front", "Left Side", "Right Side"},
+    Multi = false,
+    Outline = true,
+    Flag = "FarmMode",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Farm.FarmMode = Value
+        ClearTarget()
+    end
+})
+
+FarmMainSection:AddDropdown({
+    Name = "COMBAT STYLE",
+    Default = "Dodge",
+    Options = {"Dodge", "Static", "Orbit", "Strafe"},
+    Multi = false,
+    Outline = true,
+    Flag = "FollowStyle",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Farm.FollowStyle = Value
+    end
+})
+
+FarmMainSection:AddDropdown({
+    Name = "TRAVEL MODE",
+    Default = "Tween",
+    Options = {"Tween", "Teleport"},
+    Multi = false,
+    Outline = true,
+    Flag = "MoveMode",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Farm.MoveMode = Value
+        ClearTarget()
+    end
+})
+
+-- SLIDER UNTUK HEIGHT OFFSET
+FarmMainSection:AddSlider({
+    Name = "HEIGHT OFFSET",
+    Min = 5,
+    Max = 50,
+    Default = 15,
+    Increment = 1,
+    ValueName = "studs",
+    Outline = true,
+    Flag = "HeightOffset",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Farm.HeightOffset = Value
+        Notify("Height offset set to: " .. Value)
+    end
+})
+
+FarmMainSection:AddSlider({
+    Name = "OFFSET DISTANCE",
+    Min = 5,
+    Max = 50,
+    Default = 15,
+    Increment = 1,
+    ValueName = "studs",
+    Outline = true,
+    Flag = "OffsetDist",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Farm.OffsetDist = Value
+    end
+})
+
+FarmMainSection:AddSlider({
+    Name = "MOVEMENT SPEED",
+    Min = 20,
+    Max = 250,
+    Default = 100,
+    Increment = 5,
+    ValueName = "WS",
+    Outline = true,
+    Flag = "TweenSpeed",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Farm.TweenSpeed = Value
+    end
+})
+
+FarmMainSection:AddToggle({
+    Name = "AUTO HIT",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "AutoHit",
     Save = true,
-    Callback = function(Value)
-        _G.Config.AutoHit = Value
-        print("[UI] Auto Hit:", Value)
-    end
+    Callback = function(Value) getgenv().Config.AutoFarm.AutoHit = Value end
 })
 
-local AutoStatsToggle = FarmSection:AddToggle({
-    Name = "Auto Stats Upgrade",
-    Default = _G.Config.AutoStats,
-    Color = Color3.fromRGB(0, 150, 255),
+FarmMainSection:AddToggle({
+    Name = "AUTO STATS",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "AutoStats",
     Save = true,
+    Callback = function(Value) getgenv().Config.AutoFarm.AutoStats = Value end
+})
+
+FarmMainSection:AddToggle({
+    Name = "AUTO EQUIP WEAPON",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoEquip",
+    Save = true,
     Callback = function(Value)
-        _G.Config.AutoStats = Value
-        print("[UI] Auto Stats:", Value)
+        getgenv().Config.AutoFarm.AutoEquip = Value
+        Notify(Value and "Auto Equip ON" or "Auto Equip OFF")
     end
 })
 
-local FpsBoostToggle = FarmSection:AddToggle({
-    Name = "FPS Boost (Black Screen)",
-    Default = _G.Config.FpsBoost,
-    Color = Color3.fromRGB(0, 150, 255),
+FarmMainSection:AddToggle({
+    Name = "AUTO ARMAMENT HAKI",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoHaki",
+    Save = true,
+    Callback = function(Value) getgenv().Config.AutoFarm.AutoHaki = Value end
+})
+
+FarmMainSection:AddToggle({
+    Name = "AUTO OBSERVATION HAKI",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoObsHaki",
+    Save = true,
+    Callback = function(Value) getgenv().Config.AutoFarm.AutoObsHaki = Value end
+})
+
+FarmMainSection:AddToggle({
+    Name = "AUTO QUEST",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoQuest",
+    Save = true,
+    Callback = function(Value) getgenv().Config.Farm.AutoQuest = Value end
+})
+
+FarmMainSection:AddToggle({
+    Name = "SET SPAWN CRYSTAL",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoSpawn",
+    Save = true,
+    Callback = function(Value) getgenv().Config.Farm.AutoSpawn = Value end
+})
+
+FarmMainSection:AddToggle({
+    Name = "AUTO OPEN CHESTS",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoChest",
+    Save = true,
+    Callback = function(Value) getgenv().Config.Farm.AutoChest = Value end
+})
+
+-- DROPDOWN UNTUK MEMILIH WEAPON
+FarmMainSection:AddDropdown({
+    Name = "SELECT WEAPON",
+    Default = "None",
+    Options = GetWeaponList(),
+    Multi = false,
+    Search = true,
+    Outline = true,
+    Flag = "WeaponSelect",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoFarm.SelectedWeapon = Value
+        if Value ~= "None" then
+            Notify("Selected: " .. Value)
+            -- Langsung equip jika auto equip aktif
+            if getgenv().Config.AutoFarm.AutoEquip then
+                EquipWeapon(Value)
+            end
+        end
+    end
+})
+
+FarmMainSection:AddButton({
+    Name = "🔄 REFRESH WEAPON LIST",
+    Icon = "refresh-cw",
+    Outline = true,
+    Callback = function()
+        local weapons = GetWeaponList()
+        OrionLib.Flags["WeaponSelect"]:SetOptions(weapons)
+        Notify("Weapon list refreshed")
+    end
+})
+
+-- Tombol manual untuk equip weapon
+FarmMainSection:AddButton({
+    Name = "⚔️ EQUIP SELECTED WEAPON NOW",
+    Icon = "sword",
+    Outline = true,
+    Callback = function()
+        if getgenv().Config.AutoFarm.SelectedWeapon ~= "None" then
+            if EquipWeapon(getgenv().Config.AutoFarm.SelectedWeapon) then
+                Notify("Equipped: " .. getgenv().Config.AutoFarm.SelectedWeapon)
+            else
+                Notify("Failed to equip: " .. getgenv().Config.AutoFarm.SelectedWeapon)
+            end
+        else
+            Notify("Select a weapon first!")
+        end
+    end
+})
+
+-- Tombol untuk equip combat
+FarmMainSection:AddButton({
+    Name = "👊 EQUIP COMBAT",
+    Icon = "fist",
+    Outline = true,
+    Callback = function()
+        if EquipWeaponByType("Melee") then
+            Notify("Equipped Combat")
+            getgenv().Config.AutoFarm.SelectedWeapon = "Combat"
+            OrionLib.Flags["WeaponSelect"]:SetValue("Combat")
+        else
+            Notify("Combat not found")
+        end
+    end
+})
+
+-- Tombol untuk equip pedang
+FarmMainSection:AddButton({
+    Name = "⚔️ EQUIP SWORD",
+    Icon = "sword",
+    Outline = true,
+    Callback = function()
+        if EquipWeaponByType("Sword") then
+            local current = GetCurrentWeapon()
+            if current then
+                Notify("Equipped: " .. current.Name)
+                getgenv().Config.AutoFarm.SelectedWeapon = current.Name
+                OrionLib.Flags["WeaponSelect"]:SetValue(current.Name)
+            end
+        else
+            Notify("No sword found")
+        end
+    end
+})
+
+-- Tombol untuk equip buah
+FarmMainSection:AddButton({
+    Name = "🍎 EQUIP FRUIT",
+    Icon = "apple",
+    Outline = true,
+    Callback = function()
+        if EquipWeaponByType("Fruit") then
+            local current = GetCurrentWeapon()
+            if current then
+                Notify("Equipped: " .. current.Name)
+                getgenv().Config.AutoFarm.SelectedWeapon = current.Name
+                OrionLib.Flags["WeaponSelect"]:SetValue(current.Name)
+            end
+        else
+            Notify("No fruit found")
+        end
+    end
+})
+
+--==================================================
+-- SKILL TAB (AUTO SKILLS - FIXED)
+--==================================================
+local SkillSection = SkillTab:AddSection({
+    Name = "🎯 AUTO SKILLS SETTINGS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+SkillSection:AddToggle({
+    Name = "USE SKILL Z",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillZ",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoSkills.Z = Value
+        Notify(Value and "Skill Z ON" or "Skill Z OFF")
+    end
+})
+
+SkillSection:AddToggle({
+    Name = "USE SKILL X",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillX",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoSkills.X = Value
+        Notify(Value and "Skill X ON" or "Skill X OFF")
+    end
+})
+
+SkillSection:AddToggle({
+    Name = "USE SKILL C",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillC",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoSkills.C = Value
+        Notify(Value and "Skill C ON" or "Skill C OFF")
+    end
+})
+
+SkillSection:AddToggle({
+    Name = "USE SKILL V",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillV",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoSkills.V = Value
+        Notify(Value and "Skill V ON" or "Skill V OFF")
+    end
+})
+
+SkillSection:AddToggle({
+    Name = "USE SKILL F (NUKE)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "SkillF",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoSkills.F = Value
+        Notify(Value and "Skill F ON" or "Skill F OFF")
+    end
+})
+
+SkillSection:AddSlider({
+    Name = "SKILL COOLDOWN",
+    Min = 0.1,
+    Max = 2.0,
+    Default = 0.3,
+    Increment = 0.05,
+    ValueName = "sec",
+    Outline = true,
+    Flag = "SkillCooldown",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.AutoFarm.SkillCooldown = Value
+    end
+})
+
+SkillSection:AddParagraph({
+    Title = "⚡ AUTO SKILLS INFO",
+    Desc = "Skills will automatically activate\nwhen any farming mode is active\n\nCheck every 0.1 seconds\nCooldown: " .. getgenv().Config.AutoFarm.SkillCooldown .. "s",
+    Image = "zap",
+    ImageSize = 32
+})
+
+--==================================================
+-- DUNGEON TAB
+--==================================================
+local DungeonSection = DungeonTab:AddSection({
+    Name = "⚔️ AUTO DUNGEON",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+DungeonSection:AddToggle({
+    Name = "ENABLE AUTO DUNGEON",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoDungeon",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Dungeon.Enabled = Value
+        getgenv().Config.IsAutoDungeon = Value
+        if Value then
+            getgenv().Config.AutoFarm.Enabled = false
+            getgenv().Config.IsFarm = false
+            if OrionLib.Flags["AutoFarm"] then OrionLib.Flags["AutoFarm"]:SetValue(false) end
+            Notify("Auto Dungeon Enabled")
+        else
+            Notify("Auto Dungeon Disabled")
+        end
+    end
+})
+
+DungeonSection:AddDropdown({
+    Name = "DUNGEON TYPE",
+    Default = "Double",
+    Options = {"Double", "Rune", "Cid"},
+    Multi = false,
+    Outline = true,
+    Flag = "DungeonType",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Dungeon.Type = Value
+    end
+})
+
+DungeonSection:AddDropdown({
+    Name = "DIFFICULTY",
+    Default = "Normal",
+    Options = {"Easy", "Normal", "Hard", "Extreme"},
+    Multi = false,
+    Outline = true,
+    Flag = "DungeonDifficulty",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Dungeon.Difficulty = Value
+    end
+})
+
+DungeonSection:AddSlider({
+    Name = "HEIGHT OFFSET",
+    Min = 5,
+    Max = 50,
+    Default = 10,
+    Increment = 1,
+    ValueName = "studs",
+    Outline = true,
+    Flag = "DungeonHeight",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Dungeon.HeightOffset = Value
+    end
+})
+
+DungeonSection:AddButton({
+    Name = "🚪 ENTER DUNGEON",
+    Icon = "door",
+    Outline = true,
+    Callback = function()
+        pcall(function()
+            dungeonPortalRemote:FireServer(Constants.DungeonPortalNames[getgenv().Config.Dungeon.Type])
+            Notify("Attempting to enter " .. getgenv().Config.Dungeon.Type .. " Dungeon")
+        end)
+    end
+})
+
+DungeonSection:AddButton({
+    Name = "🗳️ VOTE DIFFICULTY",
+    Icon = "vote",
+    Outline = true,
+    Callback = function()
+        pcall(function()
+            dungeonVoteRemote:FireServer(getgenv().Config.Dungeon.Difficulty)
+            Notify("Voted for " .. getgenv().Config.Dungeon.Difficulty .. " difficulty")
+        end)
+    end
+})
+
+--==================================================
+-- BOSS TAB
+--==================================================
+local BossMainSection = BossTab:AddSection({
+    Name = "👾 BOSS SYSTEMS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+BossMainSection:AddToggle({
+    Name = "ENABLE WORLD BOSSES",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "BossEnabled",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Bosses.Enabled = Value
+        getgenv().Config.IsBossFight = Value
+        Notify(Value and "Boss Hunting Enabled" or "Boss Hunting Disabled")
+    end
+})
+
+BossMainSection:AddToggle({
+    Name = "BOSS NOTIFICATIONS",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "BossNotify",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Bosses.Notify = Value
+    end
+})
+
+-- World Bosses
+local BossListSection = BossTab:AddSection({
+    Name = "🌍 WORLD BOSSES",
+    TextSize = 16,
+    Glass = true,
+    Outline = true
+})
+
+for _, boss in ipairs(Constants.Bosses) do
+    BossListSection:AddToggle({
+        Name = boss.Display .. " (" .. boss.Island .. ")",
+        Default = false,
+        Color = Color3.fromRGB(65, 105, 225),
+        Outline = true,
+        Flag = "Boss_" .. boss.Name,
+        Save = true,
+        Callback = function(Value)
+            if Value then
+                getgenv().Config.Bosses.Selected[boss.Name] = true
+            else
+                getgenv().Config.Bosses.Selected[boss.Name] = nil
+            end
+        end
+    })
+end
+
+-- Summon Bosses
+local SummonBossSection = BossTab:AddSection({
+    Name = "🔮 SUMMON BOSSES",
+    TextSize = 16,
+    Glass = true,
+    Outline = true
+})
+
+for _, boss in ipairs(Constants.SummonBosses) do
+    SummonBossSection:AddToggle({
+        Name = boss.Display .. (boss.Island and " (" .. boss.Island .. ")" or ""),
+        Default = false,
+        Color = Color3.fromRGB(65, 105, 225),
+        Outline = true,
+        Flag = "SummonBoss_" .. boss.Name,
+        Save = true,
+        Callback = function(Value)
+            if Value then
+                getgenv().Config.Bosses.SummonSelected[boss.Name] = true
+                -- Call summon remote
+                if boss.Difficulties then
+                    local diff = "Normal" -- Default difficulty
+                    pcall(function() autoSpawnBossRemote:FireServer(boss.Name, diff) end)
+                else
+                    pcall(function() summonBossRemote:FireServer(boss.Name) end)
+                end
+            else
+                getgenv().Config.Bosses.SummonSelected[boss.Name] = nil
+            end
+        end
+    })
+end
+
+--==================================================
+-- MERCHANT TAB
+--==================================================
+local MerchantSection = MerchantTab:AddSection({
+    Name = "💰 AUTO MERCHANT",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+MerchantSection:AddToggle({
+    Name = "ENABLE AUTO MERCHANT",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AutoMerchant",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Merchant.Enabled = Value
+    end
+})
+
+MerchantSection:AddToggle({
+    Name = "MERCHANT NOTIFICATIONS",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "MerchantNotify",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Merchant.Notify = Value
+    end
+})
+
+local MerchantItemsSection = MerchantTab:AddSection({
+    Name = "🛒 ITEMS TO BUY",
+    TextSize = 16,
+    Glass = true,
+    Outline = true
+})
+
+for _, item in ipairs(Constants.MerchantItems) do
+    MerchantItemsSection:AddToggle({
+        Name = item,
+        Default = false,
+        Color = Color3.fromRGB(65, 105, 225),
+        Outline = true,
+        Flag = "Merchant_" .. item:gsub(" ", "_"),
+        Save = true,
+        Callback = function(Value)
+            if Value then
+                getgenv().Config.Merchant.Selected[item] = true
+            else
+                getgenv().Config.Merchant.Selected[item] = nil
+            end
+        end
+    })
+end
+
+--==================================================
+-- QUEST TAB
+--==================================================
+local QuestSection = QuestTab:AddSection({
+    Name = "📜 SPECIAL QUESTS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+QuestSection:AddToggle({
+    Name = "DUNGEON PIECES QUEST",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "DungeonQuest",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Quests.DungeonEnabled = Value
+        if Value then
+            if getgenv().Config.Quests.HogyokuEnabled then
+                getgenv().Config.Quests.HogyokuEnabled = false
+                if OrionLib.Flags["HogyokuQuest"] then OrionLib.Flags["HogyokuQuest"]:SetValue(false) end
+            end
+            Notify("Dungeon Quest Enabled")
+            State.DungeonStep = 0
+            State.DungeonCollected = {}
+        else
+            Notify("Dungeon Quest Disabled")
+        end
+    end
+})
+
+QuestSection:AddParagraph({
+    Title = "Dungeon Info",
+    Desc = "Collect 6 puzzle pieces:\nStarter → Jungle → Desert → Snow → Shibuya → Hueco Mundo",
+    Image = "info",
+    ImageSize = 32
+})
+
+QuestSection:AddToggle({
+    Name = "HOGYOKU FRAGMENTS QUEST",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "HogyokuQuest",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Quests.HogyokuEnabled = Value
+        if Value then
+            if getgenv().Config.Quests.DungeonEnabled then
+                getgenv().Config.Quests.DungeonEnabled = false
+                if OrionLib.Flags["DungeonQuest"] then OrionLib.Flags["DungeonQuest"]:SetValue(false) end
+            end
+            Notify("Hogyoku Quest Enabled")
+            State.HogyokuStep = 0
+            State.HogyokuCollected = {}
+        else
+            Notify("Hogyoku Quest Disabled")
+        end
+    end
+})
+
+QuestSection:AddParagraph({
+    Title = "Hogyoku Info",
+    Desc = "Collect 6 fragments:\nSnow → Shibuya → Hueco Mundo → Shinjuku → Slime → Judgement",
+    Image = "info",
+    ImageSize = 32
+})
+
+QuestSection:AddButton({
+    Name = "📋 QUEST DEBUG INFO",
+    Icon = "bug",
+    Outline = true,
+    Callback = function()
+        Notify("Quest Debug Info:\nDungeon Step: " .. State.DungeonStep .. "\nHogyoku Step: " .. State.HogyokuStep, 5)
+    end
+})
+
+--==================================================
+-- SETTINGS TAB
+--==================================================
+local SettingsSection = SettingTab:AddSection({
+    Name = "⚙️ GENERAL SETTINGS",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+SettingsSection:AddToggle({
+    Name = "ANTI AFK",
+    Default = true,
+    Color = Color3.fromRGB(65, 105, 225),
+    Outline = true,
+    Flag = "AntiAFK",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Misc.AntiAFK = Value
+    end
+})
+
+SettingsSection:AddToggle({
+    Name = "FPS BOOST (BLACK SCREEN)",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
     Flag = "FpsBoost",
     Save = true,
     Callback = function(Value)
-        _G.Config.FpsBoost = Value
-        setBlack(Value)
-        print("[UI] FPS Boost:", Value)
-    end
-})
-
--- ===== HAKI TAB =====
-local HakiTab = Window:MakeTab({
-    Name = "Haki",
-    Icon = "swords",
-    PremiumOnly = false,
-    Glass = true,
-    Outline = true
-})
-
-local HakiSection = HakiTab:AddSection({
-    Name = "Haki Settings",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-local HakiQuestToggle = HakiSection:AddToggle({
-    Name = "Auto Haki Quest",
-    Default = _G.Config.HakiQuest,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "HakiQuest",
-    Save = true,
-    Callback = function(Value)
-        _G.Config.HakiQuest = Value
-        print("[UI] Auto Haki Quest:", Value)
-    end
-})
-
-HakiSection:AddSlider({
-    Name = "Haki Min Level",
-    Min = 1000,
-    Max = 5000,
-    Default = _G.Config.HakiMinLevel,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 100,
-    ValueName = "Lv",
-    Outline = true,
-    Callback = function(Value)
-        _G.Config.HakiMinLevel = Value
-    end
-})
-
--- ===== DARK BLADE TAB =====
-local BladeTab = Window:MakeTab({
-    Name = "Dark Blade",
-    Icon = "sword",
-    PremiumOnly = false,
-    Glass = true,
-    Outline = true
-})
-
-local BladeSection = BladeTab:AddSection({
-    Name = "Dark Blade Settings",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-local BuyBladeToggle = BladeSection:AddToggle({
-    Name = "Auto Buy Dark Blade",
-    Default = _G.Config.BuyDarkBlade,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "BuyDarkBlade",
-    Save = true,
-    Callback = function(Value)
-        _G.Config.BuyDarkBlade = Value
-        print("[UI] Auto Buy Dark Blade:", Value)
-    end
-})
-
-BladeSection:AddButton({
-    Name = "Check Dark Blade Status",
-    Icon = "search",
-    Outline = true,
-    Callback = function()
-        local hasBlade = findDarkBladeInHand() ~= nil
-        if hasBlade then
-            OrionLib:MakeNotification({
-                Name = "Dark Blade",
-                Content = "You already have Dark Blade equipped!",
-                Image = "check-circle",
-                Time = 3
-            })
+        getgenv().Config.Misc.FpsBoost = Value
+        if Value then
+            Lighting.Brightness = 0
+            Lighting.GlobalShadows = false
+            for _, v in ipairs(Workspace:GetDescendants()) do
+                if v:IsA("BasePart") then v.LocalTransparencyModifier = 1 end
+            end
         else
-            OrionLib:MakeNotification({
-                Name = "Dark Blade",
-                Content = "Dark Blade not found! Complete Haki quest to buy it.",
-                Image = "x-circle",
-                Time = 3
-            })
+            Lighting.Brightness = originalLighting.Brightness
+            Lighting.GlobalShadows = originalLighting.GlobalShadows
+            for _, v in ipairs(Workspace:GetDescendants()) do
+                if v:IsA("BasePart") then v.LocalTransparencyModifier = 0 end
+            end
         end
     end
 })
 
-BladeSection:AddButton({
-    Name = "Buy Dark Blade Now",
-    Icon = "shopping-cart",
+SettingsSection:AddToggle({
+    Name = "WHITE SCREEN MODE",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
-    Callback = function()
-        OrionLib:AddDialog({
-            Title = "Buy Dark Blade",
-            Content = "Are you sure you want to buy Dark Blade?",
-            YesText = "Buy",
-            NoText = "Cancel",
-            Callback = function()
-                pcall(buyDarkBlade)
-            end
-        })
-    end
-})
-
--- ===== FRUIT TAB =====
-local FruitTab = Window:MakeTab({
-    Name = "Fruit Farm",
-    Icon = "apple",
-    PremiumOnly = false,
-    Glass = true,
-    Outline = true
-})
-
-local FruitSection = FruitTab:AddSection({
-    Name = "Fruit Farm Settings",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-local FruitFarmToggle = FruitSection:AddToggle({
-    Name = "Auto Fruit Farm",
-    Default = _G.Config.FruitFarm,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "FruitFarm",
+    Flag = "WhiteScreen",
     Save = true,
     Callback = function(Value)
-        _G.Config.FruitFarm = Value
-        print("[UI] Auto Fruit Farm:", Value)
+        getgenv().Config.Misc.WhiteScreen = Value
+        RunService:Set3dRenderingEnabled(not Value)
     end
 })
 
-FruitSection:AddSlider({
-    Name = "Fruit Min Level",
-    Min = 1000,
-    Max = 11500,
-    Default = _G.Config.FruitMinLevel,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 100,
-    ValueName = "Lv",
+SettingsSection:AddToggle({
+    Name = "AUTO REJOIN",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
+    Flag = "AutoRejoin",
+    Save = true,
     Callback = function(Value)
-        _G.Config.FruitMinLevel = Value
+        getgenv().Config.Misc.AutoRejoin = Value
     end
 })
 
-local FruitDropdown = FruitSection:AddDropdown({
-    Name = "Target Fruit",
-    Default = _G.Config.TargetFruit,
-    Options = {"Quake", "Magma", "Ice", "Light", "Dark", "Flame", "Sand", "Smoke"},
-    Multi = false,
-    Search = true,
-    AllowNone = false,
+SettingsSection:AddToggle({
+    Name = "TIMED REJOIN",
+    Default = false,
+    Color = Color3.fromRGB(65, 105, 225),
     Outline = true,
+    Flag = "TimedRejoin",
+    Save = true,
     Callback = function(Value)
-        _G.Config.TargetFruit = Value
-        print("[UI] Target Fruit:", Value)
+        getgenv().Config.Misc.TimedRejoin = Value
     end
 })
 
-FruitSection:AddButton({
-    Name = "Start Fruit Farm Now",
-    Icon = "play",
+SettingsSection:AddSlider({
+    Name = "REJOIN DELAY (MINUTES)",
+    Min = 1,
+    Max = 120,
+    Default = 10,
+    Increment = 1,
+    ValueName = "min",
     Outline = true,
-    Callback = function()
-        if not _G.Config.FruitFarm then
-            OrionLib:MakeNotification({
-                Name = "Fruit Farm",
-                Content = "Please enable Auto Fruit Farm first!",
-                Image = "alert-circle",
-                Time = 3
-            })
-            return
-        end
-        
-        OrionLib:AddDialog({
-            Title = "Start Fruit Farm",
-            Content = string.format("Start farming for %s fruit?", _G.Config.TargetFruit),
-            YesText = "Start",
-            NoText = "Cancel",
-            Callback = function()
-                task.spawn(function()
-                    pcall(startFruitFarm)
-                end)
+    Flag = "RejoinDelay",
+    Save = true,
+    Callback = function(Value)
+        getgenv().Config.Misc.RejoinDelay = Value
+    end
+})
+
+-- Teleport Section
+local TeleportSection = SettingTab:AddSection({
+    Name = "📍 TELEPORT TO ISLAND",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
+})
+
+for _, name in ipairs(Constants.TpIslands) do
+    TeleportSection:AddButton({
+        Name = PortalDisplayName(name),
+        Icon = "map-pin",
+        Outline = true,
+        Callback = function()
+            if getgenv().Config.AutoFarm.Enabled then
+                Notify("Disable Auto Farm first!", 2)
+                return
             end
-        })
-    end
+            ForceTP(name)
+            Notify("Teleporting to " .. PortalDisplayName(name))
+        end
+    })
+end
+
+-- Destroy Button
+local DestroySection = SettingTab:AddSection({
+    Name = "⚠️ DANGER ZONE",
+    TextSize = 18,
+    Glass = true,
+    Outline = true
 })
 
--- ===== BOSS TAB =====
-local BossTab = Window:MakeTab({
-    Name = "Boss System",
+DestroySection:AddButton({
+    Name = "💀 DESTROY GUI",
     Icon = "skull",
-    PremiumOnly = false,
-    Glass = true,
-    Outline = true
-})
-
-local BossKeySection = BossTab:AddSection({
-    Name = "Boss Key Auto Buy",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-local AutoBuyKeyToggle = BossKeySection:AddToggle({
-    Name = "Auto Buy Boss Key",
-    Default = _G.Config.AutoBuyBossKey,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "AutoBuyBossKey",
-    Save = true,
-    Callback = function(Value)
-        _G.Config.AutoBuyBossKey = Value
-        print("[UI] Auto Buy Boss Key:", Value)
-    end
-})
-
-local SaberSection = BossTab:AddSection({
-    Name = "Saber Boss Farm",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-local FarmSaberToggle = SaberSection:AddToggle({
-    Name = "Farm Saber Boss",
-    Default = _G.Config.FarmSaberBoss,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "FarmSaberBoss",
-    Save = true,
-    Callback = function(Value)
-        _G.Config.FarmSaberBoss = Value
-        print("[UI] Farm Saber Boss:", Value)
-    end
-})
-
-local IchigoSection = BossTab:AddSection({
-    Name = "Ichigo Exchange",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-local ExchangeIchigoToggle = IchigoSection:AddToggle({
-    Name = "Auto Exchange Ichigo",
-    Default = _G.Config.ExchangeIchigo,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "ExchangeIchigo",
-    Save = true,
-    Callback = function(Value)
-        _G.Config.ExchangeIchigo = Value
-        print("[UI] Exchange Ichigo:", Value)
-    end
-})
-
--- ===== STATS TAB =====
-local StatsTab = Window:MakeTab({
-    Name = "Stats",
-    Icon = "bar-chart",
-    PremiumOnly = false,
-    Glass = true,
-    Outline = true
-})
-
-local StatsSection = StatsTab:AddSection({
-    Name = "Stats Distribution",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-StatsSection:AddSlider({
-    Name = "Sword %",
-    Min = 0,
-    Max = 100,
-    Default = _G.Config.StatSword,
-    Color = Color3.fromRGB(255, 100, 100),
-    Increment = 5,
-    ValueName = "%",
-    Outline = true,
-    Callback = function(Value)
-        _G.Config.StatSword = Value
-    end
-})
-
-StatsSection:AddSlider({
-    Name = "Defense %",
-    Min = 0,
-    Max = 100,
-    Default = _G.Config.StatDefense,
-    Color = Color3.fromRGB(100, 255, 100),
-    Increment = 5,
-    ValueName = "%",
-    Outline = true,
-    Callback = function(Value)
-        _G.Config.StatDefense = Value
-    end
-})
-
-StatsSection:AddSlider({
-    Name = "Power %",
-    Min = 0,
-    Max = 100,
-    Default = _G.Config.StatPower,
-    Color = Color3.fromRGB(100, 100, 255),
-    Increment = 5,
-    ValueName = "%",
-    Outline = true,
-    Callback = function(Value)
-        _G.Config.StatPower = Value
-    end
-})
-
-StatsSection:AddButton({
-    Name = "Reset All Stats",
-    Icon = "refresh-cw",
     Outline = true,
     Callback = function()
-        OrionLib:AddDialog({
-            Title = "Reset Stats",
-            Content = "Are you sure you want to reset all stats?",
-            YesText = "Reset",
-            NoText = "Cancel",
-            Callback = function()
-                pcall(resetStats)
-                OrionLib:MakeNotification({
-                    Name = "Stats Reset",
-                    Content = "Stats have been reset!",
-                    Image = "check-circle",
-                    Time = 2
-                })
-            end
-        })
-    end
-})
-
-StatsSection:AddButton({
-    Name = "Apply Stats Distribution",
-    Icon = "save",
-    Outline = true,
-    Callback = function()
-        pcall(upgradeStats)
-        OrionLib:MakeNotification({
-            Name = "Stats Applied",
-            Content = "Stats distribution applied!",
-            Image = "check-circle",
-            Time = 2
-        })
-    end
-})
-
--- ===== INVENTORY TAB =====
-local InventoryTab = Window:MakeTab({
-    Name = "Inventory",
-    Icon = "package",
-    PremiumOnly = false,
-    Glass = true,
-    Outline = true
-})
-
-local InvSection = InventoryTab:AddSection({
-    Name = "Inventory Info",
-    TextSize = 17,
-    Folded = false,
-    Glass = true,
-    Outline = true
-})
-
-local InventoryPara = InvSection:AddParagraph({
-    Title = "Inventory Summary",
-    Desc = "Loading...",
-    Image = "box",
-    ImageSize = 38,
-})
-
-task.spawn(function()
-    while task.wait(5) do
-        pcall(function()
-            local secretCount = 0
-            local mythicalCount = 0
-            local legendaryCount = 0
-            
-            for _ in pairs(inventoryByRarity.Secret) do secretCount = secretCount + 1 end
-            for _ in pairs(inventoryByRarity.Mythical) do mythicalCount = mythicalCount + 1 end
-            for _ in pairs(inventoryByRarity.Legendary) do legendaryCount = legendaryCount + 1 end
-            
-            local crateCount = 0
-            for _ in pairs(cratesAndBoxes) do crateCount = crateCount + 1 end
-            
-            InventoryPara:SetDesc(string.format(
-                "Secret Items: %d\nMythical Items: %d\nLegendary Items: %d\nCrates/Boxes: %d\n\nPress F1 to print full inventory to console",
-                secretCount, mythicalCount, legendaryCount, crateCount
-            ))
+        State.Running = false
+        task.delay(0.1, function()
+            OrionLib:Destroy()
+            _G.SP_Loaded = false
         end)
     end
-end)
-
-InvSection:AddButton({
-    Name = "Print Full Inventory",
-    Icon = "printer",
-    Outline = true,
-    Callback = function()
-        UIS:SendKeyEvent(true, Enum.KeyCode.F1, false, game)
-        task.wait(0.1)
-        UIS:SendKeyEvent(false, Enum.KeyCode.F1, false, game)
-        OrionLib:MakeNotification({
-            Name = "Inventory",
-            Content = "Inventory printed to console (F8 to open)!",
-            Image = "check-circle",
-            Time = 3
-        })
-    end
 })
 
--- ===== CONFIG TAB =====
+--==================================================
+-- ADD CONFIG TAB
+--==================================================
 Window:AddConfigTab({
-    Name = "Settings",
+    Name = "Configs",
     Icon = "settings"
 })
 
--- ═══════════════════════════════════════════════════════════════
--- [7] INVENTORY TRACKER
--- ═══════════════════════════════════════════════════════════════
-task.spawn(function()
-    local updateInventory = Remotes:WaitForChild("UpdateInventory")
-    local requestInventory = Remotes:WaitForChild("RequestInventory")
-    local Modules = RS:WaitForChild("Modules")
-    local ItemRarityConfig = require(Modules:WaitForChild("ItemRarityConfig"))
-
-    updateInventory.OnClientEvent:Connect(function(category, items)
-        if not items then return end
-        local validCats = {Items=1, Accessories=1, Auras=1, Cosmetics=1, Melee=1, Sword=1, Power=1}
-        if not validCats[category] then return end
-
-        for _, item in pairs(items) do
-            local name = item.name
-            local qty = item.quantity or 1
-            if not name then continue end
-
-            if name:lower():find("crate") or name:lower():find("box") or name:lower():find("chest") then
-                cratesAndBoxes[name] = qty
-            end
-
-            local ok, rarity = pcall(function() return ItemRarityConfig:GetRarity(name) end)
-            if ok and rarity and inventoryByRarity[rarity] then
-                inventoryByRarity[rarity][name] = qty
-                if rarity == "Secret" or rarity == "Mythical" or rarity == "Legendary" then
-                    print("[INVENTORY]", rarity, ":", name, "x" .. qty)
-                end
-            end
-        end
-    end)
-
-    task.wait(3)
-    print("[INVENTORY] Requesting inventory data...")
-    pcall(function() requestInventory:FireServer() end)
-end)
-
-UIS.InputBegan:Connect(function(input, gp)
-    if gp or input.KeyCode ~= Enum.KeyCode.F1 then return end
-    local data = player:WaitForChild("Data", 2)
-    if not data then return end
-
-    local level = data:FindFirstChild("Level") and data.Level.Value or 0
-    local money = data:FindFirstChild("Money") and data.Money.Value or 0
-    local gems = data:FindFirstChild("Gems") and data.Gems.Value or 0
-
-    oldPrint("\n========================================")
-    oldPrint("📊 INVENTORY | ⭐Lv." .. level .. " 💰" .. money .. " 💎" .. gems)
-    oldPrint("========================================")
-
-    for name, qty in pairs(cratesAndBoxes) do
-        oldPrint("  📦 " .. name .. " x" .. qty)
-    end
-
-    local order = {"Secret","Mythical","Legendary","Epic","Rare","Uncommon","Common"}
-    local emojis = {Secret="🌟",Mythical="✨",Legendary="🔥",Epic="💜",Rare="💙",Uncommon="💚",Common="⚪"}
-    for _, rarity in ipairs(order) do
-        local items = inventoryByRarity[rarity]
-        local count = 0
-        for _ in pairs(items) do count = count + 1 end
-        if count > 0 then
-            oldPrint(emojis[rarity] .. " [" .. rarity:upper() .. "] " .. count .. " items:")
-            for name, qty in pairs(items) do
-                oldPrint("   • " .. name .. " x" .. qty)
-            end
-        end
-    end
-    oldPrint("========================================\n")
-end)
-
--- ═══════════════════════════════════════════════════════════════
--- [8] HORST DISPLAY
--- ═══════════════════════════════════════════════════════════════
-if _G.Config.HorstDisplay then
-task.spawn(function()
-    local data = player:WaitForChild("Data", 30)
-    if not data then
-        print("[HORST] ❌ Data not found!")
+--==================================================
+-- MAIN FARM LOOP
+--==================================================
+local function DoFarmTick()
+    local tgtIsland = GetFarmIsland()
+    if not tgtIsland then
+        task.wait(1)
         return
     end
-
-    task.wait(5)
-    print("[HORST] Starting Horst Display...")
-
-    while task.wait(1) do
-        local level = (data:FindFirstChild("Level") and data.Level.Value) or 0
-        local money = (data:FindFirstChild("Money") and data.Money.Value) or 0
-        local gems  = (data:FindFirstChild("Gems") and data.Gems.Value) or 0
-
-        local hakiStatus = "❌"
-        pcall(function()
-            local statsUI = player.PlayerGui:FindFirstChild("StatsPanelUI")
-            if not statsUI then return end
-            for _, desc in pairs(statsUI:GetDescendants()) do
-                if desc.Name == "HakiProgressionFrame" and desc.Visible == true then
-                    for _, child in pairs(desc:GetDescendants()) do
-                        if child.Name == "HakiLevel" and child:IsA("TextLabel") then
-                            hakiStatus = "✅ " .. child.Text
-                            break
-                        end
-                    end
-                    if hakiStatus == "❌" then hakiStatus = "✅ Haki" end
-                    break
-                end
+    
+    if not State.CurIsland or State.CurIsland.Portal ~= tgtIsland.Portal then
+        StopTween()
+        State.CurIsland = tgtIsland
+        State.IslandTPd = false
+        State.SpawnDone = false
+        State.FarmOrigin = nil
+        State.QState = "NONE"
+        ClearTarget()
+        AbandonAllQuests()
+        Notify("Teleporting to " .. PortalDisplayName(tgtIsland.Portal), 1.5)
+    end
+    
+    if not State.IslandTPd then
+        if ForceTP(State.CurIsland.Portal) then
+            task.wait(0.5)
+            State.IslandTPd = true
+            State.FarmOrigin = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") and Player.Character.HumanoidRootPart.Position or nil
+            State.LastEnemy = tick()
+            if getgenv().Config.Farm.AutoQuest and State.QState == "NONE" then
+                pcall(function() questRemote:FireServer(State.CurIsland.QuestNPC) end)
+                State.QState = "ACTIVE"
             end
-        end)
-
-        local obsHakiStatus = "❌"
-        pcall(function()
-            local statsUI = player.PlayerGui:FindFirstChild("StatsPanelUI")
-            if not statsUI then return end
-            for _, desc in pairs(statsUI:GetDescendants()) do
-                if desc.Name:find("Observation") and desc:IsA("Frame") and desc.Visible == true then
-                    for _, child in pairs(desc:GetDescendants()) do
-                        if child:IsA("TextLabel") and child.Text:find("Lv") then
-                            obsHakiStatus = "✅ Obs " .. child.Text
-                            break
-                        end
-                    end
-                    if obsHakiStatus == "❌" then obsHakiStatus = "✅ Obs Haki" end
-                    break
-                end
-            end
-        end)
-
-        local totalItems = 0
-        local itemLists = {Secret={},Mythical={},Legendary={},Epic={},Rare={},Uncommon={},Common={}}
-        for rarity, items in pairs(inventoryByRarity) do
-            if itemLists[rarity] then
-                for name, qty in pairs(items) do
-                    table.insert(itemLists[rarity], name .. " x" .. qty)
-                    totalItems = totalItems + 1
-                end
-            end
-        end
-
-        local cratesList = {}
-        for name, qty in pairs(cratesAndBoxes) do
-            table.insert(cratesList, name .. " x" .. qty)
-        end
-
-        local auraCount = 0
-        local cosmeticCrateCount = 0
-        local clanRerollCount = 0
-        local traitRerollCount = 0
-        local raceRerollCount = 0
-        
-        for _, items in pairs(inventoryByRarity) do
-            for name, qty in pairs(items) do
-                local lower = name:lower()
-                if lower:find("aura") then
-                    auraCount = auraCount + qty
-                elseif lower:find("clan reroll") then
-                    clanRerollCount = clanRerollCount + qty
-                elseif lower:find("trait reroll") then
-                    traitRerollCount = traitRerollCount + qty
-                elseif lower:find("race reroll") then
-                    raceRerollCount = raceRerollCount + qty
-                end
-            end
-        end
-        
-        for name, qty in pairs(cratesAndBoxes) do
-            if name:lower():find("cosmetic") then
-                cosmeticCrateCount = cosmeticCrateCount + qty
-            end
-        end
-        
-        local extraInfo = " 🌀Aura:" .. auraCount .. " 🎁Cosmetic:" .. cosmeticCrateCount .. " 🔄Clan:" .. clanRerollCount .. " 🎭Trait:" .. traitRerollCount .. " 🧬Race:" .. raceRerollCount
-        local message = hakiStatus .. " " .. obsHakiStatus .. " ⭐LVL " .. level .. " 💰" .. formatNumber(money) .. " 💎" .. formatNumber(gems) .. extraInfo
-        print("[HORST]", message)
-
-        local important = {}
-        local importantNames = _G.Config.ImportantItems or {}
-
-        for _, crateInfo in pairs(cratesList) do
-            for _, keyword in pairs(importantNames) do
-                if crateInfo:lower():find(keyword:lower()) then
-                    table.insert(important, crateInfo)
-                    break
-                end
-            end
-        end
-
-        for _, items in pairs(itemLists) do
-            for _, itemInfo in pairs(items) do
-                for _, keyword in pairs(importantNames) do
-                    if itemInfo:lower():find(keyword:lower()) then
-                        table.insert(important, itemInfo)
-                        break
-                    end
-                end
-            end
-        end
-
-        if #important > 0 then
-            local display = {}
-            for i = 1, math.min(4, #important) do
-                table.insert(display, important[i])
-            end
-            message = message .. " " .. table.concat(display, " | ")
-            if #important > 4 then message = message .. " +" .. (#important - 4) end
-        elseif totalItems > 0 then
-            message = message .. " Items: " .. totalItems
         else
-            message = message .. " Loading..."
+            task.wait(1)
         end
+        return
+    end
+    
+    local enemies = FindEnemies(State.CurIsland)
+    
+    if #enemies > 0 then
+        State.LastEnemy = tick()
+        if State.CurTarget then
+            local hm = GetHum(State.CurTarget)
+            if not hm or hm.Health <= 0 or not State.CurTarget.Parent then
+                if hm and hm.Health <= 0 then
+                    State.KillCount = State.KillCount + 1
+                end
+                State.CurTarget = nil
+                State.LockTarget = nil
+            end
+        end
+        if not State.CurTarget then
+            State.CurTarget = NearestFrom(enemies)
+        end
+        if State.CurTarget then
+            TweenTo(State.CurTarget)
+            Attack()
+            
+            -- AUTO EQUIP LOGIC
+            if getgenv().Config.AutoFarm.AutoEquip and tick() - State.LastEquip > 2 then
+                State.LastEquip = tick()
+                AutoEquipLogic()
+            end
+        end
+    else
+        State.CurTarget = nil
+        State.LockTarget = nil
+        if tick() - State.LastEnemy > 20 then
+            State.IslandTPd = false
+            State.SpawnDone = false
+            State.FarmOrigin = nil
+            State.LastEnemy = 0
+        end
+        task.wait(0.1)
+    end
+end
 
-        if #message > 180 then message = message:sub(1, 177) .. "..." end
-
-        local json = {
-            Level = level, Money = money, Gems = gems,
-            Inventory = {
-                Crates = #cratesList, TotalItems = totalItems,
-                Secret = #itemLists.Secret, Mythical = #itemLists.Mythical,
-                Legendary = #itemLists.Legendary, Epic = #itemLists.Epic,
-                Rare = #itemLists.Rare, Uncommon = #itemLists.Uncommon,
-                Common = #itemLists.Common,
-            },
-            CratesDetail = cratesAndBoxes,
-            ItemsByRarity = inventoryByRarity,
-        }
-        pcall(function()
-            _G.Horst_SetDescription(message, HttpService:JSONEncode(json))
-        end)
+--==================================================
+-- MAIN LOOP
+--==================================================
+task.spawn(function()
+    while State.Running do
+        task.wait(0.1)
+        
+        -- Priority: Quests first
+        if getgenv().Config.Quests.DungeonEnabled then
+            -- Dungeon quest logic (simplified)
+            task.wait(0.2)
+        elseif getgenv().Config.Quests.HogyokuEnabled then
+            -- Hogyoku quest logic (simplified)
+            task.wait(0.2)
+        elseif getgenv().Config.Dungeon.Enabled then
+            -- Dungeon auto mode
+            task.wait(0.2)
+        elseif getgenv().Config.Bosses.Enabled then
+            -- Boss hunting
+            task.wait(0.2)
+        elseif getgenv().Config.AutoFarm.Enabled then
+            -- Auto farm
+            if IsAlive() then
+                DoFarmTick()
+            else
+                task.wait(0.5)
+            end
+        end
     end
 end)
-end
 
--- ═══════════════════════════════════════════════════════════════
--- [9] AUTO HIT + AUTO STATS
--- ═══════════════════════════════════════════════════════════════
-_G.autoHitRunning = false
-_G.autoStatsRunning = false
-
-if _G.Config.AutoHit then
-    _G.autoHitRunning = true
-    task.spawn(function()
-        while _G.autoHitRunning do
-            task.wait(0.4)
-            if not _G.Config.AutoHit then continue end
+--==================================================
+-- ANTI AFK SYSTEM
+--==================================================
+task.spawn(function()
+    while State.Running do
+        task.wait(60)
+        if getgenv().Config.Misc.AntiAFK then
             pcall(function()
-                local char = player.Character
-                if not char then return end
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if not hrp then return end
-
-                hitRemote:FireServer()
-
-                local nearest, dist = nil, math.huge
-                for _, npc in ipairs(workspace.NPCs:GetChildren()) do
-                    if npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
-                        local d = (hrp.Position - npc.HumanoidRootPart.Position).Magnitude
-                        if d < dist then dist = d; nearest = npc end
-                    end
-                end
-                if nearest and dist <= 12 then
-                    VIM:SendKeyEvent(true, "Z", false, game)
-                    task.wait(0.1)
-                    VIM:SendKeyEvent(false, "Z", false, game)
-                end
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
             end)
         end
-    end)
-end
+    end
+end)
 
-if _G.Config.AutoStats then
-    _G.autoStatsRunning = true
-    task.spawn(function()
-        while _G.autoStatsRunning do
+--==================================================
+-- AUTO REJOIN HANDLER
+--==================================================
+task.spawn(function()
+    local GuiService = game:GetService("GuiService")
+    local lastError = ""
+    GuiService.ErrorMessageChanged:Connect(function()
+        if not getgenv().Config.Misc.AutoRejoin then return end
+        local err = GuiService:GetErrorMessage()
+        if err ~= lastError and err ~= "" then
+            lastError = err
             task.wait(5)
-            if not _G.Config.AutoStats then continue end
-            pcall(function()
-                local points = player.Data.StatPoints.Value or 0
-                if points <= 0 then return end
-
-                local level = player.Data.Level.Value or 0
-                print("[STATS] Lv." .. level .. " | Stat points:", points)
-
-                if level < _G.Config.HakiMinLevel then
-                    local melee, defense = 0, 0
-                    while points > 0 do
-                        local m = math.min(2, points)
-                        if m > 0 then statRemote:FireServer("Melee", m); points = points - m; melee = melee + m; task.wait(0.1) end
-                        if points <= 0 then break end
-
-                        local d = math.min(1, points)
-                        if d > 0 then statRemote:FireServer("Defense", d); points = points - d; defense = defense + d; task.wait(0.1) end
-                    end
-                    print("[STATS] ✅ Melee +" .. melee .. ", Defense +" .. defense .. " (Lv." .. level .. ")")
-                else
-                    local sword, defense, power = 0, 0, 0
-                    while points > 0 do
-                        local s = math.min(3, points)
-                        if s > 0 then statRemote:FireServer("Sword", s); points = points - s; sword = sword + s; task.wait(0.1) end
-                        if points <= 0 then break end
-
-                        local d = math.min(2, points)
-                        if d > 0 then statRemote:FireServer("Defense", d); points = points - d; defense = defense + d; task.wait(0.1) end
-                        if points <= 0 then break end
-
-                        local p = math.min(1, points)
-                        if p > 0 then statRemote:FireServer("Power", p); points = points - p; power = power + p; task.wait(0.1) end
-                    end
-                    print("[STATS] ✅ Sword +" .. sword .. ", Defense +" .. defense .. ", Power +" .. power)
-                end
-            end)
+            pcall(function() TeleportService:Teleport(game.PlaceId, Player) end)
         end
     end)
-end
+end)
 
--- ═══════════════════════════════════════════════════════════════
--- [10] STATS & WEAPON SYSTEM
--- ═══════════════════════════════════════════════════════════════
-local function resetStats()
-    print("[STATS] Resetting all stats...")
-    pcall(function()
-        local r = RemoteEvents:FindFirstChild("ResetStats")
-        if r then r:FireServer() end
-    end)
-    task.wait(2)
-    print("[STATS] ✅ Stats reset!")
-end
+--==================================================
+-- TIMED REJOIN
+--==================================================
+task.spawn(function()
+    local elapsed = 0
+    while State.Running do
+        task.wait(1)
+        if getgenv().Config.Misc.TimedRejoin then
+            elapsed = elapsed + 1
+            if elapsed >= getgenv().Config.Misc.RejoinDelay * 60 then
+                elapsed = 0
+                task.wait(2)
+                pcall(function() TeleportService:Teleport(game.PlaceId, Player) end)
+            end
+        else
+            elapsed = 0
+        end
+    end
+end)
 
-local function upgradeStats()
-    print("[STATS] Upgrading stats after reset...")
-    local points = 0
-    pcall(function() points = player.Data.StatPoints.Value or 0 end)
-    if points <= 0 then return end
-
-    local swordPts   = math.floor(points * _G.Config.StatSword / 100)
-    local defensePts = math.floor(points * _G.Config.StatDefense / 100)
-    local powerPts   = math.floor(points * _G.Config.StatPower / 100)
-
-    local stats = {
-        { name = "Sword",   amount = swordPts },
-        { name = "Defense", amount = defensePts },
-        { name = "Power",   amount = powerPts },
-    }
-
-    pcall(function()
-        local remote = RemoteEvents:FindFirstChild("UpdatePlayerStats")
-            or RemoteEvents:FindFirstChild("AllocateStat")
-        if not remote then return end
-
-        for _, s in ipairs(stats) do
-            for i = 1, s.amount do
-                remote:FireServer(s.name, 1)
+--==================================================
+-- AUTO MERCHANT LOOP
+--==================================================
+task.spawn(function()
+    local lastMerchant = 0
+    while State.Running do
+        task.wait(30)
+        if getgenv().Config.Merchant.Enabled and tick() - lastMerchant > 1800 then
+            lastMerchant = tick()
+            for item in pairs(getgenv().Config.Merchant.Selected) do
+                pcall(function()
+                    local remote = Remotes:FindFirstChild("MerchantRemotes") and Remotes.MerchantRemotes:FindFirstChild("PurchaseMerchantItem")
+                    if remote then
+                        remote:InvokeServer(item, 1)
+                        if getgenv().Config.Merchant.Notify then
+                            Notify("Purchased: " .. item, 1.5)
+                        end
+                    end
+                end)
                 task.wait(0.1)
             end
-            task.wait(0.5)
         end
-    end)
-
-    print("[STATS] ✅ Sword +" .. swordPts .. ", Defense +" .. defensePts .. ", Power +" .. powerPts)
-end
-
-local function buyDarkBlade()
-    print("[WEAPON] ========== BUYING DARK BLADE ==========")
-    isBuyingDarkBlade = true
-
-    if checkOwnerDarkBlade() then
-        print("[WEAPON] ✅ Dark Blade already equipped!")
-        isBuyingDarkBlade = false
-        return true
     end
-    if checkDarkBlade("Dark Blade") or checkDarkBlade("ดาบสีเข้ม") then
-        print("[WEAPON] ✅ Equipping from inventory...")
-        equipDarkBladeFromInventory()
-        isBuyingDarkBlade = false
-        return true
-    end
+end)
 
-    local gem = player.Data.Gems.Value
-    local money = player.Data.Money.Value
-    print("[WEAPON] Gems:", gem, "Money:", money)
-
-    if gem < _G.Config.DarkBladeGems or money < _G.Config.DarkBladeMoney then
-        print("[WEAPON] ❌ Not enough resources!")
-        isBuyingDarkBlade = false
-        return false
-    end
-
-    local npcCF = CFrame.new(-132.516449, 13.2661686, -1091.2699, 0.972926259, 0, 0.231115878, 0, 1, 0, -0.231115878, 0, 0.972926259)
-    local maxAttempts = 20
-
-    while not (checkDarkBlade("Dark Blade") or checkDarkBlade("ดาบสีเข้ม") or checkOwnerDarkBlade()) and maxAttempts > 0 do
-        maxAttempts = maxAttempts - 1
-        print("[WEAPON] 🔄 Purchase attempt", 20 - maxAttempts)
-
-        pcall(function()
-            RemoteEvents:WaitForChild("ResetStats"):FireServer()
+--==================================================
+-- CHARACTER UPDATES
+--==================================================
+Player.CharacterAdded:Connect(function(char)
+    task.wait(1)
+    ClearTarget()
+    if getgenv().Config.AutoFarm.AutoEquip and getgenv().Config.AutoFarm.SelectedWeapon ~= "None" then
+        task.spawn(function()
+            task.wait(1.5)
+            EquipWeapon(getgenv().Config.AutoFarm.SelectedWeapon)
         end)
+    end
+end)
 
-        local npcHRP = nil
-        pcall(function()
-            npcHRP = workspace.ServiceNPCs.DarkBladeNPC:FindFirstChild("HumanoidRootPart")
-        end)
+--==================================================
+-- SEMUA KEYBIND DIHAPUS - HANYA F4 UNTUK TOGGLE UI
+-- Catraz Hub sudah punya F4 default untuk toggle UI
+--==================================================
+-- Tidak ada keybind handler
 
-        if not npcHRP then
-            print("[WEAPON] ❌ NPC HRP not found, teleporting...")
-            tweenPos(npcCF)
-            task.wait(1)
-        else
-            local prompt = npcHRP:FindFirstChild("DarkBladeShopPrompt")
-            if prompt then
-                print("[WEAPON] ✅ Buying Dark Blade (fireproximityprompt)...")
-                prompt.MaxActivationDistance = math.huge
-                fireproximityprompt(prompt)
-                pcall(function()
-                    RemoteEvents:WaitForChild("ResetStats"):FireServer()
-                end)
-                task.wait(5)
-                equipDarkBladeFromInventory()
-                task.wait(1)
+--==================================================
+-- HEARTBEAT MOVEMENT
+--==================================================
+RunService.Heartbeat:Connect(function()
+    if not State.Running then return end
+    
+    -- Follow-style movement jika LockTarget ada
+    if State.LockTarget and getgenv().Config.Farm.FollowStyle == "Dodge" then
+        local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+        local enemyPos = RootPos(State.LockTarget)
+        if hrp and enemyPos then
+            local dir = (hrp.Position - enemyPos).Unit
+            local right = Vector3.new(-dir.Z, 0, dir.X)
+            local dodgeDir = (math.sin(tick() * 4) > 0) and 1 or -1
+            local goal = enemyPos + dir * getgenv().Config.Farm.OffsetDist + right * dodgeDir * 4
+            goal = Vector3.new(goal.X, enemyPos.Y + getgenv().Config.Farm.HeightOffset, goal.Z)
+            local lookAt = Vector3.new(enemyPos.X, hrp.Position.Y, enemyPos.Z)
+            
+            local d = (Vector3.new(hrp.Position.X, 0, hrp.Position.Z) - Vector3.new(goal.X, 0, goal.Z)).Magnitude
+            if d > 1 then
+                hrp.CFrame = CFrame.new(hrp.Position + (goal - hrp.Position).Unit * math.min(d, 3), lookAt)
             else
-                print("[WEAPON] ❌ Prompt not found")
-                tweenPos(npcCF)
-                task.wait(1)
+                hrp.CFrame = CFrame.new(goal, lookAt)
             end
         end
-    end
-
-    local purchased = checkDarkBlade("Dark Blade") or checkDarkBlade("ดาบสีเข้ม") or checkOwnerDarkBlade()
-    if purchased then
-        print("[WEAPON] 🎉 Dark Blade purchased!")
-        resetStats()
-        upgradeStats()
-        
-        print("[WEAPON] 🗡️ Equipping Dark Blade...")
-        task.wait(2)
-        equipDarkBladeFromInventory()
-        task.wait(1)
-        
-        if checkOwnerDarkBlade() then
-            print("[WEAPON] ✅ Dark Blade equipped!")
-        else
-            print("[WEAPON] ⚠️ Dark Blade not equipped yet")
-        end
-    else
-        print("[WEAPON] ❌ Failed to purchase")
-    end
-
-    isBuyingDarkBlade = false
-    print("[WEAPON] ================================")
-    return purchased
-end
-
--- ═══════════════════════════════════════════════════════════════
--- [11] FRUIT FARM SYSTEM
--- ═══════════════════════════════════════════════════════════════
-local function checkHasFruit(fruitName)
-    oldPrint("[FRUIT] 🔍 Checking for", fruitName, "...")
-    
-    local char = player.Character
-    local backpack = player:FindFirstChild("Backpack")
-    
-    if char then
-        for _, tool in pairs(char:GetChildren()) do
-            if tool:IsA("Tool") and tool.Name:find(fruitName) then
-                oldPrint("[FRUIT] ✅ Found", tool.Name, "in Character")
-                return true
-            end
-        end
-    end
-    
-    if backpack then
-        for _, tool in pairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") and tool.Name:find(fruitName) then
-                oldPrint("[FRUIT] ✅ Found", tool.Name, "in Backpack")
-                return true
-            end
-        end
-    end
-    
-    return false
-end
-
-local function equipFruit(fruitName)
-    print("[FRUIT] 🍎 Equipping fruit:", fruitName)
-    
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        for _, tool in pairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") and tool.Name:find(fruitName) then
-                local char = player.Character
-                if char and char:FindFirstChild("Humanoid") then
-                    print("[FRUIT] 🎯 Equipping:", tool.Name)
-                    char.Humanoid:EquipTool(tool)
-                    task.wait(1)
-                    return true
-                end
-            end
-        end
-    end
-    return false
-end
-
-local function startFruitFarm()
-    oldPrint("[FRUIT] ========== FRUIT FARM START ==========")
-    isFruitFarming = true
-    
-    local targetFruit = _G.Config.TargetFruit
-    
-    if checkHasFruit(targetFruit) then
-        oldPrint("[FRUIT] ✅ Already have", targetFruit)
-        equipFruit(targetFruit)
-        
-        oldPrint("[FRUIT] 📍 Teleporting to farm position...")
-        local island = _G.Config.FruitFarmIsland
-        local pos = _G.Config.FruitFarmPos
-        
-        pcall(function() tpRemote:FireServer(island) end)
-        task.wait(3)
-        
-        local char = player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = pos
-        end
-        
-        oldPrint("[FRUIT] ✅ Fruit farm setup complete!")
-        task.spawn(fruitFarmLoop)
-        return true
-    end
-    
-    oldPrint("[FRUIT] ❌ Don't have target fruit yet")
-    isFruitFarming = false
-    return false
-end
-
-local function fruitFarmLoop()
-    print("[FRUIT FARM] 🍎 Starting AFK Fruit Farm Loop...")
-    
-    local keyCodes = {Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.C, Enum.KeyCode.V}
-    
-    while _G.Config.FruitFarm and isFruitFarming do
-        task.wait(0.5)
-        
-        local char = player.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
-        if char.Humanoid.Health <= 0 then continue end
-        
-        local hrp = char.HumanoidRootPart
-        local lockPos = _G.Config.FruitFarmPos
-        
-        if (hrp.Position - lockPos.Position).Magnitude > 5 then
-            hrp.CFrame = lockPos
-        end
-        
-        local targetFruit = _G.Config.TargetFruit
-        equipFruit(targetFruit)
-        
-        pcall(function() RemoteEvents:WaitForChild("HakiRemote"):FireServer("Toggle") end)
-        
-        for i, keyCode in ipairs(keyCodes) do
-            pcall(function()
-                local args = {
-                    "UseAbility",
-                    {
-                        TargetPosition = hrp.Position,
-                        FruitPower = targetFruit,
-                        KeyCode = keyCode
-                    }
-                }
-                RemoteEvents:WaitForChild("FruitPowerRemote"):FireServer(unpack(args))
-            end)
-            task.wait(0.3)
-        end
-        
-        task.wait(1.5)
-    end
-    
-    print("[FRUIT FARM] ❌ Fruit Farm Loop ended")
-end
-
--- ═══════════════════════════════════════════════════════════════
--- [12] NORMAL QUEST FARM
--- ═══════════════════════════════════════════════════════════════
-_G.farmLoopRunning = false
-
-local function selectWeapon()
-    local blade = findDarkBladeInHand()
-    if blade then return "Dark Blade" end
-
-    if equipDarkBladeFromInventory() then return "Dark Blade" end
-
-    return getBestWeapon()
-end
-
-local function equipToolByName(toolName, char)
-    local tool = nil
-    if toolName == "Dark Blade" then
-        tool = findDarkBladeInHand()
-    else
-        tool = player.Backpack:FindFirstChild(toolName) or char:FindFirstChild(toolName)
-    end
-
-    if tool and tool.Parent == player.Backpack then
-        print("[FARM] Equipping:", tool.Name)
-        char.Humanoid:EquipTool(tool)
-    end
-    return tool
-end
-
-local function farmLoop()
-    _G.farmLoopRunning = true
-    
-    while _G.Config.AutoFarm and _G.farmLoopRunning do
-        task.wait()
-        
-        if isHakiQuestActive or isBuyingDarkBlade or isFruitFarming or isFarmingIchigoBoss then
-            task.wait(10)
-            continue
-        end
-
-        local char = player.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
-        if char.Humanoid.Health <= 0 then continue end
-
-        local questInfo = getQuestInfo()
-        if not questInfo then continue end
-
-        local questUI = player.PlayerGui:FindFirstChild("QuestUI")
-        if not questUI then continue end
-
-        if not questUI.Quest.Visible then
-            _G.SmartTP(questInfo.position)
-            questRemote:FireServer(questInfo.npcName)
-
-        elseif questUI.Quest.Quest.Holder.Content.QuestInfo.QuestTitle.QuestTitle.Text ~= questInfo.questTitle then
-            abandonRemote:FireServer("repeatable")
-
-        else
-            local toolName = selectWeapon()
-            local npcType = getNpcType(questInfo.npcName)
-            if not npcType then continue end
-
-            equipToolByName(toolName, char)
-
-            local YPOS = 9
-            local firstMob = true
-
-            while _G.Config.AutoFarm and _G.farmLoopRunning do
-                if char.Humanoid.Health <= 0 then break end
-                if not questUI.Quest.Visible then break end
-                if questUI.Quest.Quest.Holder.Content.QuestInfo.QuestTitle.QuestTitle.Text ~= questInfo.questTitle then break end
-
-                local closest = findNPC(npcType)
-
-                if not closest then
-                    if firstMob then
-                        print("[FARM] NPC:", npcType, "| Weapon:", toolName)
-                        tweenPos(CFrame.new(questInfo.position))
-                        task.wait(3)
-                    end
-                    task.wait(1)
-                    firstMob = false
-                    continue
-                end
-                firstMob = false
-
-                print("[FARM] Found:", closest.Name)
-
-                equipToolByName(toolName, char)
-
-                local box = Instance.new("SelectionBox")
-                box.Adornee = closest
-                box.Color3 = Color3.fromRGB(0, 255, 0)
-                box.LineThickness = 0.08
-                box.SurfaceTransparency = 0.6
-                box.SurfaceColor3 = Color3.fromRGB(0, 255, 0)
-                box.Parent = workspace
-
-                local skillIndex = 1
-
-                repeat task.wait()
-
-                    if not closest or not closest.Parent
-                        or not closest:FindFirstChild("HumanoidRootPart")
-                        or closest.Humanoid.Health <= 0 then
-                        break
-                    end
-
-                    equipToolByName(toolName, char)
-
-                    BodyVelocity.Velocity = Vector3.zero
-                    BodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                    BodyVelocity.Parent = char.HumanoidRootPart
-
-                    local success, owner = pcall(function()
-                        return closest.HumanoidRootPart:GetNetworkOwner()
-                    end)
-                    if success and owner == player then
-                        closest.HumanoidRootPart.CFrame = CFrame.new(closest.HumanoidRootPart.Position)
-                        closest.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-                        closest.HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-                    end
-
-                    tweenPos(
-                        CFrame.new(closest.HumanoidRootPart.Position + Vector3.new(0, YPOS, 0)) * CFrame.Angles(math.rad(-90), 0, 0),
-                        function()
-                            hitRemote:FireServer()
-                        end
-                    )
-
-                    pcall(function() RemoteEvents:WaitForChild("HakiRemote"):FireServer("Toggle") end)
-
-                    pcall(function()
-                        RS:WaitForChild("AbilitySystem"):WaitForChild("Remotes"):WaitForChild("RequestAbility"):FireServer(skillIndex)
-                    end)
-                    hitRemote:FireServer()
-                    
-                    skillIndex = skillIndex + 1
-                    if skillIndex > 4 then skillIndex = 1 end
-
-                until char.Humanoid.Health <= 0 or not questUI.Quest.Visible or questUI.Quest.Quest.Holder.Content.QuestInfo.QuestTitle.QuestTitle.Text ~= questInfo.questTitle
-
-                box:Destroy()
-
-                equipToolByName(toolName, char)
-                print("[FARM] Killed:", closest.Name, "→ Finding next mob...")
-                task.wait(0.3)
-            end
-
-            print("[FARM] Exit Farm Loop")
-        end
-    end
-    
-    _G.farmLoopRunning = false
-end
-
--- ═══════════════════════════════════════════════════════════════
--- [13] MAIN CONTROLLER
--- ═══════════════════════════════════════════════════════════════
-task.spawn(function()
-    task.wait(3)
-    pcall(function()
-        local backpack = player:WaitForChild("Backpack", 10)
-        if not backpack then return end
-        local char = player.Character
-        if not char then return end
-        local tool = backpack:FindFirstChild("Combat")
-        if tool then char:FindFirstChild("Humanoid"):EquipTool(tool) end
-    end)
-end)
-
-task.spawn(function()
-    task.wait(15)
-    if _G.Config.AutoBuyBossKey then
-        print("[BOSS KEY] Auto buy system ready")
     end
 end)
 
-task.spawn(function()
-    task.wait(5)
-    if _G.Config.AutoFarm then
-        task.spawn(farmLoop)
-    end
-end)
-
--- ═══════════════════════════════════════════════════════════════
--- [14] EVENT HANDLERS
--- ═══════════════════════════════════════════════════════════════
-player.OnTeleport:Connect(function(state)
-    if state == Enum.TeleportState.Failed then
-        task.wait(1.5)
-        pcall(function()
-            game:GetService("TeleportService"):Teleport(game.PlaceId, player)
-        end)
-    end
-end)
-
--- ═══════════════════════════════════════════════════════════════
--- [15] HEARTBEAT PHYSICS LOCK
--- ═══════════════════════════════════════════════════════════════
-task.spawn(function()
-    RunService.Heartbeat:Connect(function()
-        if player.Character then
-            for _, v in pairs(player.Character:GetChildren()) do
-                if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-                    v.CanCollide = false
-                    v.AssemblyLinearVelocity = Vector3.zero
-                    v.AssemblyAngularVelocity = Vector3.zero
-                end
-            end
-        end
-    end)
-end)
-
--- ═══════════════════════════════════════════════════════════════
--- [16] INITIALIZE UI CONFIG
--- ═══════════════════════════════════════════════════════════════
+--==================================================
+-- INITIALIZE
+--==================================================
 OrionLib:Init()
 
-print("[SYSTEM] Sailor Piece v5 loaded - All features OFF by default. Enable them from UI!")
-OrionLib:MakeNotification({
-    Name = "Sailor Piece v5",
-    Content = "All features are OFF by default. Enable them from the UI!",
-    Image = "info",
-    Time = 5
-})
+Notify("Press F4 to toggle UI")
+print("═══════════════════════════════════════════════════════")
+print("🔥 SAILOR PIECE - CATRAZ ULTIMATE v2.3 🔥")
+print("═══════════════════════════════════════════════════════")
+print("✅ FIXED: Auto Skills System (spam loop terpisah)")
+print("✅ Skills check setiap 0.1 detik")
+print("✅ Cooldown slider: 0.1-2.0 detik")
+print("✅ FIXED: VirtualInputService Error")
+print("✅ FIXED: Equip Weapon (bisa ganti pedang/combat/buah)")
+print("✅ Hanya F4 untuk toggle UI")
+print("✅ Auto Farm with Enemy Dropdown")
+print("✅ Height Offset Slider (5-50 studs)")
+print("✅ Multiple Combat Styles (Dodge/Static/Orbit/Strafe)")
+print("═══════════════════════════════════════════════════════")
