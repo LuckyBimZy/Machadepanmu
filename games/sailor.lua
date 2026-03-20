@@ -1,22 +1,17 @@
 -- ═══════════════════════════════════════════════════════════════
--- SAILOR PIECE AUTO FARM - COMPLETE SCRIPT
--- Version: 2.0.0
--- ═══════════════════════════════════════════════════════════════
-
--- ═══════════════════════════════════════════════════════════════
 -- LOAD LIBRARY & INITIALIZE UI
 -- ═══════════════════════════════════════════════════════════════
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/nurvian/Catraz-x-Orion-UI/refs/heads/main/source.lua"))()
 local Window = OrionLib:MakeWindow({
     Name = "Sailor Piece Auto Farm",
-    Subtext = "Premium Auto Farm Script | Fully Optimized",
+    Subtext = "Premium Auto Farm Script",
     Version = "v2.0.0",
     VersionIcon = "sword",
     HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "SailorPieceAutoFarm",
+    ConfigFolder = "SailorPieceConfig",
     IntroEnabled = true,
-    IntroText = "Loading Auto Farm Script...",
+    IntroText = "Loading Auto Farm...",
     IntroIcon = "rbxassetid://8834748103",
     Icon = "rbxassetid://8834748103",
     ShowIcon = true,
@@ -27,7 +22,7 @@ local Window = OrionLib:MakeWindow({
     ToggleSize = 50
 })
 
--- Set theme
+-- Set theme (Ocean looks great for this)
 OrionLib.SelectedTheme = "Ocean"
 
 -- ═══════════════════════════════════════════════════════════════
@@ -37,32 +32,18 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
 local Player = Players.LocalPlayer
 
 -- STATE VARIABLES
-local selectedMob = "Thief"
+local selectedMob = nil
 local autoFarmEnabled = false
 local autoEquipEnabled = false
 local selectedWeapon = nil
 local tweenSpeed = 100
 local farmDistance = 5
 local farmMode = "Behind"
-local attackDelay = 0.1
-local currentTween = nil
-local isAttacking = false
-local lastAttackTime = 0
-local killCount = 0
-local totalKills = 0
-local startTime = os.time()
 
--- Noclip state
-local noclipEnabled = true
-local antiVoidEnabled = true
-local antiIdleEnabled = true
-
--- Mob to Quest NPC mapping (complete)
+-- Mob to Quest NPC mapping
 local mobQuestMap = {
     ["Thief"] = "QuestNPC1",
     ["ThiefBoss"] = "QuestNPC2",
@@ -83,27 +64,6 @@ local mobQuestMap = {
     ["Quincy"] = "QuestNPC17"
 }
 
--- Mob level mapping
-local mobLevelMap = {
-    ["Thief"] = 0,
-    ["ThiefBoss"] = 100,
-    ["Monkey"] = 250,
-    ["MonkeyBoss"] = 500,
-    ["DesertBandit"] = 750,
-    ["DesertBoss"] = 1000,
-    ["FrostRogue"] = 1500,
-    ["SnowBoss"] = 2000,
-    ["Sorcerer"] = 3000,
-    ["PandaMiniBoss"] = 4000,
-    ["Hollow"] = 5000,
-    ["StrongSorcerer"] = 6250,
-    ["Curse"] = 7000,
-    ["SlimeWarrior"] = 8000,
-    ["AcademyTeacher"] = 9000,
-    ["Swordsman"] = 10000,
-    ["Quincy"] = 10750
-}
-
 -- ═══════════════════════════════════════════════════════════════
 -- CREATE TABS
 -- ═══════════════════════════════════════════════════════════════
@@ -121,15 +81,6 @@ local FarmTab = Window:MakeTab({
 local SettingsTab = Window:MakeTab({
     Name = "Settings",
     Icon = "settings",
-    PremiumOnly = false,
-    Glass = true,
-    Outline = true
-})
-
--- Bypass Tab
-local BypassTab = Window:MakeTab({
-    Name = "Bypass",
-    Icon = "shield",
     PremiumOnly = false,
     Glass = true,
     Outline = true
@@ -169,23 +120,20 @@ local mobDropdown = FarmSection:AddDropdown({
     Name = "Select Mob to Farm",
     Default = "Thief",
     Options = {
-        "Thief (Lv 0)", "ThiefBoss (Lv 100)", "Monkey (Lv 250)", "MonkeyBoss (Lv 500)",
-        "DesertBandit (Lv 750)", "DesertBoss (Lv 1000)", "FrostRogue (Lv 1500)", "SnowBoss (Lv 2000)",
-        "Sorcerer (Lv 3000)", "PandaMiniBoss (Lv 4000)", "Hollow (Lv 5000)", "StrongSorcerer (Lv 6250)",
-        "Curse (Lv 7000)", "SlimeWarrior (Lv 8000)", "AcademyTeacher (Lv 9000)", "Swordsman (Lv 10000)", 
-        "Quincy (Lv 10750)"
+        "Thief", "ThiefBoss", "Monkey", "MonkeyBoss",
+        "DesertBandit", "DesertBoss", "FrostRogue", "SnowBoss",
+        "Sorcerer", "PandaMiniBoss", "Hollow", "StrongSorcerer",
+        "Curse", "SlimeWarrior", "AcademyTeacher", "Swordsman", "Quincy"
     },
     Multi = false,
     Search = true,
     AllowNone = false,
     Outline = true,
     Callback = function(Value)
-        -- Extract mob name without level
-        local mobName = string.match(Value, "^(%S+)")
-        selectedMob = mobName or Value
+        selectedMob = Value
         OrionLib:MakeNotification({
             Name = "Mob Selected",
-            Content = "Now farming: " .. selectedMob .. " (Level " .. (mobLevelMap[selectedMob] or "?") .. ")",
+            Content = "Now farming: " .. Value,
             Image = "target",
             Time = 2
         })
@@ -203,10 +151,9 @@ local autoFarmToggle = FarmSection:AddToggle({
     Callback = function(Value)
         autoFarmEnabled = Value
         if Value then
-            startTime = os.time()
             OrionLib:MakeNotification({
                 Name = "Auto Farm",
-                Content = "Auto farm ENABLED - Farming " .. selectedMob,
+                Content = "Auto farm ENABLED",
                 Image = "play",
                 Time = 2
             })
@@ -241,21 +188,6 @@ FarmSection:AddDropdown({
     end
 })
 
--- Attack Delay Slider
-FarmSection:AddSlider({
-    Name = "Attack Delay (Seconds)",
-    Min = 0.05,
-    Max = 0.5,
-    Default = 0.1,
-    Color = Color3.fromRGB(0, 150, 255),
-    Increment = 0.01,
-    ValueName = "Sec",
-    Outline = true,
-    Callback = function(Value)
-        attackDelay = Value
-    end
-})
-
 -- ═══════════════════════════════════════════════════════════════
 -- WEAPON SECTION
 -- ═══════════════════════════════════════════════════════════════
@@ -269,7 +201,7 @@ local WeaponSection = FarmTab:AddSection({
 
 -- Function to get weapons
 local function getWeaponList()
-    local weapons = {"None"}
+    local weapons = {}
     local backpack = Player.Backpack
     local character = Player.Character
     
@@ -302,8 +234,8 @@ local weaponDropdown = WeaponSection:AddDropdown({
     AllowNone = true,
     Outline = true,
     Callback = function(Value)
+        selectedWeapon = Value
         if Value and Value ~= "None" then
-            selectedWeapon = Value
             local tool = Player.Backpack:FindFirstChild(Value)
             local humanoid = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
             if tool and humanoid then
@@ -315,8 +247,6 @@ local weaponDropdown = WeaponSection:AddDropdown({
                     Time = 2
                 })
             end
-        else
-            selectedWeapon = nil
         end
     end
 })
@@ -338,23 +268,6 @@ local autoEquipToggle = WeaponSection:AddToggle({
                 humanoid:EquipTool(tool)
             end
         end
-    end
-})
-
--- Refresh Weapons Button
-WeaponSection:AddButton({
-    Name = "Refresh Weapon List",
-    Icon = "refresh-cw",
-    Outline = true,
-    Callback = function()
-        local weapons = getWeaponList()
-        weaponDropdown:Refresh(weapons)
-        OrionLib:MakeNotification({
-            Name = "Weapons Refreshed",
-            Content = "Found " .. (#weapons - 1) .. " weapons",
-            Image = "check",
-            Time = 2
-        })
     end
 })
 
@@ -399,62 +312,21 @@ MovementSection:AddSlider({
     end
 })
 
--- Walk Speed Control
-MovementSection:AddSlider({
-    Name = "Player Walk Speed",
-    Min = 16,
-    Max = 100,
-    Default = 16,
-    Color = Color3.fromRGB(0, 150, 255),
-    Increment = 1,
-    ValueName = "WS",
-    Outline = true,
-    Callback = function(Value)
-        local character = Player.Character
-        if character then
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.WalkSpeed = Value
-            end
-        end
-    end
-})
-
--- Jump Power Control
-MovementSection:AddSlider({
-    Name = "Jump Power",
-    Min = 50,
-    Max = 200,
-    Default = 50,
-    Color = Color3.fromRGB(0, 150, 255),
-    Increment = 5,
-    ValueName = "Jump",
-    Outline = true,
-    Callback = function(Value)
-        local character = Player.Character
-        if character then
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.JumpPower = Value
-            end
-        end
-    end
-})
-
 -- ═══════════════════════════════════════════════════════════════
 -- BYPASS SECTION
 -- ═══════════════════════════════════════════════════════════════
-local BypassSection = BypassTab:AddSection({
-    Name = "Bypass Features",
+local BypassSection = SettingsTab:AddSection({
+    Name = "Bypass Settings",
     TextSize = 17,
-    Folded = false,
+    Folded = true,
     Glass = true,
     Outline = true
 })
 
 -- Noclip Toggle
+local noclipEnabled = true
 BypassSection:AddToggle({
-    Name = "Noclip (Walk Through Walls)",
+    Name = "Noclip",
     Default = true,
     Color = Color3.fromRGB(0, 150, 255),
     Outline = true,
@@ -467,8 +339,9 @@ BypassSection:AddToggle({
 })
 
 -- Anti Void Toggle
+local antiVoidEnabled = true
 BypassSection:AddToggle({
-    Name = "Anti Void (Prevents Falling)",
+    Name = "Anti Void",
     Default = true,
     Color = Color3.fromRGB(0, 150, 255),
     Outline = true,
@@ -481,8 +354,9 @@ BypassSection:AddToggle({
 })
 
 -- Anti Idle Toggle
+local antiIdleEnabled = true
 BypassSection:AddToggle({
-    Name = "Anti Idle (Prevents AFK Kick)",
+    Name = "Anti Idle",
     Default = true,
     Color = Color3.fromRGB(0, 150, 255),
     Outline = true,
@@ -491,20 +365,6 @@ BypassSection:AddToggle({
     Callback = function(Value)
         antiIdleEnabled = Value
         getgenv().AntiIdle = Value
-    end
-})
-
--- Infinite Yield Toggle
-local infiniteJumpEnabled = false
-BypassSection:AddToggle({
-    Name = "Infinite Jump",
-    Default = false,
-    Color = Color3.fromRGB(0, 150, 255),
-    Outline = true,
-    Flag = "InfiniteJumpFlag",
-    Save = true,
-    Callback = function(Value)
-        infiniteJumpEnabled = Value
     end
 })
 
@@ -527,87 +387,40 @@ local statsParagraph = StatsSection:AddParagraph({
     ImageSize = 38,
     Buttons = {
         {
-            Title = "Refresh Stats",
+            Title = "Refresh",
             Callback = function()
                 refreshStats()
-            end
-        },
-        {
-            Title = "Reset Kill Counter",
-            Callback = function()
-                killCount = 0
-                totalKills = 0
-                updateStatsDisplay()
-                OrionLib:MakeNotification({
-                    Name = "Kill Counter Reset",
-                    Content = "Kill counter has been reset",
-                    Image = "refresh-cw",
-                    Time = 2
-                })
             end
         }
     }
 })
 
--- Function to update stats display
-function updateStatsDisplay()
+-- Function to refresh stats
+function refreshStats()
     local character = Player.Character
     if character then
         local humanoid = character:FindFirstChildOfClass("Humanoid")
         local hrp = character:FindFirstChild("HumanoidRootPart")
         if humanoid and hrp then
-            local runtime = os.time() - startTime
-            local hours = math.floor(runtime / 3600)
-            local minutes = math.floor((runtime % 3600) / 60)
-            local seconds = runtime % 60
-            local runtimeStr = string.format("%02d:%02d:%02d", hours, minutes, seconds)
-            
             local stats = string.format(
-                "═══════════════════════════════════\n" ..
-                "📊 CHARACTER STATS\n" ..
-                "═══════════════════════════════════\n" ..
-                "❤️ Health: %.0f/%.0f\n" ..
-                "⚡ Walk Speed: %.0f\n" ..
-                "🦘 Jump Power: %.0f\n" ..
-                "📍 Position: (%.0f, %.0f, %.0f)\n\n" ..
-                "═══════════════════════════════════\n" ..
-                "🎯 FARMING STATS\n" ..
-                "═══════════════════════════════════\n" ..
-                "🗡️ Current Mob: %s\n" ..
-                "📈 Mob Level: %d\n" ..
-                "💀 Kills This Session: %d\n" ..
-                "🎯 Total Kills: %d\n" ..
-                "⏱️ Runtime: %s\n" ..
-                "⚙️ Auto Farm: %s\n" ..
-                "═══════════════════════════════════",
+                "Health: %.0f/%.0f\nWalk Speed: %.0f\nJump Power: %.0f\nPosition: (%.0f, %.0f, %.0f)",
                 humanoid.Health,
                 humanoid.MaxHealth,
                 humanoid.WalkSpeed,
                 humanoid.JumpPower,
                 hrp.Position.X,
                 hrp.Position.Y,
-                hrp.Position.Z,
-                selectedMob or "None",
-                mobLevelMap[selectedMob] or 0,
-                killCount,
-                totalKills,
-                runtimeStr,
-                autoFarmEnabled and "✅ ENABLED" or "❌ DISABLED"
+                hrp.Position.Z
             )
             statsParagraph:SetDesc(stats)
         end
     end
 end
 
--- Function to refresh stats
-function refreshStats()
-    updateStatsDisplay()
-end
-
 -- Auto refresh stats
 task.spawn(function()
     while task.wait(2) do
-        updateStatsDisplay()
+        refreshStats()
     end
 end)
 
@@ -615,7 +428,7 @@ end)
 -- INFO SECTION
 -- ═══════════════════════════════════════════════════════════════
 local InfoSection = InfoTab:AddSection({
-    Name = "About & Credits",
+    Name = "About",
     TextSize = 17,
     Folded = false,
     Glass = true,
@@ -624,61 +437,7 @@ local InfoSection = InfoTab:AddSection({
 
 InfoSection:AddParagraph({
     Title = "Sailor Piece Auto Farm",
-    Desc = [[
-═══════════════════════════════════
-🎮 SCRIPT INFORMATION
-═══════════════════════════════════
-
-Version: 2.0.0
-Game: Sailor Piece
-Type: Auto Farm / Bypass
-
-═══════════════════════════════════
-✨ FEATURES
-═══════════════════════════════════
-
-• Auto Farm Any Mob
-• Auto Accept Quests
-• Auto Equip Weapons
-• Custom Attack Delay
-• Multiple Farm Positions
-• Noclip / Anti-Void
-• Anti-AFK / Anti-Idle
-• Infinite Jump
-• Island Scanner
-• Teleport Bypass
-• Live Statistics
-• Config Save/Load
-
-═══════════════════════════════════
-📌 HOW TO USE
-═══════════════════════════════════
-
-1. Select your target mob
-2. Choose farm position
-3. Select weapon (optional)
-4. Enable Auto Equip (optional)
-5. Turn on Auto Farm
-6. Watch it farm automatically!
-
-═══════════════════════════════════
-⚠️ NOTES
-═══════════════════════════════════
-
-• Script auto-scans all islands
-• Stats update every 2 seconds
-• Settings auto-save
-• Press RightShift to toggle UI
-
-═══════════════════════════════════
-💀 KILL COUNTER
-═══════════════════════════════════
-
-Kills are counted automatically
-when you defeat mobs!
-
-═══════════════════════════════════
-    ]],
+    Desc = "Premium auto farming script for Sailor Piece\n\nFeatures:\n• Auto Farm Mobs\n• Auto Accept Quests\n• Auto Equip Weapons\n• Noclip & Anti-Void\n• Anti-Idle Protection\n• Island Scanner\n\nVersion: 2.0.0",
     Image = "info",
     ImageSize = 38,
     Buttons = {}
@@ -746,6 +505,7 @@ local function getFarmPosition(npcRoot)
 end
 
 -- Tween to position
+local currentTween = nil
 local function tweenTo(targetCFrame)
     local character = Player.Character
     if not character then return end
@@ -757,7 +517,9 @@ local function tweenTo(targetCFrame)
     end
     
     local distance = (root.Position - targetCFrame.Position).Magnitude
-    local tweenTime = math.max(distance / tweenSpeed, 0.05)
+    local tweenTime = distance / tweenSpeed
+    
+    if tweenTime < 0.05 then tweenTime = 0.05 end
     
     currentTween = TweenService:Create(root, TweenInfo.new(tweenTime, Enum.EasingStyle.Linear), {
         CFrame = targetCFrame
@@ -765,25 +527,11 @@ local function tweenTo(targetCFrame)
     currentTween:Play()
 end
 
--- Spam attack with delay
+-- Spam attack
 local function spamAttack()
-    if not autoFarmEnabled then return end
-    local currentTime = tick()
-    if currentTime - lastAttackTime >= attackDelay then
-        lastAttackTime = currentTime
-        pcall(function()
-            local combatRemote = ReplicatedStorage:FindFirstChild("CombatSystem")
-            if combatRemote then
-                local remotes = combatRemote:FindFirstChild("Remotes")
-                if remotes then
-                    local requestHit = remotes:FindFirstChild("RequestHit")
-                    if requestHit then
-                        requestHit:FireServer()
-                    end
-                end
-            end
-        end)
-    end
+    pcall(function()
+        ReplicatedStorage:WaitForChild("CombatSystem"):WaitForChild("Remotes"):WaitForChild("RequestHit"):FireServer()
+    end)
 end
 
 -- Check quest UI visible
@@ -802,31 +550,7 @@ end
 -- Accept quest
 local function acceptQuest(questNPC)
     pcall(function()
-        local remoteEvents = ReplicatedStorage:FindFirstChild("RemoteEvents")
-        if remoteEvents then
-            local questAccept = remoteEvents:FindFirstChild("QuestAccept")
-            if questAccept then
-                questAccept:FireServer(questNPC)
-            end
-        end
-    end)
-end
-
--- Monitor mob death for kill counter
-local function setupMobDeathMonitor()
-    local npcsFolder = workspace:FindFirstChild("NPCs")
-    if not npcsFolder then return end
-    
-    npcsFolder.DescendantAdded:Connect(function(descendant)
-        if descendant:IsA("Humanoid") then
-            descendant:GetPropertyChangedSignal("Health"):Connect(function()
-                if descendant.Health <= 0 and descendant.Parent and isMobMatch(descendant.Parent.Name, selectedMob) then
-                    killCount = killCount + 1
-                    totalKills = totalKills + 1
-                    updateStatsDisplay()
-                end
-            end)
-        end
+        ReplicatedStorage:WaitForChild("RemoteEvents"):WaitForChild("QuestAccept"):FireServer(questNPC)
     end)
 end
 
@@ -849,7 +573,7 @@ end)
 
 -- Auto farm loop
 task.spawn(function()
-    while task.wait(0.05) do
+    while task.wait(0.1) do
         if autoFarmEnabled and selectedMob then
             local npc = findClosestNPC()
             if npc then
@@ -865,7 +589,14 @@ task.spawn(function()
                             tweenTo(farmPos)
                         end
                         
-                        spamAttack()
+                        if farmMode == "Above" then
+                            local savedCFrame = root.CFrame
+                            root.CFrame = npcRoot.CFrame * CFrame.new(0, 0, farmDistance)
+                            spamAttack()
+                            root.CFrame = savedCFrame
+                        else
+                            spamAttack()
+                        end
                     end
                 end
             end
@@ -931,27 +662,13 @@ task.spawn(function()
     while task.wait(120) do
         if antiIdleEnabled then
             pcall(function()
-                VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+                local vu = game:GetService("VirtualUser")
+                vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
                 task.wait(0.5)
-                VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+                vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
             end)
         end
     end
-end)
-
--- Infinite Jump
-task.spawn(function()
-    RunService.RenderStepped:Connect(function()
-        if infiniteJumpEnabled then
-            local character = Player.Character
-            if character then
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if humanoid and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                end
-            end
-        end
-    end)
 end)
 
 -- Refresh weapon dropdown when new tools are added
@@ -996,7 +713,7 @@ local function getAllIslands()
     local islands = {}
     
     local ok, travelConfig = pcall(function()
-        return require(ReplicatedStorage:FindFirstChild("TravelConfig"))
+        return require(ReplicatedStorage:WaitForChild("TravelConfig", 5))
     end)
     
     if ok and travelConfig then
@@ -1055,13 +772,7 @@ getgenv().TeleportToMobIsland = function(mobName)
     if cached then
         local portalArg = cached.island:gsub("Island", ""):gsub(" ", "")
         pcall(function()
-            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-            if remotes then
-                local teleportRemote = remotes:FindFirstChild("TeleportToPortal")
-                if teleportRemote then
-                    teleportRemote:FireServer(portalArg)
-                end
-            end
+            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("TeleportToPortal"):FireServer(portalArg)
         end)
         task.wait(3)
         return true
@@ -1076,13 +787,7 @@ getgenv().ScanAllIslands = function()
     
     for i, island in ipairs(islands) do
         local ok = pcall(function()
-            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-            if remotes then
-                local teleportRemote = remotes:FindFirstChild("TeleportToPortal")
-                if teleportRemote then
-                    teleportRemote:FireServer(island.portal)
-                end
-            end
+            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("TeleportToPortal"):FireServer(island.portal)
         end)
         
         if ok then
@@ -1104,43 +809,18 @@ task.spawn(function()
     end
     task.wait(3)
     task.spawn(function()
-        local total = getgenv().ScanAllIslands()
-        print("[Island Scanner] Scan complete! Found " .. total .. " mob types")
+        getgenv().ScanAllIslands()
     end)
-end)
-
--- Setup mob death monitor
-task.spawn(function()
-    wait(5)
-    setupMobDeathMonitor()
 end)
 
 -- ═══════════════════════════════════════════════════════════════
 -- INITIALIZE
 -- ═══════════════════════════════════════════════════════════════
-
--- Initial refresh
-task.wait(1)
-refreshStats()
-
--- Initialize UI
 OrionLib:Init()
 
--- Welcome notification
 OrionLib:MakeNotification({
-    Name = "Sailor Piece Auto Farm",
-    Content = "Script loaded successfully! All features ready.",
+    Name = "Auto Farm Loaded",
+    Content = "Sailor Piece Auto Farm is ready!",
     Image = "check-circle",
-    Time = 5
+    Time = 3
 })
-
--- Update weapon dropdown initially
-task.wait(2)
-weaponDropdown:Refresh(getWeaponList())
-
-print("═══════════════════════════════════════════════════════════════")
-print("  SAILOR PIECE AUTO FARM - FULLY LOADED")
-print("  Version: 2.0.0")
-print("  Features: Auto Farm, Bypass, Island Scanner, Kill Counter")
-print("  UI Toggle: Right Shift")
-print("═══════════════════════════════════════════════════════════════")
