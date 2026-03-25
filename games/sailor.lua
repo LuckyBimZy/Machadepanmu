@@ -252,6 +252,35 @@ function Util.ForceTP(portalName)
     end)
 end
 
+function Util.Stabilize(hrp, goalCF)
+    local bv = hrp:FindFirstChild("FarmBVelocity")
+    if not bv then
+        bv = Instance.new("BodyVelocity")
+        bv.Name = "FarmBVelocity"
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Parent = hrp
+    end
+    bv.Velocity = Vector3.new(0, 0, 0)
+    
+    local bg = hrp:FindFirstChild("FarmBGyro")
+    if not bg then
+        bg = Instance.new("BodyGyro")
+        bg.Name = "FarmBGyro"
+        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        bg.P = 3000
+        bg.D = 500
+        bg.Parent = hrp
+    end
+    bg.CFrame = goalCF
+end
+
+function Util.Destabilize(hrp)
+    local bv = hrp:FindFirstChild("FarmBVelocity")
+    if bv then bv:Destroy() end
+    local bg = hrp:FindFirstChild("FarmBGyro")
+    if bg then bg:Destroy() end
+end
+
 local function SetupAntiAFK()
     local vu = game:GetService("VirtualUser")
     Players.LocalPlayer.Idled:Connect(function()
@@ -351,6 +380,41 @@ local function BestEnemy(list)
     end
     return bestE
 }
+
+local lastArmamentToggle, lastObsToggle = 0, 0
+
+local function CheckHaki()
+    local char = Player.Character
+    if not char then return end
+    
+    if getgenv().Config.AutoFarm.AutoArmament and tick() - lastArmamentToggle > 3 then
+        local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
+        if rightArm and rightArm.BrickColor ~= BrickColor.new("Really black") then
+            lastArmamentToggle = tick()
+            pcall(function() 
+                local r = Util.WalkPathWait(ReplicatedStorage, 2, "AbilitySystem", "Remotes", "Haki")
+                if r then r:FireServer("Toggle") end
+            end)
+        end
+    end
+    
+    if getgenv().Config.AutoFarm.AutoObservation and tick() - lastObsToggle > 3 then
+        local pg = Player:FindFirstChild("PlayerGui")
+        local dodgeUI = pg and pg:FindFirstChild("DodgeCounterUI")
+        local isVis = dodgeUI and dodgeUI:FindFirstChild("MainFrame") and dodgeUI.MainFrame.Visible
+        
+        local cdUI = pg and pg:FindFirstChild("CooldownUI")
+        local onCd = cdUI and cdUI:FindFirstChild("MainFrame") and cdUI.MainFrame:FindFirstChild("Cooldown_ObsHaki_Observation") ~= nil
+        
+        if not isVis and not onCd then
+            lastObsToggle = tick()
+            pcall(function() 
+                local r = Util.WalkPathWait(ReplicatedStorage, 2, "AbilitySystem", "Remotes", "ObservationHaki")
+                if r then r:FireServer("Toggle") end
+            end)
+        end
+    end
+end
 
 local function EquipWeapon()
     if not getgenv().Config.AutoFarm.AutoEquip then return end
@@ -500,32 +564,21 @@ local function FarmTick()
     
     local combatPos = GetCombatPosition(ePos, eCF)
     
-    EquipWeapon()
-    AttackTarget(target)
-    
     hrp.Velocity = Vector3.new(0, 0, 0)
     
-    -- Anti-Jitter physics stabilizer
-    local bv = hrp:FindFirstChild("FarmBVelocity")
-    if not bv then
-        bv = Instance.new("BodyVelocity")
-        bv.Name = "FarmBVelocity"
-        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        bv.Velocity = Vector3.new(0, 0, 0)
-        bv.Parent = hrp
+    -- Anti-Jitter BodyGyro stabilizer mechanism
+    if (hrp.Position - ePos).Magnitude > 150 and getgenv().Config.Farm.MoveMode == "Tween" then
+        Util.Destabilize(hrp)
+        Util.TweenTo(combatPos)
+    else
+        Util.StopTween()
+        Util.Stabilize(hrp, combatPos)
+        hrp.CFrame = combatPos
     end
     
-    if (hrp.Position - ePos).Magnitude > 80 and getgenv().Config.Farm.MoveMode == "Teleport" then
-        hrp.CFrame = combatPos
-    else
-        local distToCombat = (hrp.Position - combatPos.Position).Magnitude
-        if distToCombat > 2 then
-            Util.TweenTo(combatPos)
-        else
-            Util.StopTween()
-            hrp.CFrame = combatPos
-        end
-    end
+    CheckHaki()
+    EquipWeapon()
+    AttackTarget(target)
 end
 
 
@@ -622,14 +675,16 @@ local function DungeonTick()
         
         local combatPos = GetCombatPosition(pos, cf)
         
-        local distToCombat = (hrp.Position - combatPos.Position).Magnitude
-        if distToCombat > 2 then
+        if (hrp.Position - pos).Magnitude > 150 and getgenv().Config.Farm.MoveMode == "Tween" then
+            Util.Destabilize(hrp)
             Util.TweenTo(combatPos)
         else
             Util.StopTween()
+            Util.Stabilize(hrp, combatPos)
             hrp.CFrame = combatPos
         end
         
+        CheckHaki()
         EquipWeapon()
         AttackTarget(target)
     end
@@ -681,14 +736,16 @@ local function BossRushTick()
         
         local combatPos = GetCombatPosition(pos, cf)
         
-        local distToCombat = (hrp.Position - combatPos.Position).Magnitude
-        if distToCombat > 2 then
+        if (hrp.Position - pos).Magnitude > 150 and getgenv().Config.Farm.MoveMode == "Tween" then
+            Util.Destabilize(hrp)
             Util.TweenTo(combatPos)
         else
             Util.StopTween()
+            Util.Stabilize(hrp, combatPos)
             hrp.CFrame = combatPos
         end
         
+        CheckHaki()
         EquipWeapon()
         AttackTarget(target)
     end
@@ -782,14 +839,16 @@ local function BossTick()
     
     local combatPos = GetCombatPosition(pos, cf)
     
-    local distToCombat = (hrp.Position - combatPos.Position).Magnitude
-    if distToCombat > 2 then
+    if (hrp.Position - pos).Magnitude > 150 and getgenv().Config.Farm.MoveMode == "Tween" then
+        Util.Destabilize(hrp)
         Util.TweenTo(combatPos)
     else
         Util.StopTween()
+        Util.Stabilize(hrp, combatPos)
         hrp.CFrame = combatPos
     end
     
+    CheckHaki()
     EquipWeapon()
     AttackTarget(bossModel)
 end
@@ -829,14 +888,16 @@ local function SummonBossTick()
         
         local combatPos = GetCombatPosition(pos, cf)
         
-        local distToCombat = (hrp.Position - combatPos.Position).Magnitude
-        if distToCombat > 2 then
+        if (hrp.Position - pos).Magnitude > 150 and getgenv().Config.Farm.MoveMode == "Tween" then
+            Util.Destabilize(hrp)
             Util.TweenTo(combatPos)
         else
             Util.StopTween()
+            Util.Stabilize(hrp, combatPos)
             hrp.CFrame = combatPos
         end
         
+        CheckHaki()
         EquipWeapon()
         AttackTarget(bossModel)
     else
@@ -922,6 +983,21 @@ local function AutoMerchantTick()
                 if enabled then pcall(function() remote:InvokeServer(item) end) end
             end
         end
+    end
+end
+
+local function AutoCraftTick()
+    if getgenv().Config.Items.CraftSlime then
+        pcall(function() 
+            local r = Util.WalkPathWait(ReplicatedStorage, 2, "Remotes", "RequestSlimeCraft")
+            if r then r:InvokeServer("SlimeKey", 1) end
+        end)
+    end
+    if getgenv().Config.Items.CraftGrail then
+        pcall(function() 
+            local r = Util.WalkPathWait(ReplicatedStorage, 2, "Remotes", "RequestGrailCraft")
+            if r then r:InvokeServer("DivineGrail", 1) end
+        end)
     end
 end
 
@@ -1122,6 +1198,8 @@ end
 -- SKILLS
 local SkTab = Window:MakeTab({Name = "✨ Skills", Icon = "sparkles"})
 local ASkSec = SkTab:AddSection({Name = "💫 Auto Skills", TextSize = 18, Glass = true})
+ASkSec:AddToggle({Name="Auto Armament Haki", Default=false, Flag="SkHakiA", Save=true, Callback=function(v) getgenv().Config.AutoFarm.AutoArmament=v end})
+ASkSec:AddToggle({Name="Auto Observation Haki", Default=false, Flag="SkHakiO", Save=true, Callback=function(v) getgenv().Config.AutoFarm.AutoObservation=v end})
 ASkSec:AddToggle({Name="Use Z", Default=false, Flag="SkZ", Save=true, Callback=function(v) getgenv().Config.AutoSkills.Z=v end})
 ASkSec:AddToggle({Name="Use X", Default=false, Flag="SkX", Save=true, Callback=function(v) getgenv().Config.AutoSkills.X=v end})
 ASkSec:AddToggle({Name="Use C", Default=false, Flag="SkC", Save=true, Callback=function(v) getgenv().Config.AutoSkills.C=v end})
@@ -1144,6 +1222,10 @@ ChSec:AddToggle({Name="Auto Open Chests", Default=false, Flag="OCh", Save=true, 
 for _, c in ipairs(Constants.ChestNames) do ChSec:AddToggle({Name=c, Default=true, Flag="Ch_"..c, Save=true, Callback=function(v) getgenv().Config.ItemToggles[c]=v end}) end
 ChSec:AddToggle({Name="Auto Merchant", Default=false, Flag="AMerch", Save=true, Callback=function(v) getgenv().Config.Items.AutoBuy=v end})
 for _, m in ipairs(Constants.MerchantItems) do ChSec:AddToggle({Name=m, Default=false, Flag="Mer_"..m, Save=true, Callback=function(v) getgenv().Config.MerchantToggles[m]=v end}) end
+
+local CrSec = ITab:AddSection({Name = "⚒️ Auto Craft", TextSize = 18, Glass = true})
+CrSec:AddToggle({Name="Auto Craft Slime Key", Default=false, Flag="CrSlime", Save=true, Callback=function(v) getgenv().Config.Items.CraftSlime = v end})
+CrSec:AddToggle({Name="Auto Craft Divine Grail", Default=false, Flag="CrGrail", Save=true, Callback=function(v) getgenv().Config.Items.CraftGrail = v end})
 
 -- TELEPORTS
 local TPTab = Window:MakeTab({Name = "🗺️ Teleports", Icon = "map-pin"})
@@ -1183,6 +1265,7 @@ task.spawn(function()
         task.wait(1.5)
         pcall(AutoChestTick)
         pcall(AutoMerchantTick)
+        pcall(AutoCraftTick)
     end
 end)
 
