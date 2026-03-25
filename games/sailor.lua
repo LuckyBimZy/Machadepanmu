@@ -7,49 +7,6 @@ local TweenService=game:GetService("TweenService")
 local LP=Players.LocalPlayer
 local S={} -- all state, data, constants
 local fn={} -- all functions
-
-local PriorityService = {
-    Priorities = { PitySystem = 100, BossEvent = 90, AutoBoss = 80, AutoDungeon = 70, AutoQuest = 50, AutoFarm = 10 },
-    ActiveRequests = {}
-}
-function PriorityService:Request(tName) self.ActiveRequests[tName] = true end
-function PriorityService:Release(tName) self.ActiveRequests[tName] = nil end
-function PriorityService:GetTask()
-    local h, p = -1, nil
-    for tn, act in pairs(self.ActiveRequests) do
-        if act and (self.Priorities[tn] or 0) > h then h, p = self.Priorities[tn] or 0, tn end
-    end
-    return p
-end
-
-function fn._stabilize(hrp, goalCF)
-    local bv = hrp:FindFirstChild("DungeonStabilizer_BV")
-    if not bv then
-        bv = Instance.new("BodyVelocity")
-        bv.Name = "DungeonStabilizer_BV"
-        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        bv.Parent = hrp
-    end
-    bv.Velocity = Vector3.new(0, 0, 0)
-    
-    local bg = hrp:FindFirstChild("DungeonStabilizer_BG")
-    if not bg then
-        bg = Instance.new("BodyGyro")
-        bg.Name = "DungeonStabilizer_BG"
-        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-        bg.P = 3000
-        bg.D = 500
-        bg.Parent = hrp
-    end
-    if goalCF then bg.CFrame = goalCF end
-end
-
-function fn._destabilize(hrp)
-    local bv = hrp:FindFirstChild("DungeonStabilizer_BV")
-    if bv then bv:Destroy() end
-    local bg = hrp:FindFirstChild("DungeonStabilizer_BG")
-    if bg then bg:Destroy() end
-end
 local R={
 TP={"Remotes","TeleportToPortal"},
 QuestAccept={"RemoteEvents","QuestAccept"},
@@ -1064,14 +1021,7 @@ fn.TweenTo=function(enemy)
     end)
     S.ATween:Play()
 end
-fn.TweenToDungeon=function(enemy)
-    fn.TweenTo(enemy)
-    local hrp=fn.PlayerHRP()
-    if hrp and enemy then
-        local p=fn.ModelPos(enemy)
-        if p then fn._stabilize(hrp, CFrame.new(hrp.Position, Vector3.new(p.X, hrp.Position.Y, p.Z))) end
-    end
-end
+fn.TweenToDungeon=function(enemy) fn.TweenTo(enemy) end
 fn.TweenToBossRush=function(enemy) fn.TweenTo(enemy) end
 fn.TweenToPoint=function(goal)
     local hrp=fn.PlayerHRP() if not hrp then return end
@@ -1104,10 +1054,52 @@ fn.FireAbilities=function()
     if F.SkillV then pcall(function() r:FireServer(4) end) end
     if F.SkillF then pcall(function() r:FireServer(5) end) end
 end
+
+-- === SAILO-STYLE PHYSICS-LOCK MOB APPROACH (from sailo.lua) ===
+-- This method locks the character in Physics mode and zeros velocity,
+-- then snaps to target CFrame. Preferred by user for Auto Farm mob movement.
+fn.TweenPosMob = function(targetCF, onArrived)
+    local char = LP.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    local distance = (targetCF.Position - root.CFrame.Position).Magnitude
+
+    -- Lock physics to prevent sliding/flying
+    local function lockPhysics()
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.AssemblyLinearVelocity = Vector3.zero
+                v.AssemblyAngularVelocity = Vector3.zero
+            end
+        end
+    end
+
+    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+
+    if distance <= 250 then
+        -- Close-range: lock + snap CFrame (sailo.lua method)
+        lockPhysics()
+        root.CFrame = targetCF
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    else
+        -- Far: use island TP then snap
+        local island = fn.GetFarmIsland()
+        if island then pcall(function() fn.ForceTP(island.Portal) end) task.wait(0.5) end
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+
+    if onArrived then onArrived() end
+end
+
 fn.Attack=function(tgt)
     pcall(function() fn.WalkPathWait(RS,2,unpack(R.Hit)):FireServer(tgt) end)
     fn.FireAbilities()
 end
+
 fn.ToggleFarm=function() if S.FarmToggle then pcall(function() S.FarmToggle:SetValue(not S.FarmToggle:GetValue()) end) else F.AutoFarmLevel=not F.AutoFarmLevel if not F.AutoFarmLevel then fn.FullReset() end end end
 fn.ToggleBoss=function() if S.BossToggle then pcall(function() S.BossToggle:SetValue(not S.BossToggle:GetValue()) end) else F.BossEnabled=not F.BossEnabled if not F.BossEnabled and S.BossFight then fn.ExitBossMode(S.BossTargetName) end end end
 fn.ToggleSummonBoss=function()
@@ -1306,12 +1298,6 @@ fn.ExitBossMode=function(lastBossName)
         S.Notify.new({Title="Bosses Clear!",Content=msg,Duration=3,Icon=S.ICON})
     end
 end
-fn.TryCraftSlime = function()
-    pcall(function()
-        local r = RS:FindFirstChild("Remotes")
-        if r and r:FindFirstChild("RequestSlimeCraft") then r.RequestSlimeCraft:FireServer() end
-    end)
-end
 fn.DoFarmTick=function()
     local tgtIsland=fn.GetFarmIsland()
     if not tgtIsland then
@@ -1327,22 +1313,6 @@ fn.DoFarmTick=function()
         fn.AbandonAllQuests()
         S.Notify.new({Title="Teleporting to "..fn.PortalDisplayName(tgtIsland.Portal),Content="Lv."..fn.GetLevel().." | "..tgtIsland.QuestNPC,Duration=3,Icon=S.ICON})
     end
-    if S.IslandTPd and S.CurIsland and S.CurIsland.QuestNPC then
-            local hrpCheck=fn.PlayerHRP()
-            local svcNPCs=workspace:FindFirstChild("ServiceNPCs")
-            if hrpCheck and svcNPCs then
-                local qNpc=svcNPCs:FindFirstChild(S.CurIsland.QuestNPC)
-                if qNpc and qNpc:FindFirstChild("HumanoidRootPart") then
-                    if (hrpCheck.Position - qNpc.HumanoidRootPart.Position).Magnitude > 4500 then
-                        S.IslandTPd = false
-                        print("GPS: Out of bounds for " .. S.CurIsland.Portal .. ". Resetting IslandTPd state.")
-                    end
-                else
-                    -- If QuestNPC is not strictly loaded in ServiceNPCs, maybe we just reset
-                    -- but better to wait for map load
-                end
-            end
-        end
     if not S.IslandTPd then
         local hrpBefore=fn.PlayerHRP()
         local posBefore=hrpBefore and hrpBefore.Position
@@ -2597,21 +2567,136 @@ S.Notify = {
 --==================================================
 -- MAIN TAB
 --==================================================
-local MainTab = Window:MakeTab({ Name = "🎯 Main", Icon = "home" })
-local InfoSec = MainTab:AddSection({ Name = "👤 Player Information", TextSize = 16, Glass = true })
-local LevelLbl = InfoSec:AddLabel("Level: Loading...")
+local MainTab = Window:MakeTab({ Name = "🎯 Main", Icon = "home", Glass = true, Outline = true })
+
+-- === PLAYER INFO ===
+local InfoSec = MainTab:AddSection({ Name = "📊 Player Information", TextSize = 18, Glass = true, Outline = true })
+local playerInfoPara = InfoSec:AddParagraph({
+    Title = "👤 " .. LP.Name,
+    Desc = "Display: " .. LP.DisplayName .. "\nUserID: " .. LP.UserId .. "\nAccount Age: " .. LP.AccountAge .. " days",
+    Image = "user",
+    ImageSize = 48
+})
+local LevelLbl = InfoSec:AddLabel("Level:  Loading... | Race: ? | Clan: ?")
 
 task.spawn(function()
     while S.Running do
         task.wait(2)
         pcall(function()
             local d = LP:FindFirstChild("Data")
-            if d then
-                LevelLbl:Set("Level: " .. (d:FindFirstChild("Level") and d.Level.Value or "N/A"))
-            end
+            local lv = d and d:FindFirstChild("Level") and d.Level.Value or "N/A"
+            local race = LP:GetAttribute("CurrentRace") or "N/A"
+            local clan = LP:GetAttribute("CurrentClan") or "N/A"
+            LevelLbl:Set("Level: " .. lv .. " | Race: " .. race .. " | Clan: " .. clan)
         end)
     end
 end)
+
+-- === SERVER INFO ===
+local SrvSec = MainTab:AddSection({ Name = "🌐 Server Information", TextSize = 16, Glass = true, Outline = true })
+local S_StartTime = tick()
+local function getUptime()
+    local up = tick() - S_StartTime
+    return string.format("%02d:%02d:%02d", math.floor(up/3600), math.floor((up%3600)/60), math.floor(up%60))
+end
+local function getServerDesc()
+    local plrs = game:GetService("Players")
+    local ping = math.floor(pcall(function() return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() end) and game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() or 0)
+    return "Players: " .. #plrs:GetPlayers() .. "/" .. (plrs.MaxPlayers or "?") .. "\nPing: " .. ping .. "ms\nUptime: " .. getUptime()
+end
+local SrvPara = SrvSec:AddParagraph({
+    Title = "Server Status",
+    Desc = getServerDesc(),
+    Image = "server",
+    ImageSize = 32,
+    Buttons = {
+        { Title = "🔄 Refresh", Callback = function() SrvPara:SetDesc(getServerDesc()) end }
+    }
+})
+task.spawn(function() while S.Running do task.wait(1) pcall(function() SrvPara:SetDesc(getServerDesc()) end) end end)
+
+-- === DARK BLADE ===
+local DBSec = MainTab:AddSection({ Name = "⚔️ Dark Blade", TextSize = 16, Glass = true, Outline = true })
+S.AutoEquipDarkBlade = false
+S.DarkBladeNames = {"Dark Blade", "ดาบสีเข้ม", "Black Blade"}
+local function findDarkBlade()
+    for _, cont in pairs({LP.Character, LP:FindFirstChild("Backpack")}) do
+        if cont then
+            for _, tool in pairs(cont:GetChildren()) do
+                if tool:IsA("Tool") then
+                    for _, nm in ipairs(S.DarkBladeNames) do
+                        if tool.Name:find(nm) then return tool end
+                    end
+                end
+            end
+        end
+    end
+end
+DBSec:AddToggle({Name = "Auto Equip Dark Blade", Default = false, Save = true, Flag = "AutoDB", Callback = function(v)
+    S.AutoEquipDarkBlade = v
+end})
+DBSec:AddButton({Name = "Equip Dark Blade Now", Callback = function()
+    local tool = findDarkBlade()
+    if tool then
+        local char = LP.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and tool.Parent ~= char then hum:EquipTool(tool) end
+        S.Notify.new({Title="Dark Blade", Content="Dark Blade equipped!", Duration=2})
+    else
+        pcall(function() RS:WaitForChild("Remotes"):WaitForChild("EquipWeapon"):FireServer("Equip", "Dark Blade") end)
+        S.Notify.new({Title="Dark Blade", Content="Requested equip via server!", Duration=2})
+    end
+end})
+task.spawn(function()
+    while S.Running do
+        task.wait(1)
+        if S.AutoEquipDarkBlade then
+            local char = LP.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local tool = findDarkBlade()
+            if tool and tool.Parent ~= char and hum then pcall(function() hum:EquipTool(tool) end) end
+        end
+    end
+end)
+
+-- === HAKI QUEST ===
+local HQSec = MainTab:AddSection({ Name = "🥊 Haki Quest", TextSize = 16, Glass = true, Outline = true })
+S.AutoHakiQuest = false
+HQSec:AddToggle({Name = "Auto Haki Quest (Starter)", Default = false, Save = true, Flag = "AutoHakiQ", Callback = function(v)
+    S.AutoHakiQuest = v
+    if v then
+        S.Notify.new({Title="Haki Quest", Content="Auto Haki Quest started! Teleporting to Starter...", Duration=3})
+        task.spawn(function()
+            while S.AutoHakiQuest and S.Running do
+                task.wait(0.5)
+                local char = LP.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local hum = char and char:FindFirstChild("Humanoid")
+                if hrp and hum and hum.Health > 0 then
+                    -- TP to starter if not there
+                    pcall(function() fn.ForceTP("Starter") end)
+                    task.wait(2)
+                    -- Find Thief and kill
+                    local nf = workspace:FindFirstChild("NPCs")
+                    if nf then
+                        for _, m in ipairs(nf:GetChildren()) do
+                            local h = fn.GetHum(m)
+                            if h and h.Health > 0 and m.Name:lower():find("thief") then
+                                local tp = m:FindFirstChild("HumanoidRootPart")
+                                if tp then
+                                    hrp.CFrame = tp.CFrame * CFrame.new(0, 6, 0)
+                                    task.wait(0.1)
+                                    pcall(function() fn.Attack(m) end)
+                                    task.wait(0.3)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    end
+end})
 
 local DashSec = MainTab:AddSection({ Name = "🔧 Dashboard", TextSize = 16, Glass = true })
 DashSec:AddToggle({Name = "Anti-AFK", Default = true, Save = true, Flag = "AntiAFK", Callback = function(v) F.AntiAFK = v end})
@@ -2628,8 +2713,11 @@ local FarmSec = FarmTab:AddSection({ Name = "⚙️ Auto Level", TextSize = 18, 
 
 local FarmToggle
 FarmToggle = FarmSec:AddToggle({Name = "Enable Auto Farm Level", Default = false, Save = true, Flag = "AutoFarm", Callback = function(v)
+    if v and (F.AutoDungeon or F.AutoBossRush or fn.HasDungeonEnemiesInWorkspace()) then
+        task.defer(function() pcall(function() FarmToggle:Set(false) end) end)
+        return
+    end
     F.AutoFarmLevel = v
-    if v then PriorityService:Request("AutoFarm") else PriorityService:Release("AutoFarm") end
     if v then
         fn.StopTw(); fn.ClearTgt()
         S.CurIsland = nil; S.IslandTPd = false; S.SpawnDone = false; S.FarmOrigin = nil
@@ -2666,7 +2754,7 @@ DungSec:AddDropdown({Name = "Dungeon Type", Default = "Double", Options = {"Doub
 local DungToggle
 DungToggle = DungSec:AddToggle({Name = "Enable Auto Dungeon", Default = false, Save = true, Flag = "AutoDungeon", Callback = function(v) 
     fn.EnableDungeonType(F.DungeonType or "Double", v)
-    if v then PriorityService:Request("AutoDungeon") else PriorityService:Release("AutoDungeon") end
+    if v and FarmToggle.Value then pcall(function() FarmToggle:Set(false) end) end
 end})
 
 DungSec:AddDropdown({Name = "Dungeon Difficulty", Default = "Normal", Options = {"Easy", "Normal", "Hard", "Extreme"}, Save = true, Flag = "DungDiff", Callback = function(v) 
@@ -2685,8 +2773,12 @@ local BRSec = GameTab:AddSection({ Name = "💀 Boss Rush", TextSize = 18, Glass
 local BossRushToggle
 BossRushToggle = BRSec:AddToggle({Name = "Enable Boss Rush", Default = false, Save = true, Flag = "AutoBR", Callback = function(v)
     F.AutoBossRush = v
-    if v then PriorityService:Request("BossEvent") else PriorityService:Release("BossEvent") end
-    if v then fn.StopTw() end
+    if v then
+        F.AutoFarmLevel = false
+        if FarmToggle.Value then FarmToggle:Set(false) end
+        if DungToggle.Value then DungToggle:Set(false) end
+        fn.StopTw()
+    end
 end})
 
 BRSec:AddToggle({Name = "Auto Join Boss Rush", Default = false, Save = true, Flag = "JoinBR", Callback = function(v) 
@@ -2706,8 +2798,11 @@ local BossTab = Window:MakeTab({ Name = "👹 Bosses", Icon = "skull" })
 local WorldSec = BossTab:AddSection({ Name = "🌍 World Bosses", TextSize = 18, Glass = true })
 
 local BossToggle = WorldSec:AddToggle({Name = "Enable Boss Farm", Default = false, Save = true, Flag = "BossFarm", Callback = function(v)
+    if v and (F.AutoDungeon or F.AutoBossRush or fn.HasDungeonEnemiesInWorkspace()) then
+        task.defer(function() pcall(function() BossToggle:Set(false) end) end)
+        return
+    end
     F.BossEnabled = v
-    if v then PriorityService:Request("AutoBoss") else PriorityService:Release("AutoBoss") end
     if not v and S.BossFight then fn.ExitBossMode(S.BossTargetName) end
 end})
 
@@ -2722,7 +2817,10 @@ for _, bDef in ipairs(S.SummonBosses) do
     local lbl = bDef.Display .. (bDef.Island and " ("..bDef.Island..")" or "")
     
     local tgl = SummonSec:AddToggle({Name = lbl, Default = false, Save = true, Flag = "SB_"..bossName, Callback = function(v)
-        if v then PriorityService:Request("AutoBoss") else PriorityService:Release("AutoBoss") end
+        if v and (F.AutoDungeon or F.AutoBossRush) then
+            task.defer(function() pcall(function() S.BSFToggle[bossName]:Set(false) end) end)
+            return
+        end
         if v then
             for _, ob in ipairs(S.SummonBosses) do
                 if ob.Name ~= bossName then
@@ -2778,8 +2876,8 @@ QuestSec:AddParagraph("Info", "Enabling special quests overrides ALL farming aut
 local DungQToggle, FogQToggle
 DungQToggle = QuestSec:AddToggle({Name = "Auto Dungeon Pieces (Unlock)", Default = false, Save = true, Flag = "Q_DungP", Callback = function(v)
     F.DungeonQuest = v
-    if v then PriorityService:Request("PitySystem") else PriorityService:Release("PitySystem") end
     if v then
+        if F.HogyokuQuest then pcall(function() FogQToggle:Set(false) end) end
         S.DungeonStep = 0; S.DungeonCollected = {}
         fn.StopTw(); fn.ClearTgt()
     else
@@ -2789,8 +2887,8 @@ end})
 
 FogQToggle = QuestSec:AddToggle({Name = "Auto Hogyoku Fragments (Unlock)", Default = false, Save = true, Flag = "Q_Hogyo", Callback = function(v)
     F.HogyokuQuest = v
-    if v then PriorityService:Request("PitySystem") else PriorityService:Release("PitySystem") end
     if v then
+        if F.DungeonQuest then pcall(function() DungQToggle:Set(false) end) end
         S.HogyokuStep = 0; S.HogyokuCollected = {}
         fn.StopTw(); fn.ClearTgt()
     else
@@ -2810,14 +2908,6 @@ for _, item in ipairs(S.MerchantItems) do
     MerchSec:AddToggle({Name = item, Default = false, Save = true, Flag = "Merch_"..item:gsub(" ",""), Callback = function(v) S.FM[item] = v end}) 
 end
 
-
---==================================================
--- CRAFTING TAB
---==================================================
-local CraftTab = Window:MakeTab({ Name = "🛠️ Crafting", Icon = "hammer" })
-local SlimeSec = CraftTab:AddSection({ Name = "🧪 Slime Keys", TextSize = 18, Glass = true })
-SlimeSec:AddToggle({Name = "Auto Craft Slime Key", Default = false, Save = true, Flag = "AutoSlimeCraft", Callback = function(v) F.AutoSlimeCraft = v end})
-
 --==================================================
 -- TELEPORTS TAB
 --==================================================
@@ -2836,7 +2926,6 @@ fn.SetupAntiAFK()
 task.spawn(fn.DisableGameAutoSkills)
 task.spawn(function() while S.Running do if F.AutoQuest then fn.QuestCompletionScan() end task.wait(2) end end)
 task.spawn(function() while S.Running do if F.AutoChest then fn.OpenAllChests() end task.wait(2) end end)
-task.spawn(function() while S.Running do if F.AutoSlimeCraft then fn.TryCraftSlime() end task.wait(5) end end)
 task.spawn(function() while S.Running do if F.AutoMerchant then fn.BuyMerchantItems() end task.wait(8) end end)
 S.LastAutoJoinPortal=0
 task.spawn(function() while S.Running do task.wait(3) for _,dt in ipairs(S.DungeonTypes) do if S.AutoJoinDungeon[dt] and not S.AutoJoinFired[dt] and not fn.IsInDungeon() and not fn.IsInDungeonLobby() then S.AutoJoinFired[dt]=true fn.FireDungeonPortal(dt) end end if S.AutoJoinBossRush and not S.AutoJoinBossRushFired and not fn.IsInDungeon() and not fn.IsInDungeonLobby() then S.AutoJoinBossRushFired=true pcall(function() local r=fn.WalkPathWait(RS,3,unpack(R.DungeonPortal)) if r then r:FireServer("BossRush") end end) end end end)
@@ -2854,63 +2943,51 @@ task.spawn(function()
                 S.LastBossTP=0 S.BossTPDone=false S.LastSummonBossTP=0 S.SummonBossTPDone=false
             end
             if not fn.IsAlive() then task.wait(0.3) break end
-            local pTask = PriorityService:GetTask()
-            
-            if pTask == "PitySystem" then
+            if F.DungeonQuest then
                 if S.SummonBossFight then fn.ExitSummonBossMode() end
                 if S.BossFight then S.BossFight=false S.BossTargetName=nil fn.ClearTgt() S.HoverPos=nil end
-                if F.DungeonQuest then local dok,derr=pcall(fn.DoDungeonQuestTick) if not dok then S.Notify.new({Title="Dungeon Error",Content=tostring(derr):sub(1,80),Duration=5,Icon=S.ICON}) end end
-                if F.HogyokuQuest then local hok,herr=pcall(fn.DoHogyokuQuestTick) if not hok then S.Notify.new({Title="Hogyoku Error",Content=tostring(herr):sub(1,80),Duration=5,Icon=S.ICON}) end end
+                local dok,derr=pcall(fn.DoDungeonQuestTick) if not dok then S.Notify.new({Title="Dungeon Error",Content=tostring(derr):sub(1,80),Duration=5,Icon=S.ICON}) end
                 task.wait(0.2) break
             end
-            
-            if pTask == "AutoDungeon" then
+            if F.HogyokuQuest then
+                if S.SummonBossFight then fn.ExitSummonBossMode() end
+                if S.BossFight then S.BossFight=false S.BossTargetName=nil fn.ClearTgt() S.HoverPos=nil end
+                local hok,herr=pcall(fn.DoHogyokuQuestTick) if not hok then S.Notify.new({Title="Hogyoku Error",Content=tostring(herr):sub(1,80),Duration=5,Icon=S.ICON}) end
+                task.wait(0.2) break
+            end
+            if F.AutoDungeon then
                 if S.SummonBossFight then fn.ExitSummonBossMode() end
                 if S.BossFight then S.BossFight=false S.BossTargetName=nil fn.ClearTgt() S.HoverPos=nil end
                 pcall(fn.DoAutoDungeonTick)
                 task.wait(0.08)
                 break
             end
-            
-            if pTask == "BossEvent" then
+            if F.AutoBossRush then
                 if S.SummonBossFight then fn.ExitSummonBossMode() end
                 if S.BossFight then S.BossFight=false S.BossTargetName=nil fn.ClearTgt() S.HoverPos=nil end
                 pcall(fn.DoBossRushTick)
                 task.wait(0.08)
                 break
             end
-            
             if not isSummonActive and S.SummonBossFight then fn.ExitSummonBossMode() end
             if isSummonActive and not S.SummonBossFight then
                 S.SummonBossFight=true S.BossFight=false S.BossTargetName=nil S.BossTPDone=false S.SummonBossTPDone=false S.LastSummonBossTP=0 S.SummonBossCurrentIsland=nil S.SummonBossOrder=0 S.SummonBossFailCount={} S.SummonBossFireTime={} S.SummonBossLockedDiff={} fn.ClearTgt() S.HoverPos=nil S.CurIsland=nil S.IslandTPd=false
             end
-            
-            if pTask == "AutoBoss" then
-                if S.SummonBossFight then fn.DoSummonBossTick() task.wait(0.1) break end
-                if F.BossEnabled and not S.BossFight then
-                    local nextName=fn.PickNextBossName()
-                    if nextName then
-                        local bossIsland=fn.GetBossIsland(nextName)
-                        local alreadyOnIsland=S.CurIsland and bossIsland and S.CurIsland.Portal==bossIsland and S.IslandTPd
-                        S.BossFight=true S.BossTargetName=nextName S.BossTPDone=alreadyOnIsland S.LastBossTP=0 fn.ClearTgt() S.HoverPos=nil
-                        if alreadyOnIsland then S.BossCurrentIsland=bossIsland else S.BossCurrentIsland=nil S.CurIsland=nil S.IslandTPd=false end
-                        if F.BossNotify then S.Notify.new({Title="Locating "..fn.GetBossDisplay(nextName),Content="Teleporting to "..fn.GetBossDisplay(nextName).." | Stopping farm!",Duration=4,Icon=S.ICON}) end
-                    end
+            if S.SummonBossFight then fn.DoSummonBossTick() task.wait(0.1) break end
+            if F.BossEnabled and not S.BossFight then
+                local nextName=fn.PickNextBossName()
+                if nextName then
+                    local bossIsland=fn.GetBossIsland(nextName)
+                    local alreadyOnIsland=S.CurIsland and bossIsland and S.CurIsland.Portal==bossIsland and S.IslandTPd
+                    S.BossFight=true S.BossTargetName=nextName S.BossTPDone=alreadyOnIsland S.LastBossTP=0 fn.ClearTgt() S.HoverPos=nil
+                    if alreadyOnIsland then S.BossCurrentIsland=bossIsland else S.BossCurrentIsland=nil S.CurIsland=nil S.IslandTPd=false end
+                    if F.BossNotify then S.Notify.new({Title="Locating "..fn.GetBossDisplay(nextName),Content="Teleporting to "..fn.GetBossDisplay(nextName).." | Stopping farm!",Duration=4,Icon=S.ICON}) end
                 end
-                if S.BossFight then fn.DoBossTick() task.wait(0.1) break end
             end
-            
-            if pTask == "AutoFarm" then
-                fn.DoFarmTick()
-                task.wait(0.1)
-                break
-            end
-            
-            task.wait(0.3)
-            break
+            if S.BossFight then fn.DoBossTick() task.wait(0.1) break end
+            if not F.AutoFarmLevel then task.wait(0.3) break end
+            fn.DoFarmTick()
+            task.wait(0.1)
         until true
     end
 end)
-
-OrionLib:Init()
-end -- close UI do block
