@@ -1306,6 +1306,12 @@ fn.ExitBossMode=function(lastBossName)
         S.Notify.new({Title="Bosses Clear!",Content=msg,Duration=3,Icon=S.ICON})
     end
 end
+fn.TryCraftSlime = function()
+    pcall(function()
+        local r = RS:FindFirstChild("Remotes")
+        if r and r:FindFirstChild("RequestSlimeCraft") then r.RequestSlimeCraft:FireServer() end
+    end)
+end
 fn.DoFarmTick=function()
     local tgtIsland=fn.GetFarmIsland()
     if not tgtIsland then
@@ -2848,7 +2854,6 @@ task.spawn(function()
                 S.LastBossTP=0 S.BossTPDone=false S.LastSummonBossTP=0 S.SummonBossTPDone=false
             end
             if not fn.IsAlive() then task.wait(0.3) break end
-            if F.DungeonQuest then
             local pTask = PriorityService:GetTask()
             
             if pTask == "PitySystem" then
