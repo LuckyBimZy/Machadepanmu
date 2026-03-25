@@ -2601,9 +2601,13 @@ local function getUptime()
 end
 local function getServerDesc()
     local plrs = game:GetService("Players")
-    local ping = math.floor(pcall(function() return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() end) and game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() or 0)
+    local ping = 0
+    pcall(function()
+        ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
+    end)
     return "Players: " .. #plrs:GetPlayers() .. "/" .. (plrs.MaxPlayers or "?") .. "\nPing: " .. ping .. "ms\nUptime: " .. getUptime()
 end
+
 local SrvPara = SrvSec:AddParagraph({
     Title = "Server Status",
     Desc = getServerDesc(),
