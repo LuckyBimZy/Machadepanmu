@@ -67,6 +67,29 @@ local Constants = {
         {Portal="SoulSociety",FarmUntil=999999,Enemies={"Quincy1","Quincy2","Quincy3","Quincy4","Quincy5"},QuestNPC="QuestNPC17"}
     },
     TpIslands = {"Starter","Jungle","Desert","Snow","Sailor","Shibuya","HuecoMundo","Boss","Dungeon","Shinjuku","Slime","Academy","Judgement","SoulSociety"},
+    
+    IslandsInOrder = { "Auto Level", "Starter", "Jungle", "Desert", "Snow", "Sailor", "Shibuya Station", "Hollow Ilha", "Shinjuku", "Slime", "Academy", "Judgement", "Soul Dominion" },
+    TeleportMap = {
+        ["Auto Level"] = "Auto", ["Starter"] = "Starter", ["Jungle"] = "Jungle", ["Desert"] = "Desert",
+        ["Snow"] = "Snow", ["Sailor"] = "Sailor", ["Shibuya Station"] = "Shibuya",
+        ["Hollow Ilha"] = "HuecoMundo", ["Shinjuku"] = "Shinjuku", ["Slime"] = "Slime",
+        ["Academy"] = "Academy", ["Judgement"] = "Judgement", ["Soul Dominion"] = "SoulSociety"
+    },
+    QuestDataMap = {
+        ["Auto Level"] = {"Auto"},
+        ["Starter"] = {"Thief", "ThiefBoss"},
+        ["Jungle"] = {"Monkey", "MonkeyBoss"},
+        ["Desert"] = {"DesertBandit", "DesertBoss"},
+        ["Snow"] = {"FrostRogue", "SnowBoss"},
+        ["Sailor"] = {"JinwooMovesetNPC"},
+        ["Shibuya Station"] = {"Sorcerer", "PandaMiniBoss"},
+        ["Hollow Ilha"] = {"Hollow"},
+        ["Shinjuku"] = {"StrongSorcerer", "Curse"},
+        ["Slime"] = {"Slime"},
+        ["Academy"] = {"AcademyTeacher"},
+        ["Judgement"] = {"Swordsman"},
+        ["Soul Dominion"] = {"Quincy"}
+    },
 
     WorldBosses = {
         {Name="AizenBoss",Display="Aizen",Island="HuecoMundo"},
@@ -240,6 +263,16 @@ end
 
 local function MatchEnemy(name, island)
     if not island then return false end
+    
+    -- Specific Mob Targeting Support
+    local selectedIsland = getgenv().Config.Farm.SelectedIsland
+    local selectedMob = getgenv().Config.Farm.SelectedMob
+    if selectedIsland ~= "Auto Level" and selectedMob and selectedMob ~= "Auto" and selectedMob ~= "Nenhum" then
+        local lowerName = string.lower(name:gsub("%d+",""):gsub("%s+",""))
+        local targetName = string.lower(selectedMob:gsub("%s+",""))
+        return string.find(lowerName, targetName) ~= nil
+    end
+    
     local lowerName = string.lower(name)
     for _, e in ipairs(island.Enemies) do
         if string.find(lowerName, string.lower(e)) then return true end
@@ -418,7 +451,16 @@ local function FarmTick()
     AutoSkillCast()
     
     hrp.Velocity = Vector3.new(0, 0, 0)
-    hrp.CFrame = CFrame.new(hrp.Position, Vector3.new(ePos.X, hrp.Position.Y, ePos.Z))
+    
+    -- Anti-Jitter physics stabilizer
+    local bv = hrp:FindFirstChild("FarmBVelocity")
+    if not bv then
+        bv = Instance.new("BodyVelocity")
+        bv.Name = "FarmBVelocity"
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = hrp
+    end
     
     if (hrp.Position - ePos).Magnitude > 80 then
         if getgenv().Config.Farm.MoveMode == "Teleport" then
@@ -427,7 +469,8 @@ local function FarmTick()
             Util.TweenTo(combatPos)
         end
     else
-        hrp.CFrame = combatPos
+        -- Extremely smooth lerping when close combat
+        hrp.CFrame = hrp.CFrame:Lerp(combatPos, 0.6)
     end
 end
 
@@ -942,12 +985,29 @@ fTgl = FarmSec:AddToggle({Name = "Enable Auto Farm", Default = false, Flag = "AF
         task.defer(function() pcall(function() fTgl:Set(false) end) end); return
     end
     getgenv().Config.AutoFarm.Enabled = v
-    if not v then Util.StopTween() end
+    if not v then
+        Util.StopTween()
+        local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp:FindFirstChild("FarmBVelocity") then hrp.FarmBVelocity:Destroy() end
+    end
 end})
 
 FarmSec:AddToggle({Name = "Auto Equip", Default = true, Flag="AEquip", Save=true, Callback=function(v) getgenv().Config.AutoFarm.AutoEquip = v end})
 FarmSec:AddToggle({Name = "Auto Quest", Default = true, Flag="AQuest", Save=true, Callback=function(v) getgenv().Config.Farm.AutoQuest = v end})
-FarmSec:AddDropdown({Name = "Select Island", Default = "Auto", Options = Constants.TpIslands, Flag="SelIsl", Save=true, Callback=function(v) getgenv().Config.Farm.SelectedIsland = v end})
+
+local mobDrop
+FarmSec:AddDropdown({Name = "Select Island", Default = "Auto Level", Options = Constants.IslandsInOrder, Flag="SelIsl2", Save=true, Callback=function(v) 
+    getgenv().Config.Farm.SelectedIsland = v
+    if mobDrop then
+        local mobs = Constants.QuestDataMap[v] or {"Auto"}
+        mobDrop:Refresh(mobs, true)
+        getgenv().Config.Farm.SelectedMob = mobs[1]
+    end
+end})
+
+mobDrop = FarmSec:AddDropdown({Name = "Select Mob", Default = "Auto", Options = {"Auto"}, Flag="SelMob", Save=true, Callback=function(v)
+    getgenv().Config.Farm.SelectedMob = v
+end})
 
 local PosiSec = FarmTab:AddSection({Name = "📐 Positioning", TextSize = 16, Glass = true})
 PosiSec:AddDropdown({Name = "Farm Mode", Default = "Behind", Options = {"Behind", "In Front", "Left Side", "Right Side"}, Flag="FMode", Save=true, Callback=function(v) getgenv().Config.Farm.FarmMode = v end})
