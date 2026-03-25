@@ -1328,21 +1328,21 @@ fn.DoFarmTick=function()
         S.Notify.new({Title="Teleporting to "..fn.PortalDisplayName(tgtIsland.Portal),Content="Lv."..fn.GetLevel().." | "..tgtIsland.QuestNPC,Duration=3,Icon=S.ICON})
     end
     if S.IslandTPd and S.CurIsland and S.CurIsland.QuestNPC then
-        local hrpCheck=fn.PlayerHRP()
-        local svcNPCs=workspace:FindFirstChild("ServiceNPCs")
-        if hrpCheck and svcNPCs then
-            local qNpc=svcNPCs:FindFirstChild(S.CurIsland.QuestNPC)
-            if qNpc and qNpc:FindFirstChild("HumanoidRootPart") then
-                if (hrpCheck.Position - qNpc.HumanoidRootPart.Position).Magnitude > 4500 then
-                    S.IslandTPd = false
-                    print("GPS: Out of bounds for " .. S.CurIsland.Portal .. ". Resetting IslandTPd state.")
-                end
-            else
-                -- If QuestNPC is not strictly loaded in ServiceNPCs, maybe we just reset
-                -- but better to wait for map load
-            end
-        end
-    end
+            local hrpCheck=fn.PlayerHRP()
+            local svcNPCs=workspace:FindFirstChild("ServiceNPCs")
+            if hrpCheck and svcNPCs then
+                local qNpc=svcNPCs:FindFirstChild(S.CurIsland.QuestNPC)
+                if qNpc and qNpc:FindFirstChild("HumanoidRootPart") then
+                    if (hrpCheck.Position - qNpc.HumanoidRootPart.Position).Magnitude > 4500 then
+                        S.IslandTPd = false
+                        print("GPS: Out of bounds for " .. S.CurIsland.Portal .. ". Resetting IslandTPd state.")
+                    end
+                else
+                    -- If QuestNPC is not strictly loaded in ServiceNPCs, maybe we just reset
+                    -- but better to wait for map load
+                end
+            end
+        end
     if not S.IslandTPd then
         local hrpBefore=fn.PlayerHRP()
         local posBefore=hrpBefore and hrpBefore.Position
