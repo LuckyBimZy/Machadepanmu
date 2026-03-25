@@ -203,13 +203,19 @@ function Util.TweenTo(targetCFrame, speedParam, safeDist)
     if safeDist and dist <= safeDist then return end
     
     local speed = speedParam or getgenv().Config.Farm.TweenSpeed
-    local timeToReach = dist / speed
+    local stepDist = math.min(dist, 80)
+    local dir = (targetCFrame.Position - hrp.Position).Unit
+    if dir.Magnitude < 0.1 then dir = Vector3.new(0, 0, 1) end
+    
+    local stepGoal = hrp.Position + (dir * stepDist)
+    local cf = CFrame.new(stepGoal, targetCFrame.Position)
+    local timeToReach = math.clamp(stepDist / math.max(speed, 1), 0.06, 3.0)
     
     local tweenInfo = TweenInfo.new(timeToReach, Enum.EasingStyle.Linear)
     Util.StopTween()
     
     State.TweenOn = true
-    State.ATween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
+    State.ATween = TweenService:Create(hrp, tweenInfo, {CFrame = cf})
     State.ATween:Play()
     
     State.ATweenConn = State.ATween.Completed:Connect(function()
@@ -330,35 +336,48 @@ end
 local function EquipWeapon()
     if not getgenv().Config.AutoFarm.AutoEquip then return end
     
-    local targetWep = getgenv().Config.AutoFarm.SelectedWeapon
-    local char = Player.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
+    local c = Player.Character
+    local hm = c and c:FindFirstChildOfClass("Humanoid")
+    if not hm then return end
+    local bp = Player:FindFirstChild("Backpack")
+    if not bp then return end
     
+    local targetWep = getgenv().Config.AutoFarm.SelectedWeapon
     if targetWep and targetWep ~= "None" then
-        if char:FindFirstChild(targetWep) then return end
-        local backpack = Player:FindFirstChild("Backpack")
-        local tool = backpack and backpack:FindFirstChild(targetWep)
+        if c:FindFirstChild(targetWep) then return end
+        local tool = bp:FindFirstChild(targetWep)
         if tool then
-            hum:UnequipTools()
+            hm:UnequipTools()
             task.wait(0.1)
-            hum:EquipTool(tool)
+            pcall(function() hm:EquipTool(tool) end)
         end
+        return
+    end
+    
+    local melee, sword = nil, nil
+    local function checkT(t)
+        local n = t.Name:lower()
+        if n:find("melee") or n:find("combat") or n:find("fist") then melee = t
+        elseif n:find("sword") or n:find("katana") or n:find("blade") then sword = t end
+    end
+    
+    for _, t in ipairs(c:GetChildren()) do if t:IsA("Tool") then checkT(t) end end
+    for _, t in ipairs(bp:GetChildren()) do if t:IsA("Tool") then checkT(t) end end
+    
+    if melee and sword then
+        if not c:FindFirstChild(sword.Name) then
+            pcall(function() hm:EquipTool(sword) end)
+            task.wait(0.05)
+            pcall(function() hm:EquipTool(melee) end)
+        end
+    elseif sword and not melee then
+        if not c:FindFirstChild(sword.Name) then pcall(function() hm:EquipTool(sword) end) end
+    elseif melee and not sword then
+        if not c:FindFirstChild(melee.Name) then pcall(function() hm:EquipTool(melee) end) end
     else
-        -- Fallback auto equip melee/sword
-        for _, obj in ipairs(char:GetChildren()) do if obj:IsA("Tool") then return end end
-        local bp = Player:FindFirstChild("Backpack")
-        if bp then
-            for _, tool in ipairs(bp:GetChildren()) do
-                if tool:IsA("Tool") and (tool.Name:lower():find("sword") or tool.Name:lower():find("melee") or tool.Name:lower():find("katana")) then
-                    hum:EquipTool(tool)
-                    return
-                end
-            end
-            -- If no sword found, equip the first tool
-            local t = bp:FindFirstChildOfClass("Tool")
-            if t then hum:EquipTool(t) end
-        end
+        for _, obj in ipairs(c:GetChildren()) do if obj:IsA("Tool") then return end end
+        local fb = bp:FindFirstChildOfClass("Tool")
+        if fb then pcall(function() hm:EquipTool(fb) end) end
     end
 end
 
@@ -394,18 +413,32 @@ local function GetCombatPosition(targetPos, targetCF)
     local offsetDist = cfg.OffsetDist
     local h = cfg.HeightOffset
     
-    if cfg.FarmMode == "Behind" then
-        return targetCF * CFrame.new(0, h, offsetDist)
-    elseif cfg.FarmMode == "In Front" then
-        return targetCF * CFrame.new(0, h, -offsetDist)
-    elseif cfg.FarmMode == "Left Side" then
-        return targetCF * CFrame.new(-offsetDist, h, 0)
-    elseif cfg.FarmMode == "Right Side" then
-        return targetCF * CFrame.new(offsetDist, h, 0)
-    else
-        -- Orbit Mode logic here if advanced enabled
-        return targetCF * CFrame.new(0, h, offsetDist)
+    local lookFlat = Vector3.new(targetCF.LookVector.X, 0, targetCF.LookVector.Z)
+    if lookFlat.Magnitude > 0.01 then lookFlat = lookFlat.Unit else lookFlat = Vector3.new(0, 0, 1) end
+    local rightFlat = Vector3.new(-lookFlat.Z, 0, lookFlat.X)
+    
+    local primary
+    if cfg.FarmMode == "In Front" then primary = lookFlat
+    elseif cfg.FarmMode == "Left Side" then primary = rightFlat
+    elseif cfg.FarmMode == "Right Side" then primary = -rightFlat
+    else primary = -lookFlat end
+    
+    local perp = Vector3.new(-primary.Z, 0, primary.X)
+    local dirs = {primary, perp, -perp, -primary}
+    
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    if Player.Character then rp.FilterDescendantsInstances = {Player.Character} end
+    
+    for _, dir in ipairs(dirs) do
+        if dir.Magnitude > 0.1 then
+            dir = Vector3.new(dir.X, 0, dir.Z).Unit
+            local goal = targetPos + dir * offsetDist
+            local ray = workspace:Raycast(targetPos, dir * offsetDist, rp)
+            if not ray then return CFrame.new(Vector3.new(goal.X, targetPos.Y + h, goal.Z), targetPos) end
+        end
     end
+    return CFrame.new(Vector3.new(targetPos.X, targetPos.Y + h, targetPos.Z + offsetDist), targetPos)
 end
 
 local function FarmTick()
@@ -462,15 +495,16 @@ local function FarmTick()
         bv.Parent = hrp
     end
     
-    if (hrp.Position - ePos).Magnitude > 80 then
-        if getgenv().Config.Farm.MoveMode == "Teleport" then
-            hrp.CFrame = combatPos
-        else
-            Util.TweenTo(combatPos)
-        end
+    if (hrp.Position - ePos).Magnitude > 80 and getgenv().Config.Farm.MoveMode == "Teleport" then
+        hrp.CFrame = combatPos
     else
-        -- Extremely smooth lerping when close combat
-        hrp.CFrame = hrp.CFrame:Lerp(combatPos, 0.6)
+        local distToCombat = (hrp.Position - combatPos.Position).Magnitude
+        if distToCombat > 2 then
+            Util.TweenTo(combatPos)
+        else
+            Util.StopTween()
+            hrp.CFrame = combatPos
+        end
     end
 end
 
@@ -1103,18 +1137,24 @@ for _, n in ipairs(Constants.TpIslands) do TPSec:AddButton({Name=n, Callback=fun
 task.spawn(function()
     while getgenv().Config.Running do
         task.wait(0.1)
-        if not Util.WaitChar() then continue end
-        
-        if getgenv().Config.Quests.Hogyoku then pcall(HogyokuTick) continue end
-        if getgenv().Config.Dungeon.Enabled then pcall(DungeonTick) continue end
-        if getgenv().Config.AutoBossRush then pcall(BossRushTick) continue end
-        
-        local isRaidSelected = false
-        for _, enabled in pairs(getgenv().Config.BossSummonToggles) do if enabled then isRaidSelected = true break end end
-        if isRaidSelected then pcall(SummonBossTick) continue end
-        if getgenv().Config.Boss.Enabled then pcall(BossTick) continue end
-        
-        if getgenv().Config.AutoFarm.Enabled then pcall(FarmTick) continue end
+        if Util.WaitChar() then
+            local isRaidSelected = false
+            for _, enabled in pairs(getgenv().Config.BossSummonToggles) do if enabled then isRaidSelected = true break end end
+            
+            if getgenv().Config.Quests.Hogyoku then
+                pcall(HogyokuTick)
+            elseif getgenv().Config.Dungeon.Enabled then
+                pcall(DungeonTick)
+            elseif getgenv().Config.AutoBossRush then
+                pcall(BossRushTick)
+            elseif isRaidSelected then
+                pcall(SummonBossTick)
+            elseif getgenv().Config.Boss.Enabled then
+                pcall(BossTick)
+            elseif getgenv().Config.AutoFarm.Enabled then
+                pcall(FarmTick)
+            end
+        end
     end
 end)
 
