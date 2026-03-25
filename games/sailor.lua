@@ -2911,3 +2911,6 @@ task.spawn(function()
         until true
     end
 end)
+
+OrionLib:Init()
+end -- close UI do block
