@@ -602,14 +602,31 @@ end
 -- CREATE UI
 --==================================================
 local Window = OrionLib:MakeWindow({
-    Name = "Sailor Piece Ultimate - " .. require(game:GetService("ReplicatedStorage"):WaitForChild("Version")).Value,
+    Name = "Sailor Piece Ultimate",
+    Subtext = "PREMIUM Edition",
+    Version = "v3.0",
+    VersionIcon = "shield-check",
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "CatrazHubSP",
     IntroEnabled = true,
-    IntroText = "Catraz Hub x Sailor Piece",
-    Icon = Constants.ICON
+    IntroText = "Sailor Piece CatrazHub",
+    IntroIcon = Constants.ICON,
+    Icon = Constants.ICON,
+    ShowIcon = true,
+    
+    -- Custom Theme & Appearance
+    ImageBackground = "",
+    ImageTransparency = 0.8,
+    WindowTransparency = 0.05,
+    
+    -- Floating Toggle 
+    ToggleIcon = Constants.ICON,
+    ToggleSize = 50
 })
+
+-- Set Theme
+OrionLib.SelectedTheme = "Ocean"
 
 --==================================================
 -- MAIN TAB
