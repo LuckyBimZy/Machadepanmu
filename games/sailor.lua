@@ -2482,7 +2482,6 @@ fn.ScanHogyokuDebug=function()
     if uc==0 then table.insert(lines,"(none)") end
     return table.concat(lines,"\n")
 end
-do
 
 --==================================================
 -- LOAD CATRAZ HUB LIBRARY & UI SETUP
