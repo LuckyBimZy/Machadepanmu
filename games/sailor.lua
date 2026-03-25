@@ -135,13 +135,34 @@ local Window = OrionLib:MakeWindow({
     ToggleIcon = Constants.ICON, ToggleSize = 50
 })
 OrionLib.SelectedTheme = "Ocean"
-
+        {Name="TrueAizenBoss",Display="True Aizen",Difficulties={"Normal","Hard"}},
+        {Name="StrongestHistoryBoss",Display="Strongest History (Sukuna)",Difficulties={"Normal","Hard"}},
+        {Name="StrongestTodayBoss",Display="Strongest Today (Gojo)",Difficulties={"Normal","Hard"}}
+    }
+}
 
 -- ==================================================
--- CORE UTILITIES
+-- UTILITIES
 -- ==================================================
 
 local Util = {}
+local R = {
+    TP={"Remotes","TeleportToPortal"}, QuestAccept={"RemoteEvents","QuestAccept"}, QuestAbandon={"RemoteEvents","QuestAbandon"},
+    QuestRepeat={"RemoteEvents","QuestRepeat"}, Hit={"CombatSystem","Remotes","RequestHit"}, Ability={"AbilitySystem","Remotes","RequestAbility"},
+    Awaken={"AbilitySystem","Remotes","Awakening"}, Merchant={"Remotes","MerchantRemotes","PurchaseMerchantItem"}, Chest={"Remotes","OpenChest"},
+    SummonBoss={"Remotes","RequestSummonBoss"}, AnosBoss={"Remotes","RequestSpawnAnosBoss"}, StrongestBoss={"Remotes","RequestSpawnStrongestBoss"},
+    RimuruSpawn={"RemoteEvents","RequestSpawnRimuru"}, TrueAizenSpawn={"RemoteEvents","RequestSpawnTrueAizen"},
+    DungeonVote={"Remotes","DungeonWaveVote"}, DungeonPortal={"Remotes","RequestDungeonPortal"}
+}
+
+function Util.WalkPathWait(parent, to, ...)
+    local cur = parent
+    for _, n in ipairs({...}) do
+        cur = cur:WaitForChild(n, to)
+        if not cur then return nil end
+    end
+    return cur
+end
 
 function Util.IsAlive()
     if not Player.Character then return false end
@@ -225,12 +246,10 @@ end
 
 function Util.ForceTP(portalName)
     Util.StopTween()
-    local tpRemote
-    pcall(function() tpRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("TeleportToPortal") end)
-    if tpRemote then
-        pcall(function() tpRemote:FireServer(portalName) end)
-        task.wait(1)
-    end
+    pcall(function() 
+        local r = Util.WalkPathWait(ReplicatedStorage, 2, unpack(R.TP))
+        if r then r:FireServer(portalName) end 
+    end)
 end
 
 local function SetupAntiAFK()
@@ -284,7 +303,7 @@ local function MatchEnemy(name, island)
         if string.find(lowerName, string.lower(e)) then return true end
     end
     return false
-end
+}
 
 local function FindEnemies(island)
     if not island then return {} end
@@ -313,7 +332,7 @@ local function FindEnemies(island)
         end
     end
     return found
-end
+}
 
 local function BestEnemy(list)
     local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
@@ -331,7 +350,7 @@ local function BestEnemy(list)
         end
     end
     return bestE
-end
+}
 
 local function EquipWeapon()
     if not getgenv().Config.AutoFarm.AutoEquip then return end
@@ -383,29 +402,28 @@ end
 
 local lastSkill = 0
 local function AutoSkillCast()
-    local char = Player.Character
-    if not char then return end
     if tick() - lastSkill < getgenv().Config.AutoFarm.SkillCooldown then return end
+    local c = getgenv().Config.AutoSkills
+    if not (c.Z or c.X or c.C or c.V or c.F) then return end
+    
+    local rAbility, rAwaken = nil, nil
+    pcall(function() rAbility = Util.WalkPathWait(ReplicatedStorage, 2, unpack(R.Ability)) end)
+    pcall(function() rAwaken = Util.WalkPathWait(ReplicatedStorage, 2, unpack(R.Awaken)) end)
+    
     lastSkill = tick()
-    
-    local cfg = getgenv().Config.AutoSkills
-    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-    if not remotes then return end
-    
-    local skillsArgs = {
-        {key = "Z", remote = "RequestAbility"},
-        {key = "X", remote = "RequestAbility"},
-        {key = "C", remote = "RequestAbility"},
-        {key = "V", remote = "RequestAbility"},
-        {key = "F", remote = "Awakening"}
-    }
-    
-    for _, s in ipairs(skillsArgs) do
-        if cfg[s.key] then
-            local r = remotes:FindFirstChild(s.remote)
-            if r then pcall(function() r:FireServer(s.key) end) end
-        end
-    end
+    if c.Z and rAbility then pcall(function() rAbility:FireServer(1) end) end
+    if c.X and rAbility then pcall(function() rAbility:FireServer(2) end) end
+    if c.C and rAbility then pcall(function() rAbility:FireServer(3) end) end
+    if c.V and rAbility then pcall(function() rAbility:FireServer(4) end) end
+    if c.F and rAwaken then pcall(function() rAwaken:FireServer(5) end) end
+end
+
+local function AttackTarget(tgt)
+    pcall(function() 
+        local r = Util.WalkPathWait(ReplicatedStorage, 2, unpack(R.Hit))
+        if r then r:FireServer(tgt) end 
+    end)
+    AutoSkillCast()
 end
 
 local function GetCombatPosition(targetPos, targetCF)
@@ -452,8 +470,16 @@ local function FarmTick()
     
     -- Questing logic
     if getgenv().Config.Farm.AutoQuest and isl.QuestNPC then
-        local questRem = ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("QuestAccept")
-        if questRem then pcall(function() questRem:FireServer(isl.QuestNPC) end) end
+        if not State.LastQuestAccept then State.LastQuestAccept = 0 end
+        if tick() - State.LastQuestAccept > 5 then
+            State.LastQuestAccept = tick()
+            pcall(function() 
+                local qr = Util.WalkPathWait(ReplicatedStorage, 2, unpack(R.QuestRepeat))
+                if qr then qr:FireServer(isl.Portal) end
+                local qa = Util.WalkPathWait(ReplicatedStorage, 2, unpack(R.QuestAccept))
+                if qa then qa:FireServer(isl.QuestNPC) end
+            end)
+        end
     end
     
     local target = BestEnemy(FindEnemies(isl))
@@ -474,14 +500,8 @@ local function FarmTick()
     
     local combatPos = GetCombatPosition(ePos, eCF)
     
-    -- Hit Logic
-    local hitRemote = ReplicatedStorage:FindFirstChild("CombatSystem") and ReplicatedStorage.CombatSystem:FindFirstChild("Remotes") and ReplicatedStorage.CombatSystem.Remotes:FindFirstChild("RequestHit")
-    if hitRemote then
-        pcall(function() hitRemote:FireServer() end)
-    end
-    
     EquipWeapon()
-    AutoSkillCast()
+    AttackTarget(target)
     
     hrp.Velocity = Vector3.new(0, 0, 0)
     
@@ -583,8 +603,10 @@ local function DungeonTick()
         if lobbyPart then
             Util.TweenTo(lobbyPart.CFrame * CFrame.new(0, 3, 0), 150)
             -- Auto vote
-            local rem = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("DungeonWaveVote")
-            if rem then pcall(function() rem:FireServer() end) end
+            pcall(function() 
+                local vote = Util.WalkPathWait(ReplicatedStorage, 2, unpack(R.DungeonVote))
+                if vote then vote:FireServer(getgenv().Config.Dungeon.Diff or "Normal") end
+            end)
         end
         return
     end
@@ -599,19 +621,17 @@ local function DungeonTick()
         local cf = target.PrimaryPart and target.PrimaryPart.CFrame or CFrame.new(pos)
         
         local combatPos = GetCombatPosition(pos, cf)
-        hrp.Velocity = Vector3.new(0,0,0)
         
-        if (hrp.Position - pos).Magnitude > 80 then
+        local distToCombat = (hrp.Position - combatPos.Position).Magnitude
+        if distToCombat > 2 then
             Util.TweenTo(combatPos)
         else
+            Util.StopTween()
             hrp.CFrame = combatPos
         end
         
         EquipWeapon()
-        AutoSkillCast()
-        
-        local hitRem = ReplicatedStorage:FindFirstChild("CombatSystem") and ReplicatedStorage.CombatSystem.Remotes:FindFirstChild("RequestHit")
-        if hitRem then pcall(function() hitRem:FireServer() end) end
+        AttackTarget(target)
     end
 end
 
@@ -629,11 +649,13 @@ local function BossRushTick()
     end
     
     if inLobby then
-        -- Automatically walk into boss rush portal
-        local pg = Player:FindFirstChild("PlayerGui")
-        -- bypass UI or vote
-        local rem = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("DungeonWaveVote")
-        if rem then pcall(function() rem:FireServer() end) end
+        local lobbyPart = workspace:FindFirstChild("DungeonPart")
+        if lobbyPart then Util.TweenTo(lobbyPart.CFrame * CFrame.new(0, 3, 0), 150) end
+        
+        pcall(function() 
+            local portal = Util.WalkPathWait(ReplicatedStorage, 2, unpack(R.DungeonPortal))
+            if portal then portal:FireServer("BossRush") end
+        end)
         return
     end
     
@@ -658,19 +680,17 @@ local function BossRushTick()
         local cf = target.PrimaryPart and target.PrimaryPart.CFrame or CFrame.new(pos)
         
         local combatPos = GetCombatPosition(pos, cf)
-        hrp.Velocity = Vector3.zero
         
-        if (hrp.Position - pos).Magnitude > 80 then
+        local distToCombat = (hrp.Position - combatPos.Position).Magnitude
+        if distToCombat > 2 then
             Util.TweenTo(combatPos)
         else
+            Util.StopTween()
             hrp.CFrame = combatPos
         end
         
         EquipWeapon()
-        AutoSkillCast()
-        
-        local hitRem = ReplicatedStorage:FindFirstChild("CombatSystem") and ReplicatedStorage.CombatSystem.Remotes:FindFirstChild("RequestHit")
-        if hitRem then pcall(function() hitRem:FireServer() end) end
+        AttackTarget(target)
     end
 end
 
@@ -761,23 +781,17 @@ local function BossTick()
     local cf = bossModel.PrimaryPart and bossModel.PrimaryPart.CFrame or CFrame.new(pos)
     
     local combatPos = GetCombatPosition(pos, cf)
-    hrp.Velocity = Vector3.zero
     
-    if (hrp.Position - pos).Magnitude > 80 then
-        if getgenv().Config.Farm.MoveMode == "Teleport" then
-            hrp.CFrame = combatPos
-        else
-            Util.TweenTo(combatPos)
-        end
+    local distToCombat = (hrp.Position - combatPos.Position).Magnitude
+    if distToCombat > 2 then
+        Util.TweenTo(combatPos)
     else
+        Util.StopTween()
         hrp.CFrame = combatPos
     end
     
     EquipWeapon()
-    AutoSkillCast()
-    
-    local hitRem = ReplicatedStorage:FindFirstChild("CombatSystem") and ReplicatedStorage.CombatSystem.Remotes:FindFirstChild("RequestHit")
-    if hitRem then pcall(function() hitRem:FireServer() end) end
+    AttackTarget(bossModel)
 end
 
 local function SummonBossTick()
@@ -814,19 +828,17 @@ local function SummonBossTick()
         local cf = bossModel.PrimaryPart and bossModel.PrimaryPart.CFrame or CFrame.new(pos)
         
         local combatPos = GetCombatPosition(pos, cf)
-        hrp.Velocity = Vector3.zero
         
-        if (hrp.Position - pos).Magnitude > 80 then
+        local distToCombat = (hrp.Position - combatPos.Position).Magnitude
+        if distToCombat > 2 then
             Util.TweenTo(combatPos)
         else
+            Util.StopTween()
             hrp.CFrame = combatPos
         end
         
         EquipWeapon()
-        AutoSkillCast()
-        
-        local hitRem = ReplicatedStorage:FindFirstChild("CombatSystem") and ReplicatedStorage.CombatSystem.Remotes:FindFirstChild("RequestHit")
-        if hitRem then pcall(function() hitRem:FireServer() end) end
+        AttackTarget(bossModel)
     else
         -- Need to spawn
         if bDef.Island and not State.IslandTPd then
@@ -840,18 +852,27 @@ local function SummonBossTick()
         end
         
         -- Spawn the boss!
-        local remName = bDef.Name.."Spawn"
-        if bDef.Name == "BlessedMaidenBoss" then remName = "SpawnBlessedMaiden" end
-        if bDef.Name == "GilgameshBoss" then remName = "SpawnGilgamesh" end
-        if bDef.Name == "SaberAlterBoss" then remName = "SpawnSaberAlter" end
+        local diffObj = getgenv().Config.DiffToggles[bDef.Name]
+        local diffArg = diffObj and diffObj or "Normal"
         
-        local rem = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild(remName)
-        if rem then
-            local diffObj = getgenv().Config.DiffToggles[bDef.Name]
-            local diffArg = diffObj and diffObj or "Normal"
-            pcall(function() rem:InvokeServer(diffArg) end)
-            task.wait(2)
+        local function FireSpawn(path, ...)
+            local args = {...}
+            pcall(function()
+                local rem = Util.WalkPathWait(ReplicatedStorage, 2, unpack(path))
+                if rem then rem:InvokeServer(unpack(args)) end
+            end)
         end
+        
+        if bDef.Name == "AnosBoss" then FireSpawn(R.AnosBoss, diffArg)
+        elseif bDef.Name == "StrongestHistoryBoss" then FireSpawn(R.StrongestBoss, diffArg, "History")
+        elseif bDef.Name == "StrongestTodayBoss" then FireSpawn(R.StrongestBoss, diffArg, "Today")
+        elseif bDef.Name == "RimuruBoss" then FireSpawn(R.RimuruSpawn, diffArg)
+        elseif bDef.Name == "TrueAizenBoss" then FireSpawn(R.TrueAizenSpawn, diffArg)
+        else
+            local nForArgs = bDef.Name:gsub("Boss","")
+            FireSpawn(R.SummonBoss, nForArgs, diffArg)
+        end
+        task.wait(2)
     end
 end
 
@@ -863,26 +884,25 @@ end
 local function AutoChestTick()
     if not getgenv().Config.Items.AutoChest then return end
     
-    local chestsFolder = workspace:FindFirstChild("Chests")
-    if not chestsFolder then return end
-    
     local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
+    local chestsFolder = workspace:FindFirstChild("Chests")
+    if not chestsFolder then return end
+    
+    local o = {}
     for _, ch in ipairs(chestsFolder:GetChildren()) do
-        if ch:IsA("Model") and ch.PrimaryPart then
-            local tgl = getgenv().Config.ItemToggles[ch.Name]
-            if tgl then
-                local dist = (hrp.Position - ch.PrimaryPart.Position).Magnitude
-                if dist < 100 then
-                    hrp.CFrame = ch.PrimaryPart.CFrame
-                    if fireproximityprompt then
-                        local px = ch:FindFirstChildOfClass("ProximityPrompt", true)
-                        if px then fireproximityprompt(px) end
-                    end
-                end
-            end
+        if ch:IsA("Model") and getgenv().Config.ItemToggles[ch.Name] then
+            local pp = ch.PrimaryPart
+            if pp and (hrp.Position - pp.Position).Magnitude < 150 then table.insert(o, ch.Name) end
         end
+    end
+    
+    if #o > 0 then
+        pcall(function() 
+            local r = Util.WalkPathWait(ReplicatedStorage, 2, unpack(R.Chest))
+            if r then r:FireServer(o) end
+        end)
     end
 end
 
@@ -896,7 +916,7 @@ local function AutoMerchantTick()
     
     local merchFolder = npcs:FindFirstChild("Merchant")
     if merchFolder then
-        local remote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("MerchantBuy")
+        local remote = Util.WalkPathWait(ReplicatedStorage, 2, unpack(R.Merchant))
         if remote then
             for item, enabled in pairs(getgenv().Config.MerchantToggles) do
                 if enabled then pcall(function() remote:InvokeServer(item) end) end
